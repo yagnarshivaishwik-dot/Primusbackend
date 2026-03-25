@@ -1,0 +1,39 @@
+{
+  "realm": "primus",
+  "enabled": true,
+  "displayName": "Primus Demo Realm",
+  "clients": [
+    {
+      "clientId": "primus-client",
+      "name": "Primus Demo Client",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": [
+        "https://primus.example.com/*",
+        "http://localhost/*"
+      ],
+      "webOrigins": [
+        "*"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "demo-user",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Demo",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "temporary": false,
+          "value": "ChangeMe123!"
+        }
+      ]
+    }
+  ]
+}
+
+

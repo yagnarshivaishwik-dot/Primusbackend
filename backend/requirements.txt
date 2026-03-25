@@ -1,0 +1,186 @@
+#np=============================================================================
+# PRIMUS BACKEND - COMPLETE REQUIREMENTS
+# =============================================================================
+# All dependencies needed for the Lance gaming cafe management system
+# Tested on Python 3.10+ with full feature support
+# =============================================================================
+
+# Core FastAPI Framework & ASGI Server
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+starlette>=0.40.0
+sse-starlette>=3.0.4
+
+# Database & ORM
+sqlalchemy>=2.0.0
+alembic>=1.13.0
+
+# Database Drivers (Choose based on your database)
+# For PostgreSQL (Production recommended):
+psycopg2-binary>=2.9.0
+# For MySQL (Alternative):
+# PyMySQL>=1.1.0
+# SQLite is included with Python (Development only)
+
+# Authentication & Security
+passlib[bcrypt]>=1.7.4
+python-jose[cryptography]>=3.3.0
+python-multipart>=0.0.6
+bcrypt>=4.1.0
+PyJWT>=2.8.0
+argon2-cffi>=23.1.0
+pyotp>=2.9.0
+
+# Environment & Configuration
+python-dotenv>=1.0.0
+pydantic>=2.10.0
+pydantic-settings>=2.6.0
+
+# Email System (Gmail OTP)
+email-validator>=2.2.0
+fastapi-mail>=1.4.1
+aiosmtplib>=3.0.0
+
+# HTTP Client & API Integration
+httpx>=0.28.0
+requests>=2.32.0
+
+# WebSocket Support
+websockets>=14.0
+
+# Date/Time Utilities
+python-dateutil>=2.8.0
+
+# Social Authentication
+authlib>=1.2.0
+google-auth>=2.23.0
+
+# Payment Processing
+stripe>=7.0.0
+razorpay>=1.3.0
+
+# Firebase Integration (removed)
+
+# Redis Support (Optional caching/OTP storage)
+redis>=5.0.0
+
+# Metrics & Observability
+prometheus-client>=0.20.0
+
+# Optional fast JSON serialization (used when available)
+orjson>=3.10.0
+
+# PDF Generation
+reportlab>=4.0.0
+
+# Production Server
+gunicorn>=21.2.0
+
+# Image Processing (Optional)
+pillow>=10.0.0
+
+# =============================================================================
+# UBUNTU-SPECIFIC SYSTEM DEPENDENCIES (install via apt)
+# =============================================================================
+# Run these commands on Ubuntu server before pip install:
+#
+# sudo apt update
+# sudo apt install -y python3-dev python3-pip python3-venv
+# sudo apt install -y postgresql postgresql-contrib libpq-dev
+# sudo apt install -y redis-server
+# sudo apt install -y nginx
+# sudo apt install -y supervisor
+# sudo apt install -y build-essential
+# sudo apt install -y libssl-dev libffi-dev
+# sudo apt install -y libjpeg-dev libpng-dev
+# sudo apt install -y pkg-config
+# sudo apt install -y git curl wget
+# sudo apt install -y certbot python3-certbot-nginx
+#
+# =============================================================================
+
+# =============================================================================
+# DEVELOPMENT TOOLS (Optional - remove in production)
+# =============================================================================
+# Uncomment these for development environment:
+# black>=23.11.0           # Code formatting
+# flake8>=6.1.0           # Linting
+# mypy>=1.7.1             # Type checking
+# pre-commit>=3.6.0       # Pre-commit hooks
+# pytest>=7.4.0          # Testing framework
+# pytest-asyncio>=0.21.0 # Async testing support
+
+# =============================================================================
+# INSTALLATION NOTES FOR UBUNTU SERVER:
+# =============================================================================
+# 
+# 1. Create virtual environment:
+#    python3 -m venv venv
+#    source venv/bin/activate
+#
+# 2. Upgrade pip:
+#    pip install --upgrade pip setuptools wheel
+#
+# 3. Install requirements:
+#    pip install -r requirements.txt
+#
+# 4. Set up PostgreSQL database:
+#    sudo -u postgres createuser primus
+#    sudo -u postgres createdb primus_db -O primus
+#    sudo -u postgres psql -c "ALTER USER primus PASSWORD 'your_password';"
+#
+# 5. Configure environment variables in .env file
+#
+# 6. Run database migrations:
+#    alembic upgrade head
+#
+# 7. Start with Gunicorn (production):
+#    gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:8000
+#
+# 8. Configure Nginx as reverse proxy
+#
+# 9. Set up SSL with Let's Encrypt:
+#    sudo certbot --nginx -d yourdomain.com
+#
+# =============================================================================
+# QUICK INSTALLATION GUIDE
+# =============================================================================
+#
+# 1. Create virtual environment:
+#    python -m venv venv
+#    source venv/bin/activate  # Linux/Mac
+#    venv\Scripts\activate     # Windows
+#
+# 2. Upgrade pip and install requirements:
+#    pip install --upgrade pip setuptools wheel
+#    pip install -r requirements.txt
+#
+# 3. Configure environment variables:
+#    cp env.example .env
+#    # Edit .env with your settings
+#
+# 4. Initialize database:
+#    alembic upgrade head
+#
+# 5. Run development server:
+#    python main.py
+#    # or
+#    uvicorn main:app --reload
+#
+# 6. For production deployment:
+#    gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:8000
+#
+# =============================================================================
+# FEATURE SUPPORT MATRIX
+# =============================================================================
+# ✅ User Authentication (JWT)     ✅ PC Management & Sessions
+# ✅ Wallet & Payment System       ✅ Game Library Management  
+# ✅ Gmail OTP Email System        ✅ WebSocket Real-time Updates
+# ✅ Social Auth (Google/Discord)  ✅ Admin Dashboard
+# ✅ Booking & Reservation System  ✅ Support Ticket System
+# ✅ Membership & User Groups      ✅ Offers & Coupon System
+# ✅ Leaderboards & Statistics     ✅ Hardware Monitoring
+# ✅ Remote PC Commands            ✅ Backup & Audit Logging
+# ✅ Firebase Integration          ✅ Stripe & Razorpay Payments
+# ✅ PDF Report Generation         ✅ Redis Caching Support
+# =============================================================================

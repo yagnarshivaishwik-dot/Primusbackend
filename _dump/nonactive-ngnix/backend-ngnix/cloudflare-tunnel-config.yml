@@ -1,0 +1,34 @@
+# Cloudflare Tunnel Configuration for primustech.in
+# This file will be automatically generated when you create the tunnel
+# but here's a template for reference
+
+tunnel: YOUR_TUNNEL_ID_HERE
+credentials-file: C:\Users\YOUR_USERNAME\.cloudflared\YOUR_TUNNEL_ID.json
+
+# Ingress rules - routes traffic from your domain to local services
+ingress:
+  # Route API requests to your FastAPI backend
+  - hostname: primustech.in
+    path: /api/*
+    service: http://localhost:8000
+  
+  # Route WebSocket connections
+  - hostname: primustech.in
+    path: /ws/*
+    service: http://localhost:8000
+  
+  # Route admin interface
+  - hostname: primustech.in
+    path: /admin/*
+    service: http://localhost:8000
+  
+  # Route all other traffic to your frontend (if hosting locally)
+  # If your frontend is hosted elsewhere, remove this rule
+  - hostname: primustech.in
+    service: http://localhost:3000
+  
+  # Catch-all rule (required)
+  - service: http_status:404
+
+# Optional: Enable metrics
+metrics: 0.0.0.0:2000

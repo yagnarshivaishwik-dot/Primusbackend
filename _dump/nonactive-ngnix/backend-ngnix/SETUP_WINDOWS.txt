@@ -1,0 +1,79 @@
+Lance Backend - Windows Setup Instructions
+
+Prerequisites
+- Windows 10/11
+- Python 3.10 or newer installed and added to PATH
+- Git (optional, if cloning)
+- SQLite (bundled with Python) or PostgreSQL (optional)
+- PowerShell (run as regular user unless specified)
+
+1) Clone or open the backend folder
+- If cloned with Git:
+  git clone <your-repo-url>
+  cd backend
+- If you already have this workspace, open PowerShell in `backend`.
+
+2) Create and activate a virtual environment
+- Create venv:
+  python -m venv .venv
+- Activate venv:
+  .venv\Scripts\Activate.ps1
+  (If blocked by execution policy, run PowerShell as Admin once and execute: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned)
+
+3) Upgrade pip and install dependencies
+- Upgrade pip:
+  python -m pip install --upgrade pip
+- Install requirements:
+  pip install -r requirements.txt
+
+4) Configure environment variables
+- Copy `env.example` to `.env` if available. If not, ensure these keys exist in your environment:
+  - DATABASE_URL (e.g. sqlite:///./lance.db or postgres://user:pass@host:5432/db)
+  - JWT_SECRET (random long string)
+  - SECRET_KEY (random long string)
+  - APP_BASE_URL (e.g. http://localhost:8000)
+  - SMTP_* (optional for email)
+  - REDIS_URL (optional)
+  - STRIPE_* / RAZORPAY_* (optional for payments)
+- To set in PowerShell session (temporary):
+  $env:DATABASE_URL = "sqlite:///./lance.db"
+  $env:JWT_SECRET   = "change-me"
+  $env:SECRET_KEY   = "change-me"
+  $env:APP_BASE_URL = "http://localhost:8000"
+
+5) Initialize the database (SQLite by default)
+- First run will auto-create tables. For a fresh start, you can delete `lance.db` if present.
+
+6) Run the backend (development)
+- Start the server:
+  python main.py
+- The API should be available at:
+  http://localhost:8000
+- Interactive docs:
+  http://localhost:8000/docs
+
+7) Common tasks
+- Running tests (if configured):
+  pytest
+- Code formatting (if installed):
+  black .
+  isort .
+
+8) Troubleshooting
+- Import errors: ensure the venv is active and dependencies installed.
+- Port in use: stop any process using 8000 or change the port via environment (APP_BASE_URL) and server config.
+- Database path: for SQLite use absolute path if needed (e.g. sqlite:///C:/full/path/lance.db).
+- Redis optional: unset REDIS_URL or ensure Redis is running if using OTP/caching.
+
+9) Switching to PostgreSQL (optional)
+- Install server locally or use hosted.
+- Create database and user.
+- Set DATABASE_URL like:
+  $env:DATABASE_URL = "postgresql+psycopg2://user:pass@localhost:5432/lance"
+- Install driver (if not in requirements):
+  pip install psycopg2-binary
+
+10) Stopping and deactivating
+- Stop server with Ctrl+C.
+- Deactivate venv:
+  deactivate

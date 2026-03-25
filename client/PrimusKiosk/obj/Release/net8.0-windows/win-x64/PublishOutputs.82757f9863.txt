@@ -1,0 +1,2 @@
+K:\lance\client\publish\PrimusKiosk.pdb
+K:\lance\client\publish\PrimusKiosk.exe

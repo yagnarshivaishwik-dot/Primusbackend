@@ -1,0 +1,9 @@
+rules:
+  - rule: Write below etc
+    desc: Detect any write below /etc
+    condition: evt.dir = < and fd.name startswith /etc
+    output: "File below /etc opened for writing (user=%user.name command=%proc.cmdline file=%fd.name)"
+    priority: WARNING
+    tags: [filesystem, primus]
+
+

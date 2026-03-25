@@ -1,0 +1,16 @@
+# Essential working dependencies only
+fastapi
+uvicorn[standard]
+python-dotenv
+sqlalchemy
+python-multipart
+PyJWT
+httpx
+email-validator
+fastapi-mail
+aiosmtplib
+pydantic-settings
+
+# Optional Redis + Prometheus support for caching/metrics
+redis
+prometheus-client

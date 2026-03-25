@@ -1,0 +1,66 @@
+# =============================================================================
+# PRIMUS BACKEND - WORKING REQUIREMENTS (TESTED ON PYTHON 3.13 + WINDOWS)
+# =============================================================================
+
+# Core FastAPI Framework & ASGI Server (WORKING VERSIONS)
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+starlette>=0.40.0
+
+# Database & ORM (SQLite - no PostgreSQL dependencies)
+sqlalchemy>=2.0.0
+alembic>=1.13.0
+
+# Authentication & Security
+passlib[bcrypt]>=1.7.4
+python-jose[cryptography]>=3.3.0
+python-multipart>=0.0.6
+bcrypt>=4.1.0
+
+# Environment & Configuration
+python-dotenv>=1.0.0
+pydantic>=2.10.0
+
+# Email & Communication - Gmail OTP System (WORKING VERSIONS)
+email-validator>=2.2.0
+fastapi-mail>=1.4.1
+aiosmtplib>=3.0.0
+pydantic-settings>=2.6.0
+
+# HTTP Client & API Integration
+httpx>=0.28.0
+requests>=2.32.0
+
+# WebSocket Support
+websockets>=14.0
+
+# JSON Web Tokens
+PyJWT>=2.8.0
+
+# Date/Time Utilities
+python-dateutil>=2.8.0
+
+# =============================================================================
+# GMAIL OTP EMAIL VERIFICATION SYSTEM - WORKING CONFIGURATION
+# =============================================================================
+# 
+# Required Environment Variables (.env file):
+# MAIL_USERNAME=support@primusadmin.in
+# MAIL_PASSWORD=wfcq egau rthj wlgj
+# MAIL_FROM=support@primusadmin.in
+# MAIL_PORT=587
+# MAIL_SERVER=smtp.gmail.com
+# MAIL_TLS=True
+# MAIL_SSL=False
+#
+# API Endpoints:
+# POST /api/send-otp/    - Send OTP to email
+# POST /api/verify-otp/  - Verify OTP code
+#
+# Installation:
+# pip install -r requirements-working.txt
+#
+# Test:
+# python -c "from otp_email import send_otp_email; print('✅ Working!')"
+#
+# =============================================================================

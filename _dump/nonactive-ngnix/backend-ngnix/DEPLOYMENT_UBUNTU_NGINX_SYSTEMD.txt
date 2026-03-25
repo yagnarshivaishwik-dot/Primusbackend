@@ -1,0 +1,126 @@
+Lance Backend - Production Deployment (Ubuntu + Nginx + systemd)
+
+Prerequisites
+- Ubuntu 22.04 LTS server with sudo access
+- Domain (e.g. api.example.com) pointing to server public IP
+- Firewall access to ports 80/443
+- Python 3.10+
+- PostgreSQL (recommended) or SQLite
+- Optional: Redis for caching/OTP
+
+1) Create system user and directories
+sudo adduser --system --group --home /opt/lance lance
+sudo mkdir -p /opt/lance/app
+sudo chown -R lance:lance /opt/lance
+
+2) Install OS packages
+sudo apt update
+sudo apt install -y python3-venv python3-pip git nginx
+# Optional DB + Redis
+# sudo apt install -y postgresql postgresql-contrib redis-server
+
+3) Get code to server
+# Using Git
+sudo -u lance bash -lc 'cd /opt/lance && git clone <your-repo-url> app && cd app/backend'
+# Or copy files via scp/rsync into /opt/lance/app/backend
+
+4) Create virtualenv and install dependencies
+sudo -u lance bash -lc 'cd /opt/lance/app/backend && python3 -m venv .venv && source .venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt'
+
+5) Configure environment variables
+sudo -u lance bash -lc 'cd /opt/lance/app/backend && cp env.example .env || true'
+# Edit .env to include at least:
+# DATABASE_URL=postgresql+psycopg2://user:pass@127.0.0.1:5432/lance
+# JWT_SECRET=change-me
+# SECRET_KEY=change-me
+# APP_BASE_URL=https://api.example.com
+# SMTP_*, REDIS_URL, STRIPE_*, RAZORPAY_* as needed
+
+6) Create Gunicorn start script
+sudo tee /opt/lance/app/backend/start.sh >/dev/null <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")"
+source .venv/bin/activate
+# Bind to a Unix socket for Nginx proxying
+exec gunicorn -k uvicorn.workers.UvicornWorker \
+  --workers 3 \
+  --timeout 120 \
+  --bind unix:/opt/lance/app/backend/gunicorn.sock \
+  app.main:app
+SH
+sudo chmod +x /opt/lance/app/backend/start.sh
+sudo chown lance:lance /opt/lance/app/backend/start.sh
+
+7) Create systemd service
+sudo tee /etc/systemd/system/lance-backend.service >/dev/null <<'UNIT'
+[Unit]
+Description=Lance Backend (FastAPI)
+After=network.target
+
+[Service]
+User=lance
+Group=lance
+WorkingDirectory=/opt/lance/app/backend
+EnvironmentFile=-/opt/lance/app/backend/.env
+ExecStart=/opt/lance/app/backend/start.sh
+Restart=always
+RestartSec=5
+RuntimeDirectory=lance
+# Hardening
+PrivateTmp=true
+ProtectSystem=full
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now lance-backend
+sudo systemctl status lance-backend --no-pager
+
+8) Configure Nginx reverse proxy
+sudo tee /etc/nginx/sites-available/lance-backend >/dev/null <<'NGINX'
+server {
+    listen 80;
+    server_name api.example.com;
+
+    location / {
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://unix:/opt/lance/app/backend/gunicorn.sock;
+    }
+}
+NGINX
+
+sudo ln -s /etc/nginx/sites-available/lance-backend /etc/nginx/sites-enabled/lance-backend || true
+sudo nginx -t && sudo systemctl reload nginx
+
+9) Enable HTTPS (Let's Encrypt)
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d api.example.com --redirect --non-interactive --agree-tos -m admin@example.com
+
+10) Logs and monitoring
+# Application logs via systemd journal
+sudo journalctl -u lance-backend -f
+# Nginx access/error logs
+sudo tail -F /var/log/nginx/access.log /var/log/nginx/error.log
+
+11) Updating the app
+sudo systemctl stop lance-backend
+sudo -u lance bash -lc 'cd /opt/lance/app && cd backend && git pull && source .venv/bin/activate && pip install -r requirements.txt'
+sudo systemctl start lance-backend
+
+12) Health checks
+- API docs: https://api.example.com/docs
+- Consider creating a /health endpoint if not present.
+
+13) Troubleshooting
+- 502 Bad Gateway: Check socket path, permissions, or service status.
+- Permission denied on socket: ensure Nginx can access the Unix socket path.
+- Env not loaded: verify EnvironmentFile path and variable names in .env.
+- DB connection fails: test DATABASE_URL and that DB server is reachable.
+- SELinux/AppArmor: ensure no policies block Nginx socket access (Ubuntu default AppArmor usually fine).

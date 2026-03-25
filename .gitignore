@@ -1,0 +1,46 @@
+# Visual Studio / IDEs
+.vscode/
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.swp
+.idea/
+
+# Node
+node_modules/
+dist/
+build/
+.npm/
+
+# Tauri / Rust
+target/
+src-tauri/target/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env/
+env/
+.venv/
+
+# Electron / Executables
+electron-dist/
+installer-output/
+win-unpacked/
+publish/
+*.exe
+*.dll
+*.asar
+*.msi
+*.cab
+
+# macOS
+.DS_Store
+
+# Logs
+logs/
+*.log

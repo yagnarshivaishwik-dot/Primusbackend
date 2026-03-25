@@ -1,0 +1,30 @@
+# Core FastAPI Framework & ASGI Server
+fastapi==0.108.0
+uvicorn[standard]==0.25.0
+
+# Database & ORM (SQLite only)
+sqlalchemy==2.0.25
+
+# Authentication & Security
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+
+# Environment & Configuration
+python-dotenv==1.0.0
+pydantic==2.5.3
+
+# Email & Communication - Gmail OTP System
+email-validator==2.1.0
+fastapi-mail==1.4.1
+
+# HTTP Client
+httpx==0.25.2
+
+# JSON Web Tokens
+PyJWT==2.8.0
+
+# Redis (async client used for OTP and caching)
+redis==5.0.1
+
+# Metrics & observability (Prometheus)
+prometheus-client==0.20.0
