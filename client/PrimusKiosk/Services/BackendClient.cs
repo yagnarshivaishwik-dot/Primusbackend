@@ -12,7 +12,7 @@ namespace PrimusKiosk.Services;
 
 public class BackendConfig
 {
-    public string ApiBaseUrl { get; set; } = "https://192.168.29.38:8000";
+    public string ApiBaseUrl { get; set; } = "https://api.primustech.in";
     public string ProvisioningTokenPath { get; set; } = "provisioning_token.txt";
 }
 

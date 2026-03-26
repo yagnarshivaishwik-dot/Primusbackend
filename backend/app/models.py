@@ -20,7 +20,7 @@ class PC(Base):
     __tablename__ = "pcs"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
-    status = Column(String, default="idle")  # idle, in_use, locked, offline
+    status = Column(String, default="idle")  # idle, in_use, locked, offline, shutting_down, restarting
     last_seen = Column(DateTime, default=datetime.utcnow)
     current_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     banned = Column(Boolean, default=False)
@@ -505,7 +505,7 @@ class ClientPC(Base):
     id = Column(Integer, primary_key=True, index=True)
     license_key = Column(String, ForeignKey("licenses.key"))
     name = Column(String)
-    status = Column(String, default="offline")
+    status = Column(String, default="offline")  # online, offline, in_use, locked, shutting_down, restarting
     last_seen = Column(DateTime)
     ip_address = Column(String)
     cafe_id = Column(Integer, ForeignKey("cafes.id"))

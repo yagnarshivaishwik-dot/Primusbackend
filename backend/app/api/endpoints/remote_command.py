@@ -79,6 +79,25 @@ async def send_command(
     db.add(event)
     db.commit()
 
+    # Update PC status immediately for shutdown/reboot commands
+    # so the admin UI shows "Shutting Down" / "Restarting" instead of "Offline"
+    new_status = None
+    if cmd.command == "shutdown":
+        new_status = "shutting_down"
+    elif cmd.command in ("reboot", "restart"):
+        new_status = "restarting"
+
+    if new_status:
+        pc.status = new_status
+        status_event = SystemEvent(
+            type="pc.status",
+            cafe_id=pc.cafe_id,
+            pc_id=pc.id,
+            payload={"status": new_status},
+        )
+        db.add(status_event)
+        db.commit()
+
     return rc
 
 
@@ -171,6 +190,17 @@ async def ack_command(
     rc.acknowledged_at = datetime.now(UTC)
     if state == "SUCCEEDED":
         rc.executed = True
+
+    # If a shutdown/reboot command FAILED, revert PC status back to online
+    if state == "FAILED" and rc.command in ("shutdown", "reboot", "restart"):
+        pc.status = "online"
+        revert_event = SystemEvent(
+            type="pc.status",
+            cafe_id=pc.cafe_id,
+            pc_id=pc.id,
+            payload={"status": "online"},
+        )
+        db.add(revert_event)
 
     # Emit System Event for Admin UI
     event = SystemEvent(

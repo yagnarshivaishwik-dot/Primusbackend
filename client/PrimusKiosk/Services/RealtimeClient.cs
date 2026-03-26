@@ -26,7 +26,7 @@ public class RealtimeClient
             _socket?.Dispose();
             _socket = new ClientWebSocket();
 
-            var uri = new Uri($"wss://192.168.29.38:8000/ws/clients/{clientId}");
+            var uri = new Uri($"wss://api.primustech.in/ws/clients/{clientId}");
             await _socket.ConnectAsync(uri, CancellationToken.None);
             _appState.UpdateConnectionStatus(true);
 
