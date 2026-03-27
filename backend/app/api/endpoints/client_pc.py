@@ -142,6 +142,27 @@ async def pc_heartbeat(
         db.add(event)
         db.commit()
 
+        # Invalidate Redis cache
+        try:
+            await publish_invalidation({
+                "scope": "client_pc",
+                "items": [{"type": "client_pc_list", "id": "*"}]
+            })
+        except Exception:
+            pass
+
+        # Broadcast to admin WebSocket
+        status_payload = {
+            "client_id": pc.id,
+            "online": True,
+            "user_name": str(pc.current_user_id) if pc.current_user_id else "Guest",
+            "hostname": pc.name
+        }
+        try:
+            await broadcast_admin(json.dumps(build_event("pc.status.update", status_payload)))
+        except Exception:
+            pass
+
     return {"status": "ok", "server_time": datetime.now(UTC).isoformat()}
 
 
