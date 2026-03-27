@@ -163,12 +163,36 @@ async def pull_commands(
     MASTER SYSTEM: Long-poll for pending commands.
     Outbound HTTPS only. Reliable under NAT/Firewalls.
     """
-    start_time = datetime.now(UTC)
+    now = datetime.now(UTC)
+
+    # CRITICAL FIX: Auto-expire stale PENDING commands on every pull.
+    # This prevents old commands (e.g. logout sent hours ago) from executing
+    # after a client restart or reinstall.
+    stale = (
+        db.query(RemoteCommand)
+        .filter(
+            RemoteCommand.pc_id == pc.id,
+            RemoteCommand.state == "PENDING",
+            RemoteCommand.expires_at <= now,
+        )
+        .all()
+    )
+    if stale:
+        for s in stale:
+            s.state = "EXPIRED"
+        db.commit()
+
+    start_time = now
     while (datetime.now(UTC) - start_time).total_seconds() < timeout:
         # MASTER SYSTEM: Multi-tenancy isolation enforced
+        # Only return commands that haven't expired yet
         cmds = (
             db.query(RemoteCommand)
-            .filter(RemoteCommand.pc_id == pc.id, RemoteCommand.state == "PENDING")
+            .filter(
+                RemoteCommand.pc_id == pc.id,
+                RemoteCommand.state == "PENDING",
+                RemoteCommand.expires_at > datetime.now(UTC),
+            )
             .order_by(RemoteCommand.issued_at.asc())
             .all()
         )
