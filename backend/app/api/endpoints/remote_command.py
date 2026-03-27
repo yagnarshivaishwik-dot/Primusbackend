@@ -108,6 +108,8 @@ async def send_command(
                     "id": rc.id,
                     "command": rc.command,
                     "params": rc.params,
+                    "issued_at": rc.issued_at.isoformat(),
+                    "expires_at": rc.expires_at.isoformat(),
                 },
             }),
         )

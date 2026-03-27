@@ -20,17 +20,25 @@ _pc_connections: dict[int, list[WebSocket]] = {}
 
 async def notify_pc(pc_id: int, payload: str):
     conns = _pc_connections.get(pc_id, [])
+    if not conns:
+        print(f"[notify_pc] No active connections for PC #{pc_id} — command will rely on HTTP polling")
+        return
+
     living: list[WebSocket] = []
     for ws in conns:
         try:
             await ws.send_text(payload)
             living.append(ws)
-        except Exception:
+        except Exception as e:
+            print(f"[notify_pc] Failed to send to PC #{pc_id}: {e} — removing dead connection")
             try:
                 await ws.close()
             except Exception:
                 pass
     _pc_connections[pc_id] = living
+
+    if not living:
+        print(f"[notify_pc] All connections dead for PC #{pc_id} — command will rely on HTTP polling")
 
 
 async def broadcast(payload: str):
