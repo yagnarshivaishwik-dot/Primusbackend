@@ -1,0 +1,36 @@
+Windows Registry Editor Version 5.00
+
+; ========================================
+; Primus Kiosk Mode - Windows Shell Replacement
+; ========================================
+; 
+; This registry file replaces the Windows shell (explorer.exe) 
+; with Primus.exe to create a kiosk mode environment.
+; 
+; IMPORTANT: 
+; 1. Replace "C:\\Path\\To\\Primus.exe" with the actual path to your Primus.exe
+; 2. Run as Administrator
+; 3. Restart the computer after applying changes
+; 4. Keep the restore file handy in case you need to revert
+;
+; ========================================
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon]
+"Shell"="C:\\Path\\To\\Primus.exe"
+
+; ========================================
+; RESTORE INSTRUCTIONS
+; ========================================
+; 
+; To restore Windows Explorer as the default shell,
+; create a new .reg file with the following content:
+;
+; Windows Registry Editor Version 5.00
+; 
+; [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon]
+; "Shell"="explorer.exe"
+;
+; Or run this command in Command Prompt (as Administrator):
+; reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v Shell /t REG_SZ /d explorer.exe /f
+;
+; ========================================

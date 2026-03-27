@@ -1,0 +1,131 @@
+{
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devPath": "http://localhost:1420",
+    "distDir": "../dist",
+    "withGlobalTauri": true
+  },
+  "package": {
+    "productName": "Primus Client",
+    "version": "1.0.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "shell": {
+        "all": false,
+        "execute": false,
+        "sidecar": false,
+        "open": false,
+        "scope": []
+      },
+      "dialog": {
+        "all": true,
+        "open": true
+      },
+      "window": {
+        "all": false,
+        "close": true,
+        "hide": true,
+        "show": true,
+        "maximize": true,
+        "minimize": true,
+        "unmaximize": true,
+        "unminimize": true,
+        "startDragging": true,
+        "print": false
+      },
+      "fs": {
+        "all": false,
+        "readFile": true,
+        "writeFile": true,
+        "readDir": false,
+        "copyFile": false,
+        "createDir": false,
+        "removeDir": false,
+        "removeFile": false,
+        "renameFile": false,
+        "exists": true,
+        "scope": [
+          "$APPDATA/primus/*",
+          "$TEMP/primus/*"
+        ]
+      },
+      "http": {
+        "all": true,
+        "request": true,
+        "scope": [
+          "https://api.primustech.in/*",
+          "https://primusadmin.in/*",
+          "https://primustech.in/*",
+          "http://localhost:8000/*",
+          "http://20.219.85.179:8000/*",
+          "wss://api.primustech.in/*",
+          "wss://primusadmin.in/*",
+          "wss://primustech.in/*",
+          "ws://localhost:8000/*",
+          "ws://20.219.85.179:8000/*"
+        ]
+      },
+      "notification": {
+        "all": true
+      },
+      "os": {
+        "all": true
+      },
+      "path": {
+        "all": true
+      },
+      "protocol": {
+        "all": false,
+        "asset": true,
+        "assetScope": [
+          "**"
+        ]
+      }
+    },
+    "bundle": {
+      "active": true,
+      "targets": "all",
+      "identifier": "com.primustech.client",
+      "icon": [
+        "icons/icon.ico"
+      ],
+      "windows": {
+        "certificateThumbprint": null,
+        "digestAlgorithm": "sha256",
+        "timestampUrl": "",
+        "wix": {
+          "language": "en-US"
+        },
+        "nsis": {
+          "displayLanguageSelector": false,
+          "installerIcon": "icons/icon.ico",
+          "installMode": "perMachine",
+          "languages": [
+            "English"
+          ]
+        }
+      }
+    },
+    "security": {
+      "csp": null
+    },
+    "windows": [
+      {
+        "title": "Primus",
+        "fullscreen": false,
+        "resizable": false,
+        "decorations": false,
+        "alwaysOnTop": false,
+        "skipTaskbar": false,
+        "maximized": true,
+        "width": 1280,
+        "height": 720,
+        "minWidth": 1024,
+        "minHeight": 600
+      }
+    ]
+  }
+}

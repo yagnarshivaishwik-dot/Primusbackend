@@ -1,0 +1,236 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-secondary-700;
+  }
+  
+  body {
+    @apply bg-secondary-900 text-secondary-100 font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  html, body, #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Prevent scrolling in kiosk mode */
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-secondary-900;
+  }
+  
+  .btn-primary {
+    @apply btn bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-secondary-700 text-secondary-100 hover:bg-secondary-600 active:bg-secondary-500;
+  }
+  
+  .btn-success {
+    @apply btn bg-success-600 text-white hover:bg-success-700 active:bg-success-800;
+  }
+  
+  .btn-warning {
+    @apply btn bg-warning-600 text-white hover:bg-warning-700 active:bg-warning-800;
+  }
+  
+  .btn-error {
+    @apply btn bg-error-600 text-white hover:bg-error-700 active:bg-error-800;
+  }
+  
+  .btn-outline {
+    @apply btn border border-secondary-600 bg-transparent hover:bg-secondary-800 active:bg-secondary-700;
+  }
+  
+  .btn-ghost {
+    @apply btn bg-transparent hover:bg-secondary-800 active:bg-secondary-700;
+  }
+  
+  .card {
+    @apply rounded-xl bg-secondary-800 border border-secondary-700 p-6 shadow-lg;
+  }
+  
+  .input {
+    @apply flex h-10 w-full rounded-md border border-secondary-600 bg-secondary-800 px-3 py-2 text-sm ring-offset-secondary-900 file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-secondary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  
+  .label {
+    @apply text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70;
+  }
+  
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+  }
+  
+  .badge-primary {
+    @apply badge bg-primary-600 text-white;
+  }
+  
+  .badge-secondary {
+    @apply badge bg-secondary-600 text-secondary-100;
+  }
+  
+  .badge-success {
+    @apply badge bg-success-600 text-white;
+  }
+  
+  .badge-warning {
+    @apply badge bg-warning-600 text-white;
+  }
+  
+  .badge-error {
+    @apply badge bg-error-600 text-white;
+  }
+  
+  .spinner {
+    @apply animate-spin rounded-full border-2 border-secondary-600 border-t-primary-600;
+  }
+  
+  .loading-overlay {
+    @apply fixed inset-0 z-50 flex items-center justify-center bg-secondary-900/80 backdrop-blur-sm;
+  }
+  
+  .game-card {
+    @apply card cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-xl hover:border-primary-500;
+  }
+  
+  .status-online {
+    @apply text-success-500 bg-success-500/10 border-success-500/20;
+  }
+  
+  .status-offline {
+    @apply text-error-500 bg-error-500/10 border-error-500/20;
+  }
+  
+  .status-busy {
+    @apply text-warning-500 bg-warning-500/10 border-warning-500/20;
+  }
+  
+  .status-idle {
+    @apply text-secondary-400 bg-secondary-400/10 border-secondary-400/20;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent;
+  }
+  
+  .glass {
+    @apply bg-white/5 backdrop-blur-md border border-white/10;
+  }
+  
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  .kiosk-mode {
+    @apply select-none pointer-events-auto;
+  }
+}
+
+/* Custom animations */
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-top {
+  animation: slideInFromTop 0.3s ease-out;
+}
+
+.animate-slide-in-bottom {
+  animation: slideInFromBottom 0.3s ease-out;
+}
+
+.animate-slide-in-left {
+  animation: slideInFromLeft 0.3s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slideInFromRight 0.3s ease-out;
+}
+
+/* Prevent text selection in kiosk mode */
+.kiosk-mode * {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-secondary-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-secondary-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-secondary-500;
+}
