@@ -1,5 +1,9 @@
 import asyncio
 import json
+import time
+import hmac
+import hashlib
+from datetime import datetime, UTC
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
@@ -7,6 +11,7 @@ from app.database import SessionLocal
 from app.models import ClientPC, User
 from app.ws.admin import broadcast_admin
 from app.ws.auth import WSAuthError, authenticate_ws_token, build_event
+from app.utils.cache import publish_invalidation
 
 router = APIRouter()
 
@@ -54,22 +59,66 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
     try:
         raw = await websocket.receive_text()
         msg = json.loads(raw)
-        if msg.get("event") != "auth":
-            raise WSAuthError("First message must be auth")
-        token = (msg.get("payload") or {}).get("token") or ""
-        user = authenticate_ws_token(token)
+        if msg.get("event") not in ("auth", "device_auth"):
+            raise WSAuthError("First message must be auth or device_auth")
 
-        # Optional: ensure the user belongs to the same cafe as the PC
+        event_type = msg.get("event")
         db = SessionLocal()
+        is_device_auth = False
         try:
             pc = db.query(ClientPC).filter_by(id=pc_id).first()
             if not pc:
                 raise WSAuthError("PC not found")
-            if getattr(pc, "cafe_id", None) and getattr(user, "cafe_id", None):
-                if pc.cafe_id != user.cafe_id:
-                    raise WSAuthError("PC not in same cafe")
+
+            if event_type == "auth":
+                token = (msg.get("payload") or {}).get("token") or ""
+                user = authenticate_ws_token(token)
+                if getattr(pc, "cafe_id", None) and getattr(user, "cafe_id", None):
+                    if pc.cafe_id != user.cafe_id:
+                        raise WSAuthError("PC not in same cafe")
+            elif event_type == "device_auth":
+                payload = msg.get("payload") or {}
+                signature = payload.get("signature")
+                timestamp = payload.get("timestamp")
+
+                if not signature or not timestamp:
+                    raise WSAuthError("Missing signature or timestamp")
+
+                try:
+                    ts_int = int(timestamp)
+                    now = int(time.time())
+                    if abs(now - ts_int) > 300:
+                        raise WSAuthError("Timestamp expired")
+                except ValueError:
+                    raise WSAuthError("Invalid timestamp")
+
+                if not pc.device_secret:
+                    raise WSAuthError("PC has no device secret")
+
+                message = f"{timestamp}".encode()
+                expected_sig = hmac.new(
+                    pc.device_secret.encode(), message, hashlib.sha256
+                ).hexdigest()
+
+                if not hmac.compare_digest(signature, expected_sig):
+                    raise WSAuthError("Invalid device signature")
+
+                pc.status = "online"
+                pc.last_seen = datetime.now(UTC)
+                db.commit()
+                is_device_auth = True
         finally:
             db.close()
+
+        if is_device_auth:
+            try:
+                await publish_invalidation({
+                    "scope": "client_pc",
+                    "items": [{"type": "client_pc_list", "id": "*"}]
+                })
+            except Exception:
+                pass
+
     except (WSAuthError, json.JSONDecodeError):
         try:
             await websocket.send_text(
@@ -172,5 +221,35 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
     finally:
         try:
             _pc_connections[pc_id].remove(websocket)
+        except Exception:
+            pass
+
+        # Broadcast offline on disconnect
+        try:
+            db = SessionLocal()
+            try:
+                pc = db.query(ClientPC).filter_by(id=pc_id).first()
+                if pc:
+                    pc.status = "offline"
+                    db.commit()
+            finally:
+                db.close()
+
+            try:
+                await publish_invalidation({
+                    "scope": "client_pc",
+                    "items": [{"type": "client_pc_list", "id": "*"}]
+                })
+            except Exception:
+                pass
+
+            status_payload = {
+                "client_id": pc_id,
+                "online": False
+            }
+            try:
+                await broadcast_admin(json.dumps(build_event("pc.status.update", status_payload)))
+            except Exception:
+                pass
         except Exception:
             pass

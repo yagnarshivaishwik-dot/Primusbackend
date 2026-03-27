@@ -11,6 +11,9 @@ from app.models import ClientPC, License, SystemEvent
 from app.schemas import ClientPCCreate, ClientPCOut
 from app.utils.cache import publish_invalidation
 from app.utils.security import verify_device_signature
+from app.ws.admin import broadcast_admin
+from app.ws.auth import build_event
+import json
 
 router = APIRouter()
 
@@ -206,6 +209,27 @@ async def pc_heartbeat_simple(
         )
         db.add(event)
         db.commit()
+
+        # 1. Invalidate Redis Cache instantly
+        try:
+            await publish_invalidation({
+                "scope": "client_pc",
+                "items": [{"type": "client_pc_list", "id": "*"}]
+            })
+        except Exception:
+            pass
+
+        # 2. Push Real-Time WebSocket Update to Admin Portal
+        status_payload = {
+            "client_id": pc.id,
+            "online": True,
+            "user_name": str(pc.current_user_id) if pc.current_user_id else "Guest",
+            "hostname": pc.name
+        }
+        try:
+            await broadcast_admin(json.dumps(build_event("pc.status.update", status_payload)))
+        except Exception:
+            pass
 
     return {"status": "ok", "server_time": datetime.now(UTC).isoformat()}
 
