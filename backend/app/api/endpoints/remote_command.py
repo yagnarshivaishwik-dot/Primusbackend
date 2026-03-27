@@ -10,8 +10,7 @@ from app.api.endpoints.client_pc import get_current_device
 from app.database import get_db
 from app.models import ClientPC, RemoteCommand, SystemEvent
 from app.schemas import RemoteCommandIn, RemoteCommandOut
-
-# Removed WebSocket imports
+from app.ws.pc import notify_pc
 
 router = APIRouter()
 
@@ -97,6 +96,23 @@ async def send_command(
         )
         db.add(status_event)
         db.commit()
+
+    # CRITICAL FIX: Push command instantly via WebSocket for immediate delivery.
+    # The HTTP long-polling is the fallback; WS push ensures near-zero latency.
+    try:
+        await notify_pc(
+            cmd.pc_id,
+            json.dumps({
+                "event": "command",
+                "payload": {
+                    "id": rc.id,
+                    "command": rc.command,
+                    "params": rc.params,
+                },
+            }),
+        )
+    except Exception:
+        pass  # Best-effort — client will still pick up via polling
 
     return rc
 
