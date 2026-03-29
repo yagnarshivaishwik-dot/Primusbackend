@@ -184,6 +184,7 @@ class RemoteCommandOut(RemoteCommandIn):
     state: str
     result: dict | None = None
     issued_at: datetime
+    expires_at: datetime | None = None
     executed: bool
     acknowledged_at: datetime | None = None
     model_config = ConfigDict(from_attributes=True)
