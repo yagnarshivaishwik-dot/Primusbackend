@@ -1,10 +1,10 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import get_current_user, require_role
-from app.database import SessionLocal
+from app.database import get_db
 from app.models import (
     ClientPC,
     CoinTransaction,
@@ -23,18 +23,13 @@ from app.schemas import PricingRuleIn, PricingRuleOut
 router = APIRouter()
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 # Admin: create pricing rule
 @router.post("/rule", response_model=PricingRuleOut)
 def create_pricing_rule(
-    rule: PricingRuleIn, current_user=Depends(require_role("admin")), db: Session = Depends(get_db)
+    rule: PricingRuleIn,
+    request: Request,
+    current_user=Depends(require_role("admin")),
+    db: Session = Depends(get_db),
 ):
     pr = PricingRule(**rule.dict(), is_active=True)
     db.add(pr)
@@ -45,14 +40,21 @@ def create_pricing_rule(
 
 # Admin: list pricing rules
 @router.get("/rule", response_model=list[PricingRuleOut])
-def list_pricing_rules(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+def list_pricing_rules(
+    request: Request,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     return db.query(PricingRule).all()
 
 
 # Estimate minutes left for current user given PC pricing and offers + wallet
 @router.get("/estimate-timeleft")
 def estimate_time_left(
-    pc_id: int, current_user=Depends(get_current_user), db: Session = Depends(get_db)
+    pc_id: int,
+    request: Request,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     # If we track active user on this client pc, compute for that user
     tracked_user = None
@@ -141,9 +143,17 @@ def calculate_billing(session: PCSession, db: Session):
             bill_rate = bill_rate * max(0.0, (100.0 - ug.discount_percent)) / 100.0
     bill = round(remaining_to_bill * bill_rate, 2)
     if bill > 0:
-        if user.wallet_balance < bill:
+        # ATOMIC UPDATE: Prevents race conditions on concurrent billing
+        from sqlalchemy import update
+        result = db.execute(
+            update(User)
+            .where(User.id == user.id, User.wallet_balance >= bill)
+            .values(wallet_balance=User.wallet_balance - bill)
+            .returning(User.wallet_balance)
+        )
+        new_balance = result.scalar_one_or_none()
+        if new_balance is None:
             raise HTTPException(status_code=400, detail="Insufficient balance for billing")
-        user.wallet_balance -= bill
     # Record transaction
     if bill > 0:
         tx = WalletTransaction(
@@ -164,6 +174,28 @@ def calculate_billing(session: PCSession, db: Session):
         user.coins_balance += coins_earned
         db.add(CoinTransaction(user_id=user.id, amount=coins_earned, reason="session_playtime"))
     db.commit()
+
+    # Audit mirror: fire-and-forget from threadpool context
+    if bill > 0:
+        try:
+            import asyncio
+            from app.services.financial_audit import mirror_to_global_async
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                asyncio.run_coroutine_threadsafe(
+                    mirror_to_global_async(
+                        cafe_id=session.cafe_id or 0,
+                        txn_type="session_billing",
+                        amount=bill,
+                        txn_ref=str(session.id),
+                        user_id=user.id,
+                        description=f"Session {session.id} billing: {remaining_to_bill:.2f}h",
+                    ),
+                    loop,
+                )
+        except Exception:
+            pass  # Non-critical: never block billing
+
     return bill
 
 

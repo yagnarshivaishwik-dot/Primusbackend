@@ -8,6 +8,7 @@ CRITICAL: All balance modifications use atomic SQL to prevent race conditions.
 from typing import TYPE_CHECKING
 import os
 from datetime import UTC, datetime
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import update
@@ -17,6 +18,8 @@ from starlette.concurrency import run_in_threadpool
 from app.models import User, WalletTransaction
 from app.api.endpoints.audit import log_action
 from app.api.endpoints.auth import get_current_user
+from app.auth.context import AuthContext, get_auth_context
+from app.auth.tenant import scoped_query, enforce_cafe_ownership
 from app.database import get_db
 from app.schemas import WalletAction, WalletTransactionOut
 from app.utils.cache import publish_invalidation
@@ -45,14 +48,16 @@ def wallet_balance(
 
 @router.get("/transactions", response_model=list[WalletTransactionOut])
 def list_transactions(
-    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ) -> list[WalletTransactionOut]:
     """
     List all wallet transactions for the authenticated user.
     """
     txs = (
-        db.query(WalletTransaction)
-        .filter_by(user_id=current_user.id)
+        scoped_query(db, WalletTransaction, ctx)
+        .filter(WalletTransaction.user_id == current_user.id)
         .order_by(WalletTransaction.timestamp.desc())
         .all()
     )
@@ -64,6 +69,7 @@ async def topup_wallet(
     action: WalletAction,
     request: Request,
     current_user: User = Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ) -> WalletTransactionOut:
     """
@@ -87,6 +93,11 @@ async def topup_wallet(
 
         target_user_id = action.user_id if action.user_id else current_user.id
 
+        # Verify target user belongs to same cafe
+        if action.user_id:
+            target_user = db.query(User).filter_by(id=target_user_id).first()
+            enforce_cafe_ownership(target_user, ctx)
+
         # ATOMIC UPDATE: Prevents race conditions
         result = db.execute(
             update(User)
@@ -102,6 +113,7 @@ async def topup_wallet(
         # Create transaction record
         tx = WalletTransaction(
             user_id=target_user_id,
+            cafe_id=ctx.cafe_id,
             amount=amount,
             timestamp=datetime.now(UTC),
             type="topup",
@@ -124,7 +136,37 @@ async def topup_wallet(
         db.refresh(tx)
         return tx
 
+    # Fraud check (non-blocking: fail-open if Redis unavailable)
+    try:
+        from app.services.fraud import check_topup
+        fraud_result = await check_topup(
+            user_id=action.user_id or current_user.id,
+            cafe_id=ctx.cafe_id or 0,
+            amount=Decimal(str(action.amount)),
+            client_ip=str(request.client.host) if request.client else None,
+        )
+        if not fraud_result.allowed:
+            raise HTTPException(status_code=429, detail=fraud_result.reason or "Transaction blocked")
+    except HTTPException:
+        raise
+    except Exception:
+        pass  # fail-open
+
     tx = await run_in_threadpool(_topup)
+
+    # Audit mirror (fire-and-forget)
+    try:
+        from app.services.financial_audit import mirror_to_global_async
+        await mirror_to_global_async(
+            cafe_id=ctx.cafe_id or 0,
+            txn_type="wallet_topup",
+            amount=Decimal(str(action.amount)),
+            txn_ref=str(tx.id),
+            user_id=action.user_id or current_user.id,
+            description=action.description or "Manual topup",
+        )
+    except Exception:
+        pass  # non-critical
 
     await publish_invalidation({
         "scope": "analytics",
@@ -143,6 +185,7 @@ async def topup_wallet(
 async def deduct_wallet(
     action: WalletAction,
     current_user: User = Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ) -> WalletTransactionOut:
     """
@@ -155,6 +198,11 @@ async def deduct_wallet(
             raise HTTPException(status_code=400, detail="Amount must be greater than 0")
 
         target_user_id = action.user_id if (action.user_id and current_user.role == "admin") else current_user.id
+
+        # Verify target user belongs to same cafe
+        if action.user_id and current_user.role == "admin":
+            target_user = db.query(User).filter_by(id=target_user_id).first()
+            enforce_cafe_ownership(target_user, ctx)
 
         # ATOMIC UPDATE with balance check: Only deduct if sufficient funds
         result = db.execute(
@@ -178,6 +226,7 @@ async def deduct_wallet(
         # Create transaction record (negative amount for deduction)
         tx = WalletTransaction(
             user_id=target_user_id,
+            cafe_id=ctx.cafe_id,
             amount=-amount,
             timestamp=datetime.now(UTC),
             type="deduct",
@@ -188,7 +237,36 @@ async def deduct_wallet(
         db.refresh(tx)
         return tx
 
+    # Fraud check (non-blocking: fail-open if Redis unavailable)
+    try:
+        from app.services.fraud import check_deduct
+        fraud_result = await check_deduct(
+            user_id=action.user_id or current_user.id,
+            cafe_id=ctx.cafe_id or 0,
+            amount=Decimal(str(action.amount)),
+        )
+        if not fraud_result.allowed:
+            raise HTTPException(status_code=429, detail=fraud_result.reason or "Transaction blocked")
+    except HTTPException:
+        raise
+    except Exception:
+        pass  # fail-open
+
     tx = await run_in_threadpool(_deduct)
+
+    # Audit mirror (fire-and-forget)
+    try:
+        from app.services.financial_audit import mirror_to_global_async
+        await mirror_to_global_async(
+            cafe_id=ctx.cafe_id or 0,
+            txn_type="wallet_deduct",
+            amount=Decimal(str(action.amount)),
+            txn_ref=str(tx.id),
+            user_id=action.user_id or current_user.id,
+            description=action.description or "Deduction",
+        )
+    except Exception:
+        pass  # non-critical
 
     await publish_invalidation({
         "scope": "analytics",

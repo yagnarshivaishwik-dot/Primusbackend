@@ -100,8 +100,9 @@ APP_SECRET = _require_env_var(
 # JWT Configuration
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")  # Default to HS256, can be overridden
 ACCESS_TOKEN_EXPIRE_MINUTES = int(
-    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "120")
-)  # 2 hours default
+    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "20")
+)  # 20 minutes default (short-lived for security)
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 
 # Optional OIDC settings for Keycloak or other providers
 OIDC_ISSUER = os.getenv("OIDC_ISSUER", "")
@@ -109,6 +110,8 @@ OIDC_AUDIENCE = os.getenv("OIDC_AUDIENCE", "")
 
 # Feature flags
 ENABLE_TOTP_2FA = os.getenv("ENABLE_TOTP_2FA", "false").lower() == "true"
+REQUIRE_DEVICE_ID_ON_LOGIN = os.getenv("REQUIRE_DEVICE_ID_ON_LOGIN", "false").lower() == "true"
+ENFORCE_IP_WHITELIST = os.getenv("ENFORCE_IP_WHITELIST", "false").lower() == "true"
 
 
 def load_from_file(filename: str):
@@ -139,6 +142,18 @@ RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID", "")
 RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET", "")
 RAZORPAY_CURRENCY = os.getenv("RAZORPAY_CURRENCY", "INR")
 RAZORPAY_SUCCESS_URL = os.getenv("RAZORPAY_SUCCESS_URL", "https://example.com/razorpay/success")
+
+# UPI Payment Configuration
+UPI_PROVIDER = os.getenv("UPI_PROVIDER", "razorpay")  # razorpay or standalone
+UPI_MERCHANT_VPA = os.getenv("UPI_MERCHANT_VPA", "")
+UPI_WEBHOOK_SECRET = os.getenv("UPI_WEBHOOK_SECRET", "")
+
+# Multi-Database Architecture
+GLOBAL_DATABASE_URL = os.getenv("GLOBAL_DATABASE_URL", DATABASE_URL)
+MULTI_DB_ENABLED = os.getenv("MULTI_DB_ENABLED", "false").lower() == "true"
+CAFE_DB_ENGINE_CACHE_SIZE = int(os.getenv("CAFE_DB_ENGINE_CACHE_SIZE", "100"))
+CAFE_DB_POOL_SIZE = int(os.getenv("CAFE_DB_POOL_SIZE", "3"))
+CAFE_DB_MAX_OVERFLOW = int(os.getenv("CAFE_DB_MAX_OVERFLOW", "5"))
 
 # OAuth providers (desktop flow)
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")

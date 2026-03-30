@@ -1,9 +1,56 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import JSON, Boolean, Column, DateTime, Float, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from app.database import Base
+
+
+# ---- Multi-Tenant Security Models ----
+
+
+class UserCafeMap(Base):
+    """Maps users to cafes with per-cafe roles. Enables multi-cafe access."""
+    __tablename__ = "user_cafe_map"
+    __table_args__ = (
+        UniqueConstraint("user_id", "cafe_id", name="uq_user_cafe"),
+    )
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=False, index=True)
+    role = Column(String, nullable=False)  # cafeadmin, staff, client
+    is_primary = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", foreign_keys=[user_id])
+    cafe = relationship("Cafe", foreign_keys=[cafe_id])
+
+
+class RefreshToken(Base):
+    """Refresh tokens for JWT rotation. Bound to user + optional device."""
+    __tablename__ = "refresh_tokens"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    token_hash = Column(String, nullable=False, unique=True, index=True)
+    device_id = Column(String, nullable=True)
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True)
+    issued_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)
+    revoked = Column(Boolean, default=False)
+    revoked_at = Column(DateTime, nullable=True)
+    ip_address = Column(String, nullable=True)
+
+
+class DeviceIpHistory(Base):
+    """Tracks IP addresses used by each device for anomaly detection."""
+    __tablename__ = "device_ip_history"
+    id = Column(Integer, primary_key=True, index=True)
+    client_pc_id = Column(Integer, ForeignKey("client_pcs.id"), nullable=False, index=True)
+    ip_address = Column(String, nullable=False)
+    first_seen = Column(DateTime, default=datetime.utcnow)
+    last_seen = Column(DateTime, default=datetime.utcnow)
+    request_count = Column(Integer, default=1)
 
 
 class SystemEvent(Base):
@@ -35,6 +82,7 @@ class Session(Base):
     pc_id = Column(Integer, ForeignKey("pcs.id"))
     client_pc_id = Column(Integer, ForeignKey("client_pcs.id"), nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"))
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     start_time = Column(DateTime, default=datetime.utcnow)
     end_time = Column(DateTime, nullable=True)
     paid = Column(Boolean, default=False)
@@ -46,6 +94,7 @@ class WalletTransaction(Base):
     __tablename__ = "wallet_transactions"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     amount = Column(Float)
     timestamp = Column(DateTime, default=datetime.utcnow)
     type = Column(String)  # 'topup', 'deduct', 'refund'
@@ -55,6 +104,7 @@ class WalletTransaction(Base):
 class Game(Base):
     __tablename__ = "games"
     id = Column(Integer, primary_key=True, index=True)
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     name = Column(String, unique=True)
     exe_path = Column(String, nullable=True)
     logo_url = Column(String, nullable=True)
@@ -105,6 +155,7 @@ class ChatMessage(Base):
     from_user_id = Column(Integer, ForeignKey("users.id"))
     to_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # null = broadcast/all
     pc_id = Column(Integer, ForeignKey("pcs.id"), nullable=True)  # if message targets a PC
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     message = Column(String)
     timestamp = Column(DateTime, default=datetime.utcnow)
     read = Column(Boolean, default=False)
@@ -115,6 +166,7 @@ class Notification(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # null = broadcast
     pc_id = Column(Integer, ForeignKey("pcs.id"), nullable=True)
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     type = Column(String)  # info, warning, error, alert, etc.
     content = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -126,6 +178,7 @@ class SupportTicket(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     pc_id = Column(Integer, ForeignKey("pcs.id"), nullable=True)
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     issue = Column(String)
     status = Column(String, default="open")  # open, in_progress, closed
     assigned_staff = Column(Integer, ForeignKey("users.id"), nullable=True)
@@ -136,6 +189,7 @@ class SupportTicket(Base):
 class Announcement(Base):
     __tablename__ = "announcements"
     id = Column(Integer, primary_key=True, index=True)
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     content = Column(String)
     type = Column(String, default="info")  # info, warning, success, error
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -149,6 +203,7 @@ class HardwareStat(Base):
     __tablename__ = "hardware_stats"
     id = Column(Integer, primary_key=True, index=True)
     pc_id = Column(Integer, ForeignKey("pcs.id"))
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
     cpu_percent = Column(Float)
     ram_percent = Column(Float)
@@ -188,6 +243,8 @@ class AuditLog(Base):
     detail = Column(String, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
     ip = Column(String, nullable=True)
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
+    device_id = Column(String, nullable=True)
 
 
 class PCGroup(Base):
@@ -216,6 +273,7 @@ class BackupEntry(Base):
 class PricingRule(Base):
     __tablename__ = "pricing_rules"
     id = Column(Integer, primary_key=True, index=True)
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     name = Column(String, unique=True)
     rate_per_hour = Column(Float)
     group_id = Column(Integer, ForeignKey("pc_groups.id"), nullable=True)  # null=default/global
@@ -228,6 +286,7 @@ class PricingRule(Base):
 class Offer(Base):
     __tablename__ = "offers"
     id = Column(Integer, primary_key=True, index=True)
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     name = Column(String, unique=True)
     description = Column(String, nullable=True)
     price = Column(Float)
@@ -256,6 +315,7 @@ class CoinTransaction(Base):
 class Webhook(Base):
     __tablename__ = "webhooks"
     id = Column(Integer, primary_key=True, index=True)
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     url = Column(String)
     event = Column(String)  # e.g., "user_registered", "payment_received"
     is_active = Column(Boolean, default=True)
@@ -290,6 +350,7 @@ class LicenseAssignment(Base):
 class MembershipPackage(Base):
     __tablename__ = "membership_packages"
     id = Column(Integer, primary_key=True, index=True)
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     name = Column(String, unique=True)
     description = Column(String, nullable=True)
     price = Column(Float)
@@ -301,6 +362,7 @@ class MembershipPackage(Base):
 class UserGroup(Base):
     __tablename__ = "user_groups"
     id = Column(Integer, primary_key=True, index=True)
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     name = Column(String, unique=True)
     discount_percent = Column(Float, default=0.0)
     coin_multiplier = Column(Float, default=1.0)
@@ -320,6 +382,7 @@ class UserMembership(Base):
 class Booking(Base):
     __tablename__ = "bookings"
     id = Column(Integer, primary_key=True, index=True)
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     pc_id = Column(Integer, ForeignKey("pcs.id"))
     start_time = Column(DateTime)
@@ -331,6 +394,7 @@ class Booking(Base):
 class Screenshot(Base):
     __tablename__ = "screenshots"
     id = Column(Integer, primary_key=True, index=True)
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     pc_id = Column(Integer, ForeignKey("client_pcs.id"))
     image_url = Column(String)  # Path or link to saved screenshot
     timestamp = Column(DateTime, default=datetime.utcnow)
@@ -340,12 +404,14 @@ class Screenshot(Base):
 class ProductCategory(Base):
     __tablename__ = "product_categories"
     id = Column(Integer, primary_key=True, index=True)
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     name = Column(String, unique=True)
 
 
 class Product(Base):
     __tablename__ = "products"
     id = Column(Integer, primary_key=True, index=True)
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     name = Column(String)
     price = Column(Float)
     category_id = Column(Integer, ForeignKey("product_categories.id"), nullable=True)
@@ -355,6 +421,7 @@ class Product(Base):
 class Order(Base):
     __tablename__ = "orders"
     id = Column(Integer, primary_key=True, index=True)
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     total = Column(Float, default=0.0)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -375,6 +442,7 @@ class OrderItem(Base):
 class Prize(Base):
     __tablename__ = "prizes"
     id = Column(Integer, primary_key=True, index=True)
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     name = Column(String)
     description = Column(String, nullable=True)
     coin_cost = Column(Integer)
@@ -394,6 +462,7 @@ class PrizeRedemption(Base):
 class Leaderboard(Base):
     __tablename__ = "leaderboards"
     id = Column(Integer, primary_key=True, index=True)
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     name = Column(String)
     scope = Column(String, default="daily")  # daily, weekly, monthly
     metric = Column(String, default="play_minutes")
@@ -413,6 +482,7 @@ class LeaderboardEntry(Base):
 class Event(Base):
     __tablename__ = "events"
     id = Column(Integer, primary_key=True, index=True)
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     name = Column(String)
     type = Column(String)  # challenge, quest
     rule_json = Column(String)
@@ -433,6 +503,7 @@ class EventProgress(Base):
 class Coupon(Base):
     __tablename__ = "coupons"
     id = Column(Integer, primary_key=True, index=True)
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     code = Column(String, unique=True)
     discount_percent = Column(Float, default=0.0)
     max_uses = Column(Integer, nullable=True)
@@ -512,13 +583,16 @@ class ClientPC(Base):
     cafe = relationship("Cafe", back_populates="pcs")
     current_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     device_id = Column(String, nullable=True)
-    device_secret = Column(String, nullable=True)  # HMAC key for signed requests
+    device_secret = Column(String, nullable=True)  # HMAC key for signed requests (legacy cleartext)
+    device_secret_hash = Column(String, nullable=True)  # SHA-256 hash of device_secret
     hardware_fingerprint = Column(String, unique=True, index=True)
     capabilities = Column(JSON, nullable=True)
     bound = Column(Boolean, default=False)
     bound_at = Column(DateTime, nullable=True)
     grace_until = Column(DateTime, nullable=True)
     suspended = Column(Boolean, default=False)
+    device_status = Column(String, default="active")  # pending, active, revoked
+    allowed_ip_range = Column(String, nullable=True)  # CIDR notation for IP whitelisting
 
 
 class PasswordResetToken(Base):
@@ -534,6 +608,7 @@ class PasswordResetToken(Base):
 class Setting(Base):
     __tablename__ = "settings"
     id = Column(Integer, primary_key=True, index=True)
+    cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     category = Column(String, index=True)  # e.g., 'financial', 'reports', 'center_info', etc.
     key = Column(String, index=True)
     value = Column(String)  # JSON string for complex values

@@ -18,6 +18,8 @@ from starlette.concurrency import run_in_threadpool
 
 from app.api.endpoints.audit import log_action
 from app.api.endpoints.auth import get_current_user, require_role
+from app.auth.context import AuthContext, get_auth_context
+from app.auth.tenant import scoped_query, enforce_cafe_ownership
 from app.database import SessionLocal
 from app.models import Coupon, Order, OrderItem, Product, User, WalletTransaction
 from app.utils.cache import publish_invalidation
@@ -41,10 +43,13 @@ class ProductIn(BaseModel):
 
 @router.post("/product", response_model=dict)
 async def create_product(
-    p: ProductIn, current_user=Depends(require_role("admin")), db: Session = Depends(get_db)
+    p: ProductIn,
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
     def _create() -> int:
-        prod = Product(name=p.name, price=p.price, category_id=p.category_id, active=True)
+        prod = Product(name=p.name, price=p.price, category_id=p.category_id, cafe_id=ctx.cafe_id, active=True)
         db.add(prod)
         db.commit()
         db.refresh(prod)
@@ -75,8 +80,11 @@ async def create_product(
 
 
 @router.get("/product", response_model=list[dict])
-def list_products(db: Session = Depends(get_db)):
-    prods = db.query(Product).filter_by(active=True).all()
+def list_products(
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
+    prods = scoped_query(db, Product, ctx).filter(Product.active.is_(True)).all()
     return [
         {"id": p.id, "name": p.name, "price": p.price, "category_id": p.category_id} for p in prods
     ]
@@ -92,6 +100,7 @@ async def create_order(
     order: OrderIn,
     request: Request,
     current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ):
     def _create() -> tuple[int, float, int]:
@@ -117,10 +126,18 @@ async def create_order(
             cp = db.query(Coupon).filter_by(code=order.coupon_code).first()
             if cp and (cp.applies_to in ("*", "product")):
                 total = max(0.0, round(total * (100.0 - cp.discount_percent) / 100.0, 2))
-        if user.wallet_balance < total:
+        # ATOMIC UPDATE: Prevents race conditions on concurrent deductions
+        from sqlalchemy import update
+        result = db.execute(
+            update(User)
+            .where(User.id == user.id, User.wallet_balance >= total)
+            .values(wallet_balance=User.wallet_balance - total)
+            .returning(User.wallet_balance)
+        )
+        new_balance = result.scalar_one_or_none()
+        if new_balance is None:
             raise HTTPException(status_code=400, detail="Insufficient wallet balance")
-        user.wallet_balance -= total
-        o = Order(user_id=user.id, total=total, created_at=datetime.utcnow())
+        o = Order(user_id=user.id, cafe_id=ctx.cafe_id, total=total, created_at=datetime.utcnow())
         db.add(o)
         db.commit()
         db.refresh(o)
@@ -131,6 +148,7 @@ async def create_order(
         db.add(
             WalletTransaction(
                 user_id=user.id,
+                cafe_id=ctx.cafe_id,
                 amount=-total,
                 timestamp=datetime.utcnow(),
                 type="deduct",
@@ -175,8 +193,9 @@ def list_orders(
     status: str | None = None,
     db: Session = Depends(get_db),
     current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
 ):
-    q = db.query(Order)
+    q = scoped_query(db, Order, ctx)
     # status placeholder (no field yet) — return all for now
     orders = q.order_by(Order.created_at.desc()).all()
     out = []

@@ -64,7 +64,29 @@ async def onboard_cafe(db: Session, data):
 
     db.commit()
 
-    # 4. Send welcome email
+    # 4. Provision per-cafe database (if multi-DB mode enabled)
+    try:
+        from app.config import MULTI_DB_ENABLED
+        if MULTI_DB_ENABLED:
+            from app.db.provisioning import provision_cafe_database
+            success = provision_cafe_database(
+                cafe_id=cafe.id,
+                owner_global_user_id=owner.id,
+            )
+            if not success:
+                import logging
+                logging.getLogger(__name__).error(
+                    "Failed to provision database for cafe %d. "
+                    "Run scripts/split_databases.py to provision manually.",
+                    cafe.id,
+                )
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception(
+            "Exception during cafe database provisioning for cafe %d", cafe.id
+        )
+
+    # 5. Send welcome email
     await send_welcome_email(data.email, data.full_name, data.email, temp_password)
 
     return cafe, owner, license_key
