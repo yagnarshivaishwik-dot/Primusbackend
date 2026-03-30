@@ -354,6 +354,35 @@ async def login(
     elif REQUIRE_DEVICE_ID_ON_LOGIN:
         raise HTTPException(status_code=400, detail="device_id is required for login")
 
+    # ---- Concurrent cafe session guard ----
+    # Prevent client-role users from being logged in at multiple cafes simultaneously.
+    # Admins/staff are exempt (they may legitimately manage multiple cafes).
+    if resolved_role == "client" and resolved_cafe_id is not None:
+        from app.models import RefreshToken as RefreshTokenModel, Cafe
+        active_elsewhere = (
+            db.query(RefreshTokenModel)
+            .filter(
+                RefreshTokenModel.user_id == user.id,
+                RefreshTokenModel.revoked == False,
+                RefreshTokenModel.expires_at > datetime.now(UTC),
+                RefreshTokenModel.cafe_id != resolved_cafe_id,
+                RefreshTokenModel.cafe_id != None,
+            )
+            .first()
+        )
+        if active_elsewhere:
+            other_cafe = db.query(Cafe).filter(Cafe.id == active_elsewhere.cafe_id).first()
+            cafe_name = other_cafe.name if other_cafe else f"Cafe #{active_elsewhere.cafe_id}"
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "already_logged_in",
+                    "message": f"User is already logged in at {cafe_name}. Please log out there first.",
+                    "cafe_id": active_elsewhere.cafe_id,
+                    "cafe_name": cafe_name,
+                },
+            )
+
     # Create enriched access token
     access_token = create_enriched_token(
         email=user.email,
