@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import get_current_user
 from app.api.endpoints.remote_command import queue_device_event
+from app.auth.context import AuthContext, get_auth_context
+from app.auth.tenant import scoped_query
 from app.database import SessionLocal
 from app.models import ChatMessage, ClientPC, User
 from app.schemas import ChatMessageIn, ChatMessageOut
@@ -27,7 +29,10 @@ def get_db():
 # Send message
 @router.post("/", response_model=ChatMessageOut)
 async def send_message(
-    msg: ChatMessageIn, current_user=Depends(get_current_user), db: Session = Depends(get_db)
+    msg: ChatMessageIn,
+    current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
     # Sanitize message to prevent XSS attacks
     sanitized_message = html.escape(msg.message) if msg.message else ""
@@ -40,6 +45,7 @@ async def send_message(
         from_user_id=current_user.id,
         to_user_id=msg.to_user_id,
         pc_id=msg.pc_id,
+        cafe_id=ctx.cafe_id,
         message=sanitized_message,
         timestamp=datetime.now(UTC),
         read=False,
@@ -93,9 +99,21 @@ async def send_message(
     envelope = build_event("chat.message", payload)
     json_envelope = json.dumps(envelope)
 
-    # Notify all admins
+    # Resolve cafe_id for scoped broadcast
+    _chat_cafe_id = None
+    if cm.pc_id:
+        try:
+            _chat_pc = db.query(ClientPC).filter_by(id=cm.pc_id).first()
+            if _chat_pc:
+                _chat_cafe_id = _chat_pc.cafe_id
+        except Exception:
+            pass
+    if _chat_cafe_id is None:
+        _chat_cafe_id = getattr(current_user, "cafe_id", None)
+
+    # Notify all admins scoped to cafe
     try:
-        await ws_admin.broadcast_admin(json_envelope)
+        await ws_admin.broadcast_admin(json_envelope, cafe_id=_chat_cafe_id)
     except Exception:
         pass
 
@@ -111,9 +129,13 @@ async def send_message(
 
 # Get my messages (latest first)
 @router.get("/", response_model=list[ChatMessageOut])
-def my_messages(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+def my_messages(
+    current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
     msgs = (
-        db.query(ChatMessage)
+        scoped_query(db, ChatMessage, ctx)
         .filter((ChatMessage.to_user_id == current_user.id) | (ChatMessage.to_user_id.is_(None)))
         .order_by(ChatMessage.timestamp.desc())
         .all()

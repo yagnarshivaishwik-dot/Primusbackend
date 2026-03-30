@@ -1,4 +1,6 @@
+from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Optional
 
 from jose import JWTError, jwt
 
@@ -11,9 +13,21 @@ class WSAuthError(Exception):
     """Raised when WebSocket authentication fails."""
 
 
-def authenticate_ws_token(token: str) -> User:
+@dataclass
+class WSAuthResult:
+    """Rich authentication result for WebSocket connections."""
+    user: User
+    cafe_id: Optional[int]
+    device_id: Optional[str]
+    role: str
+
+
+def authenticate_ws_token(token: str) -> WSAuthResult:
     """
-    Validate a JWT token for WebSocket connections and return the User.
+    Validate a JWT token for WebSocket connections and return a WSAuthResult.
+
+    Decodes the JWT and extracts cafe_id, device_id, and role from claims.
+    Falls back to user.cafe_id if the token doesn't carry cafe_id (legacy tokens).
 
     This mirrors the HTTP JWT validation used in auth.get_current_user but is
     usable from plain WebSocket handlers without FastAPI dependencies.
@@ -26,6 +40,10 @@ def authenticate_ws_token(token: str) -> User:
         email = payload.get("sub")
         if email is None:
             raise WSAuthError("Token missing subject")
+        # Extract optional claims
+        token_cafe_id = payload.get("cafe_id")
+        token_device_id = payload.get("device_id")
+        token_role = payload.get("role")
         # Optional: exp is validated by jose during decode
     except JWTError as exc:  # pragma: no cover - defensive
         raise WSAuthError("Invalid token") from exc
@@ -37,7 +55,18 @@ def authenticate_ws_token(token: str) -> User:
             raise WSAuthError("User not found")
         # Touch attributes to ensure they are loaded before session closes
         _ = user.id, user.email, user.role, getattr(user, "cafe_id", None)
-        return user
+
+        # Resolve cafe_id: prefer token claim, fallback to user record
+        cafe_id = token_cafe_id if token_cafe_id is not None else getattr(user, "cafe_id", None)
+        # Resolve role: prefer token claim, fallback to user record
+        role = token_role or getattr(user, "role", "client")
+
+        return WSAuthResult(
+            user=user,
+            cafe_id=int(cafe_id) if cafe_id is not None else None,
+            device_id=token_device_id,
+            role=role,
+        )
     finally:
         db.close()
 

@@ -21,7 +21,13 @@ def get_db():
 
 # Utility: log an action (call from other endpoints!)
 def log_action(
-    db: Session, user_id: int | None, action: str, detail: str, ip: str | None = None
+    db: Session,
+    user_id: int | None,
+    action: str,
+    detail: str,
+    ip: str | None = None,
+    cafe_id: int | None = None,
+    device_id: str | None = None,
 ) -> None:
     """
     Log an action to the audit log.
@@ -53,6 +59,8 @@ def log_action(
                 detail[:1000] if detail and len(detail) > 1000 else detail
             ),  # Limit detail length
             ip=ip,
+            cafe_id=cafe_id,
+            device_id=device_id,
             timestamp=datetime.now(UTC),
         )
         db.add(entry)

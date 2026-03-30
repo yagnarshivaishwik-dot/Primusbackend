@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import get_current_user, require_role
+from app.auth.context import AuthContext, get_auth_context
+from app.auth.tenant import scoped_query, enforce_cafe_ownership
 from app.database import SessionLocal
 from app.models import Event, EventProgress
 from app.schemas import EventIn, EventOut, EventProgressOut
@@ -21,9 +23,12 @@ def get_db():
 
 @router.post("/", response_model=EventOut)
 def create_event(
-    evt: EventIn, current_user=Depends(require_role("admin")), db: Session = Depends(get_db)
+    evt: EventIn,
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
-    e = Event(**evt.dict(), active=True)
+    e = Event(**evt.dict(), cafe_id=ctx.cafe_id, active=True)
     db.add(e)
     db.commit()
     db.refresh(e)
@@ -31,10 +36,13 @@ def create_event(
 
 
 @router.get("/", response_model=list[EventOut])
-def list_events(db: Session = Depends(get_db)):
+def list_events(
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
     now = datetime.now(UTC)
     return (
-        db.query(Event)
+        scoped_query(db, Event, ctx)
         .filter(Event.active.is_(True), Event.start_time <= now, Event.end_time >= now)
         .all()
     )
@@ -42,8 +50,16 @@ def list_events(db: Session = Depends(get_db)):
 
 @router.post("/progress/{event_id}", response_model=EventProgressOut)
 def update_progress(
-    event_id: int, delta: int, current_user=Depends(get_current_user), db: Session = Depends(get_db)
+    event_id: int,
+    delta: int,
+    current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
+    # Verify event belongs to user's cafe
+    evt_obj = db.query(Event).filter_by(id=event_id).first()
+    enforce_cafe_ownership(evt_obj, ctx)
+
     prog = db.query(EventProgress).filter_by(event_id=event_id, user_id=current_user.id).first()
     if not prog:
         prog = EventProgress(

@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from app.api.endpoints.auth import get_current_user, require_role
+from app.auth.context import AuthContext, get_auth_context
+from app.auth.tenant import scoped_query, enforce_cafe_ownership
 from app.database import SessionLocal
 from app.models import HardwareStat
 from app.schemas import HardwareStatIn, HardwareStatOut
@@ -25,11 +27,15 @@ def get_db():
 # Client POSTs current stats (called every X seconds/minutes)
 @router.post("/", response_model=HardwareStatOut)
 async def post_stat(
-    stat: HardwareStatIn, current_user=Depends(get_current_user), db: Session = Depends(get_db)
+    stat: HardwareStatIn,
+    current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
     def _create() -> HardwareStat:
         hs = HardwareStat(
             pc_id=stat.pc_id,
+            cafe_id=ctx.cafe_id,
             timestamp=datetime.utcnow(),
             cpu_percent=stat.cpu_percent,
             ram_percent=stat.ram_percent,
@@ -59,16 +65,21 @@ async def post_stat(
 
 # Admin: List latest stats for all PCs
 @router.get("/latest", response_model=list[HardwareStatOut])
-async def latest_stats(current_user=Depends(require_role("admin")), db: Session = Depends(get_db)):
+async def latest_stats(
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
     async def _compute() -> list[HardwareStatOut]:
         def _query():
+            base = scoped_query(db, HardwareStat, ctx)
             subq = (
-                db.query(HardwareStat.pc_id, func.max(HardwareStat.timestamp).label("max_ts"))
+                base.with_entities(HardwareStat.pc_id, func.max(HardwareStat.timestamp).label("max_ts"))
                 .group_by(HardwareStat.pc_id)
                 .subquery()
             )
             return (
-                db.query(HardwareStat)
+                scoped_query(db, HardwareStat, ctx)
                 .join(
                     subq,
                     (HardwareStat.pc_id == subq.c.pc_id)
@@ -94,15 +105,18 @@ async def latest_stats(current_user=Depends(require_role("admin")), db: Session 
 # Admin: Get full stat history for a PC
 @router.get("/history/{pc_id}", response_model=list[HardwareStatOut])
 async def stat_history(
-    pc_id: int, current_user=Depends(require_role("admin")), db: Session = Depends(get_db)
+    pc_id: int,
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
     cache_id = f"pc={pc_id}"
 
     async def _compute() -> list[HardwareStatOut]:
         def _query():
             return (
-                db.query(HardwareStat)
-                .filter_by(pc_id=pc_id)
+                scoped_query(db, HardwareStat, ctx)
+                .filter(HardwareStat.pc_id == pc_id)
                 .order_by(HardwareStat.timestamp.desc())
                 .limit(100)
                 .all()

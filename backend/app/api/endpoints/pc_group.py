@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import get_current_user, require_role
+from app.auth.context import AuthContext, get_auth_context
 from app.database import SessionLocal
 from app.models import PC, PCGroup, PCToGroup
 from app.schemas import PCGroupIn, PCGroupOut, PCToGroupIn, PCToGroupOut
@@ -20,7 +21,10 @@ def get_db():
 # Admin: Create group
 @router.post("/", response_model=PCGroupOut)
 def create_group(
-    group: PCGroupIn, current_user=Depends(require_role("admin")), db: Session = Depends(get_db)
+    group: PCGroupIn,
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
     g = PCGroup(name=group.name, description=group.description)
     db.add(g)
@@ -31,8 +35,13 @@ def create_group(
 
 # Admin: List groups
 @router.get("/", response_model=list[PCGroupOut])
-def list_groups(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
-    return db.query(PCGroup).all()
+def list_groups(
+    current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
+    from app.auth.tenant import scoped_query
+    return scoped_query(db, PCGroup, ctx).all()
 
 
 # Admin: Assign PC to group

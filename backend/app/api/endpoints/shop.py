@@ -9,8 +9,10 @@ from sqlalchemy.orm import Session
 from app.api.endpoints.audit import log_action
 from app.api.endpoints.auth import get_current_user, require_role
 from app.api.endpoints.remote_command import queue_device_event
+from app.auth.context import AuthContext, get_auth_context
+from app.auth.tenant import scoped_query, enforce_cafe_ownership
 from app.database import get_db
-from app.models import Offer
+from app.models import ClientPC, Offer
 from app.tasks.timeleft_broadcast import _compute_minutes_for_pc
 from app.ws import admin as ws_admin
 from app.ws.auth import build_event
@@ -54,11 +56,25 @@ def get_packs_from_db(db: Session) -> list[ShopPack]:
 
 
 @router.get("/packs", response_model=list[ShopPack])
-async def list_packs(db: Session = Depends(get_db)):
+async def list_packs(
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
     """
-    Return available time packs from the database (Offer table).
+    Return available time packs from the database (Offer table), scoped by cafe.
     """
-    return get_packs_from_db(db)
+    offers = scoped_query(db, Offer, ctx).filter(Offer.active.is_(True)).all()
+    if not offers:
+        return DEFAULT_PACKS
+    return [
+        ShopPack(
+            id=str(o.id),
+            name=o.name,
+            minutes=int((o.hours or 0) * 60),
+            price=float(o.price or 0),
+        )
+        for o in offers
+    ]
 
 
 class ShopPurchaseIn(BaseModel):
@@ -97,6 +113,10 @@ async def purchase_pack(
     ):
         raise HTTPException(status_code=403, detail="Not allowed to purchase for this user")
 
+    # Look up cafe_id for scoped broadcasting
+    _pc = db.query(ClientPC).filter_by(id=body.client_id).first()
+    _cafe_id = _pc.cafe_id if _pc else None
+
     # Compute previous remaining minutes for this client PC, if any
     try:
         prev_minutes = _compute_minutes_for_pc(db, body.client_id)
@@ -123,7 +143,7 @@ async def purchase_pack(
 
     # Emit purchase event to admins and the specific PC
     try:
-        await ws_admin.broadcast_admin(envelope)
+        await ws_admin.broadcast_admin(envelope, cafe_id=_cafe_id)
     except Exception:
         pass
     try:
@@ -138,7 +158,7 @@ async def purchase_pack(
     }
     time_envelope = json.dumps(build_event("pc.time.update", time_payload))
     try:
-        await ws_admin.broadcast_admin(time_envelope)
+        await ws_admin.broadcast_admin(time_envelope, cafe_id=_cafe_id)
     except Exception:
         pass
     try:
@@ -316,8 +336,9 @@ async def confirm_payment(
     }
 
     envelope = json.dumps(build_event("payment.confirmed", payload))
+    _confirm_cafe_id = pc.cafe_id if pc else None
     try:
-        await ws_admin.broadcast_admin(envelope)
+        await ws_admin.broadcast_admin(envelope, cafe_id=_confirm_cafe_id)
     except Exception:
         pass
     try:

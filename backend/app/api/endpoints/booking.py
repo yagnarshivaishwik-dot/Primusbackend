@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.api.endpoints.audit import log_action
 from app.api.endpoints.auth import get_current_user, require_role
+from app.auth.context import AuthContext, get_auth_context
+from app.auth.tenant import scoped_query, enforce_cafe_ownership
 from app.database import SessionLocal
 from app.models import Booking
 from app.schemas import BookingIn, BookingOut
@@ -23,7 +25,10 @@ def get_db():
 # User: create a booking
 @router.post("/", response_model=BookingOut)
 def create_booking(
-    booking: BookingIn, current_user=Depends(get_current_user), db: Session = Depends(get_db)
+    booking: BookingIn,
+    current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
     # Check for overlaps
     overlap = (
@@ -41,6 +46,7 @@ def create_booking(
     b = Booking(
         user_id=current_user.id,
         pc_id=booking.pc_id,
+        cafe_id=ctx.cafe_id,
         start_time=booking.start_time,
         end_time=booking.end_time,
         status="pending",
@@ -65,11 +71,15 @@ def create_booking(
 # Admin/Staff: confirm booking
 @router.post("/confirm/{booking_id}", response_model=BookingOut)
 def confirm_booking(
-    booking_id: int, current_user=Depends(require_role("admin")), db: Session = Depends(get_db)
+    booking_id: int,
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
     b = db.query(Booking).filter_by(id=booking_id).first()
     if not b:
         raise HTTPException(status_code=404, detail="Booking not found")
+    enforce_cafe_ownership(b, ctx)
     b.status = "confirmed"
     db.commit()
     db.refresh(b)
@@ -84,10 +94,14 @@ def confirm_booking(
 
 # User: view my bookings
 @router.get("/mine", response_model=list[BookingOut])
-def my_bookings(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+def my_bookings(
+    current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
     return (
-        db.query(Booking)
-        .filter_by(user_id=current_user.id)
+        scoped_query(db, Booking, ctx)
+        .filter(Booking.user_id == current_user.id)
         .order_by(Booking.start_time.desc())
         .all()
     )
@@ -95,8 +109,12 @@ def my_bookings(current_user=Depends(get_current_user), db: Session = Depends(ge
 
 # Admin: view all bookings
 @router.get("/", response_model=list[BookingOut])
-def all_bookings(current_user=Depends(require_role("admin")), db: Session = Depends(get_db)):
-    return db.query(Booking).order_by(Booking.start_time.desc()).all()
+def all_bookings(
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
+    return scoped_query(db, Booking, ctx).order_by(Booking.start_time.desc()).all()
 
 
 # Bookings for a specific PC and day (admin or same cafe if needed)
@@ -105,9 +123,10 @@ def bookings_for_pc(
     pc_id: int,
     date: datetime | None = None,
     current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ):
-    q = db.query(Booking).filter(Booking.pc_id == pc_id)
+    q = scoped_query(db, Booking, ctx).filter(Booking.pc_id == pc_id)
     if date is not None:
         start = datetime(date.year, date.month, date.day)
         end = start + timedelta(days=1)
@@ -117,10 +136,15 @@ def bookings_for_pc(
 
 # Next upcoming booking for a PC (future-only)
 @router.get("/next/{pc_id}")
-def next_booking(pc_id: int, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+def next_booking(
+    pc_id: int,
+    current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
     now = datetime.utcnow()
     b = (
-        db.query(Booking)
+        scoped_query(db, Booking, ctx)
         .filter(
             Booking.pc_id == pc_id,
             Booking.status.in_(["pending", "confirmed"]),
@@ -142,11 +166,15 @@ def next_booking(pc_id: int, current_user=Depends(get_current_user), db: Session
 # User/Admin: cancel booking
 @router.post("/cancel/{booking_id}", response_model=BookingOut)
 def cancel_booking(
-    booking_id: int, current_user=Depends(get_current_user), db: Session = Depends(get_db)
+    booking_id: int,
+    current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
     b = db.query(Booking).filter_by(id=booking_id).first()
     if not b:
         raise HTTPException(status_code=404, detail="Booking not found")
+    enforce_cafe_ownership(b, ctx)
     # Only admin or owner can cancel
     if current_user.role != "admin" and b.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not allowed")
@@ -163,11 +191,15 @@ def cancel_booking(
 # Admin: complete booking (after session)
 @router.post("/complete/{booking_id}", response_model=BookingOut)
 def complete_booking(
-    booking_id: int, current_user=Depends(require_role("admin")), db: Session = Depends(get_db)
+    booking_id: int,
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
     b = db.query(Booking).filter_by(id=booking_id).first()
     if not b:
         raise HTTPException(status_code=404, detail="Booking not found")
+    enforce_cafe_ownership(b, ctx)
     b.status = "completed"
     db.commit()
     db.refresh(b)

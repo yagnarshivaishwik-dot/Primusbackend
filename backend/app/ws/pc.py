@@ -1,4 +1,5 @@
 import asyncio
+import ipaddress
 import json
 import time
 import hmac
@@ -81,9 +82,10 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
 
             if event_type == "auth":
                 token = (msg.get("payload") or {}).get("token") or ""
-                user = authenticate_ws_token(token)
-                if getattr(pc, "cafe_id", None) and getattr(user, "cafe_id", None):
-                    if pc.cafe_id != user.cafe_id:
+                auth_result = authenticate_ws_token(token)
+                user = auth_result.user
+                if getattr(pc, "cafe_id", None) and auth_result.cafe_id:
+                    if pc.cafe_id != auth_result.cafe_id:
                         raise WSAuthError("PC not in same cafe")
 
                 # Update PC status on JWT reconnection
@@ -130,6 +132,29 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
                 if not hmac.compare_digest(signature, expected_sig):
                     raise WSAuthError("Invalid device signature")
 
+                # Reject devices that are not active (pending/revoked)
+                if getattr(pc, "device_status", "active") != "active":
+                    raise WSAuthError(
+                        f"Device not active (status: {pc.device_status})"
+                    )
+
+                # Validate connecting IP against allowed range if configured
+                if pc.allowed_ip_range:
+                    try:
+                        client_host = websocket.client.host if websocket.client else None
+                        if client_host:
+                            client_ip = ipaddress.ip_address(client_host)
+                            allowed_net = ipaddress.ip_network(
+                                pc.allowed_ip_range, strict=False
+                            )
+                            if client_ip not in allowed_net:
+                                raise WSAuthError(
+                                    f"IP {client_host} not in allowed range {pc.allowed_ip_range}"
+                                )
+                    except ValueError:
+                        # Malformed IP or CIDR — reject to be safe
+                        raise WSAuthError("Invalid IP or allowed_ip_range configuration")
+
                 prev_status = pc.status
                 pc.status = "online"
                 pc.last_seen = datetime.now(UTC)
@@ -147,6 +172,7 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
                     status_changed = True
 
             pc_hostname = pc.name
+            pc_cafe_id = pc.cafe_id
         finally:
             db.close()
 
@@ -167,7 +193,8 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
             }
             try:
                 await broadcast_admin(
-                    json.dumps(build_event("pc.status.update", status_payload))
+                    json.dumps(build_event("pc.status.update", status_payload)),
+                    cafe_id=pc_cafe_id,
                 )
             except Exception:
                 pass
@@ -243,7 +270,8 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
                 }
                 try:
                     await broadcast_admin(
-                        json.dumps(build_event("pc.status.update", status_payload))
+                        json.dumps(build_event("pc.status.update", status_payload)),
+                        cafe_id=pc_cafe_id,
                     )
                 except Exception:
                     pass
@@ -258,21 +286,24 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
                     "remaining_time_seconds": remaining,
                 }
                 try:
-                    await broadcast_admin(json.dumps(build_event("pc.time.update", status_payload)))
+                    await broadcast_admin(
+                        json.dumps(build_event("pc.time.update", status_payload)),
+                        cafe_id=pc_cafe_id,
+                    )
                 except Exception:
                     pass
 
             # Command acknowledgement from client
             elif event == "command.ack":
                 try:
-                    await broadcast_admin(json.dumps(data))
+                    await broadcast_admin(json.dumps(data), cafe_id=pc_cafe_id)
                 except Exception:
                     pass
 
             # Chat message from PC (optional real-time path)
             elif event == "chat.message":
                 try:
-                    await broadcast_admin(json.dumps(data))
+                    await broadcast_admin(json.dumps(data), cafe_id=pc_cafe_id)
                 except Exception:
                     pass
 
@@ -325,7 +356,10 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
                 "online": False
             }
             try:
-                await broadcast_admin(json.dumps(build_event("pc.status.update", status_payload)))
+                await broadcast_admin(
+                    json.dumps(build_event("pc.status.update", status_payload)),
+                    cafe_id=pc_cafe_id,
+                )
             except Exception:
                 pass
         except Exception:

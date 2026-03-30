@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.api.endpoints.audit import log_action
 from app.api.endpoints.auth import require_role
+from app.auth.context import AuthContext, get_auth_context
+from app.auth.tenant import scoped_query, enforce_cafe_ownership
 from app.database import get_db
 from app.models import Webhook
 from app.schemas import WebhookIn, WebhookOut
@@ -19,6 +21,7 @@ def create_webhook(
     wh: WebhookIn,
     request: Request,
     current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ):
     """Create a new webhook (admin only)."""
@@ -28,6 +31,7 @@ def create_webhook(
         url=wh.url,
         event=wh.event,
         secret=encrypted_secret,
+        cafe_id=ctx.cafe_id,
         created_at=datetime.utcnow(),
         is_active=True,
     )
@@ -52,8 +56,12 @@ def create_webhook(
 
 # List all webhooks (admin only - webhooks may contain secrets)
 @router.get("/", response_model=list[WebhookOut])
-def list_webhooks(current_user=Depends(require_role("admin")), db: Session = Depends(get_db)):
-    webhooks = db.query(Webhook).all()
+def list_webhooks(
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
+    webhooks = scoped_query(db, Webhook, ctx).all()
     # Mask secrets in response to prevent exposure
     masked_webhooks = []
     for wh in webhooks:
@@ -75,12 +83,14 @@ def deactivate_webhook(
     webhook_id: int,
     request: Request,
     current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ):
     """Deactivate a webhook (admin only)."""
     wh = db.query(Webhook).filter_by(id=webhook_id).first()
     if not wh:
         raise HTTPException(status_code=404, detail="Webhook not found")
+    enforce_cafe_ownership(wh, ctx)
     wh.is_active = False
     db.commit()
 

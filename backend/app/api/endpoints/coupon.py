@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import get_current_user, require_role
+from app.auth.context import AuthContext, get_auth_context
+from app.auth.tenant import scoped_query, enforce_cafe_ownership
 from app.database import SessionLocal
 from app.models import Coupon, CouponRedemption
 from app.schemas import CouponIn, CouponOut, CouponRedeemIn, CouponRedemptionOut
@@ -21,11 +23,14 @@ def get_db():
 
 @router.post("/", response_model=CouponOut)
 def create_coupon(
-    c: CouponIn, current_user=Depends(require_role("admin")), db: Session = Depends(get_db)
+    c: CouponIn,
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
     if db.query(Coupon).filter_by(code=c.code).first():
         raise HTTPException(status_code=400, detail="Code exists")
-    cp = Coupon(**c.dict(), times_used=0)
+    cp = Coupon(**c.dict(), cafe_id=ctx.cafe_id, times_used=0)
     db.add(cp)
     db.commit()
     db.refresh(cp)
@@ -33,17 +38,25 @@ def create_coupon(
 
 
 @router.get("/", response_model=list[CouponOut])
-def list_coupons(current_user=Depends(require_role("admin")), db: Session = Depends(get_db)):
-    return db.query(Coupon).all()
+def list_coupons(
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
+    return scoped_query(db, Coupon, ctx).all()
 
 
 @router.post("/redeem", response_model=CouponRedemptionOut)
 def redeem_coupon(
-    body: CouponRedeemIn, current_user=Depends(get_current_user), db: Session = Depends(get_db)
+    body: CouponRedeemIn,
+    current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
     cp = db.query(Coupon).filter_by(code=body.code).first()
     if not cp:
         raise HTTPException(status_code=404, detail="Invalid code")
+    enforce_cafe_ownership(cp, ctx)
     if cp.expires_at and cp.expires_at < datetime.utcnow():
         raise HTTPException(status_code=400, detail="Coupon expired")
     if cp.max_uses and cp.times_used >= cp.max_uses:

@@ -7,6 +7,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import get_current_user, require_role
+from app.auth.context import AuthContext, get_auth_context
+from app.auth.tenant import scoped_query, enforce_cafe_ownership
 from app.database import get_db
 from app.models import PC, Screenshot
 
@@ -66,6 +68,7 @@ async def upload_screenshot(
     pc_id: int,
     file: UploadFile = File(...),
     current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ):
     # Read file content
@@ -117,6 +120,7 @@ async def upload_screenshot(
 
     ss = Screenshot(
         pc_id=pc_id,
+        cafe_id=ctx.cafe_id,
         image_url=filepath,
         timestamp=datetime.now(UTC),
         taken_by=current_user.id,
@@ -129,8 +133,12 @@ async def upload_screenshot(
 
 # Admin: List latest screenshots per PC
 @router.get("/latest", tags=["screenshot"])
-def latest_screenshots(current_user=Depends(require_role("admin")), db: Session = Depends(get_db)):
-    pcs = db.query(PC).all()
+def latest_screenshots(
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
+    pcs = scoped_query(db, PC, ctx).all()
     results = []
     for pc in pcs:
         ss = (

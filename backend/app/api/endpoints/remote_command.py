@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import get_current_user, require_role
 from app.api.endpoints.client_pc import get_current_device
+from app.auth.context import AuthContext, get_auth_context
+from app.auth.tenant import scoped_query, enforce_cafe_ownership
 from app.database import get_db
 from app.models import ClientPC, RemoteCommand, SystemEvent
 from app.schemas import RemoteCommandIn, RemoteCommandOut
@@ -46,6 +48,7 @@ def _validate_command_params(command: str, params: str | None) -> None:
 async def send_command(
     cmd: RemoteCommandIn,
     current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ):
     _validate_command_params(cmd.command, cmd.params)
@@ -53,6 +56,7 @@ async def send_command(
     pc = db.query(ClientPC).filter_by(id=cmd.pc_id).first()
     if not pc:
         raise HTTPException(status_code=404, detail="PC not found")
+    enforce_cafe_ownership(pc, ctx)
 
     # MASTER SYSTEM: Capability Negotiation (Relaxed for now)
     # Allow core system commands unconditionally; future versions can enforce more
@@ -284,8 +288,15 @@ async def ack_command(
 # Admin can see history
 @router.get("/history/{pc_id}", response_model=list[RemoteCommandOut])
 def command_history(
-    pc_id: int, current_user=Depends(get_current_user), db: Session = Depends(get_db)
+    pc_id: int,
+    current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
+    # Verify the PC belongs to this admin's cafe
+    pc = db.query(ClientPC).filter_by(id=pc_id).first()
+    enforce_cafe_ownership(pc, ctx)
+
     cmds = (
         db.query(RemoteCommand)
         .filter_by(pc_id=pc_id)
@@ -299,7 +310,10 @@ def command_history(
 # Diagnostic endpoint: shows command pipeline state for a PC
 @router.get("/debug/{pc_id}")
 def command_debug(
-    pc_id: int, current_user=Depends(require_role("admin")), db: Session = Depends(get_db)
+    pc_id: int,
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
     """
     Diagnostic endpoint to check command delivery pipeline for a PC.
@@ -310,6 +324,7 @@ def command_debug(
     pc = db.query(ClientPC).filter_by(id=pc_id).first()
     if not pc:
         raise HTTPException(status_code=404, detail="PC not found")
+    enforce_cafe_ownership(pc, ctx)
 
     now = datetime.now(UTC)
 

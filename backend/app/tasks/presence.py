@@ -58,7 +58,7 @@ async def presence_monitor_loop():
                     db.add(event)
 
                     # Capture info for broadcast after commit
-                    stale_info.append({"client_id": pc.id, "hostname": pc.name})
+                    stale_info.append({"client_id": pc.id, "hostname": pc.name, "cafe_id": pc.cafe_id})
 
                 if stale_pcs:
                     db.commit()
@@ -82,7 +82,8 @@ async def presence_monitor_loop():
                                 "client_id": info["client_id"],
                                 "online": False,
                                 "hostname": info["hostname"],
-                            }))
+                            })),
+                            cafe_id=info["cafe_id"],
                         )
                     except Exception:
                         pass

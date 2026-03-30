@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import get_current_user, require_role
+from app.auth.context import AuthContext, get_auth_context
+from app.auth.tenant import scoped_query
 from app.database import SessionLocal
 from app.models import User, UserGroup
 from app.schemas import UserGroupIn, UserGroupOut
@@ -19,11 +21,14 @@ def get_db():
 
 @router.post("/", response_model=UserGroupOut)
 def create_group(
-    group: UserGroupIn, current_user=Depends(require_role("admin")), db: Session = Depends(get_db)
+    group: UserGroupIn,
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
-    if db.query(UserGroup).filter_by(name=group.name).first():
+    if db.query(UserGroup).filter_by(name=group.name, cafe_id=ctx.cafe_id).first():
         raise HTTPException(status_code=400, detail="Group name exists")
-    g = UserGroup(**group.dict())
+    g = UserGroup(**group.dict(), cafe_id=ctx.cafe_id)
     db.add(g)
     db.commit()
     db.refresh(g)
@@ -31,8 +36,12 @@ def create_group(
 
 
 @router.get("/", response_model=list[UserGroupOut])
-def list_groups(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
-    return db.query(UserGroup).all()
+def list_groups(
+    current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
+    return scoped_query(db, UserGroup, ctx).all()
 
 
 @router.post("/assign/{user_id}/{group_id}")

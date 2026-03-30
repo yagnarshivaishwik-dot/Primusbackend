@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import get_current_user, require_role
+from app.auth.context import AuthContext, get_auth_context
+from app.auth.tenant import scoped_query, enforce_cafe_ownership
 from app.database import SessionLocal
 from app.models import SupportTicket
 from app.schemas import SupportTicketIn, SupportTicketOut
@@ -22,11 +24,15 @@ def get_db():
 # Create a ticket (user or staff)
 @router.post("/", response_model=SupportTicketOut)
 def create_ticket(
-    ticket: SupportTicketIn, current_user=Depends(get_current_user), db: Session = Depends(get_db)
+    ticket: SupportTicketIn,
+    current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
     t = SupportTicket(
         user_id=current_user.id,
         pc_id=ticket.pc_id,
+        cafe_id=ctx.cafe_id,
         issue=ticket.issue,
         status="open",
         created_at=datetime.utcnow(),
@@ -40,10 +46,14 @@ def create_ticket(
 
 # Get my tickets
 @router.get("/mine", response_model=list[SupportTicketOut])
-def my_tickets(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+def my_tickets(
+    current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
     ts = (
-        db.query(SupportTicket)
-        .filter_by(user_id=current_user.id)
+        scoped_query(db, SupportTicket, ctx)
+        .filter(SupportTicket.user_id == current_user.id)
         .order_by(SupportTicket.created_at.desc())
         .all()
     )
@@ -52,8 +62,12 @@ def my_tickets(current_user=Depends(get_current_user), db: Session = Depends(get
 
 # Admin/staff: List all tickets
 @router.get("/", response_model=list[SupportTicketOut])
-def list_tickets(current_user=Depends(require_role("admin")), db: Session = Depends(get_db)):
-    ts = db.query(SupportTicket).order_by(SupportTicket.created_at.desc()).all()
+def list_tickets(
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
+    ts = scoped_query(db, SupportTicket, ctx).order_by(SupportTicket.created_at.desc()).all()
     return ts
 
 
@@ -64,11 +78,13 @@ def update_ticket(
     status: str,
     assigned_staff: int | None = None,
     current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ):
     t = db.query(SupportTicket).filter_by(id=ticket_id).first()
     if not t:
         raise HTTPException(status_code=404, detail="Ticket not found")
+    enforce_cafe_ownership(t, ctx)
     t.status = status
     t.assigned_staff = assigned_staff
     t.updated_at = datetime.utcnow()

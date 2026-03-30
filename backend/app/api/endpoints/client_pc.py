@@ -1,3 +1,4 @@
+import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
 
@@ -10,6 +11,7 @@ from app.database import get_db
 from app.models import ClientPC, License, SystemEvent
 from app.schemas import ClientPCCreate, ClientPCOut
 from app.utils.cache import publish_invalidation
+from app.utils.license import is_signed_key, verify_signed_license
 from app.utils.security import verify_device_signature
 from app.ws.admin import broadcast_admin
 from app.ws.auth import build_event
@@ -48,9 +50,25 @@ async def register_pc(pc: ClientPCCreate, request: Request, db: Session = Depend
     Uses hardware fingerprint to ensure a PC always maps to the same record.
     """
     # 1. Validate license
+    # Signed keys: verify JWT signature first (tamper-proof, no DB lookup needed for claims).
+    # Unsigned (legacy) keys: fall back to DB-only validation.
+    if is_signed_key(pc.license_key):
+        ok, err = verify_signed_license(pc.license_key)
+        if not ok:
+            if err == "not_signed":
+                raise HTTPException(status_code=403, detail="Invalid license key format")
+            raise HTTPException(status_code=403, detail=err)
+
     license_obj = db.query(License).filter_by(key=pc.license_key).first()
     if not license_obj or not license_obj.is_active:
         raise HTTPException(status_code=403, detail="Invalid or inactive license")
+
+    # For signed keys, also confirm the embedded cafe_id matches the DB record (defence-in-depth).
+    if is_signed_key(pc.license_key):
+        from app.utils.license import decode_signed_license_key
+        claims = decode_signed_license_key(pc.license_key)
+        if claims and claims.get("cafe_id") != license_obj.cafe_id:
+            raise HTTPException(status_code=403, detail="License cafe mismatch")
 
     # Make expires_at timezone-aware if it's naive (for comparison with UTC)
     expires_at = license_obj.expires_at
@@ -80,11 +98,14 @@ async def register_pc(pc: ClientPCCreate, request: Request, db: Session = Depend
         if existing_pcs >= license_obj.max_pcs:
             raise HTTPException(status_code=403, detail="Max PC count reached for this license")
 
+        _raw_secret = secrets.token_urlsafe(32)
         pc_obj = ClientPC(
             license_key=license_obj.key,
             name=pc.name,
             hardware_fingerprint=pc.hardware_fingerprint,
-            device_secret=secrets.token_urlsafe(32),  # Generate unique secret
+            device_secret=_raw_secret,  # Legacy cleartext; kept for HMAC compat
+            device_secret_hash=hashlib.sha256(_raw_secret.encode()).hexdigest(),
+            device_status="active",
             ip_address=str(request.client.host),
             status="online",
             last_seen=datetime.now(UTC),
@@ -159,7 +180,10 @@ async def pc_heartbeat(
             "hostname": pc.name
         }
         try:
-            await broadcast_admin(json.dumps(build_event("pc.status.update", status_payload)))
+            await broadcast_admin(
+                json.dumps(build_event("pc.status.update", status_payload)),
+                cafe_id=pc.cafe_id,
+            )
         except Exception:
             pass
 
@@ -248,7 +272,10 @@ async def pc_heartbeat_simple(
             "hostname": pc.name
         }
         try:
-            await broadcast_admin(json.dumps(build_event("pc.status.update", status_payload)))
+            await broadcast_admin(
+                json.dumps(build_event("pc.status.update", status_payload)),
+                cafe_id=pc.cafe_id,
+            )
         except Exception:
             pass
 

@@ -6,6 +6,8 @@ from starlette.concurrency import run_in_threadpool
 
 from app.api.endpoints.audit import log_action
 from app.api.endpoints.auth import get_current_user
+from app.auth.context import AuthContext, get_auth_context
+from app.auth.tenant import scoped_query, enforce_cafe_ownership
 from app.database import get_db
 from app.models import Game as GameModel
 from app.models import User
@@ -23,6 +25,7 @@ async def list_games(
     search: str | None = None,
     category: str | None = None,
     enabled: bool | None = None,
+    ctx: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ):
     """List games with optional filtering and pagination (cached)."""
@@ -34,7 +37,7 @@ async def list_games(
 
     async def _compute() -> list[GameSchema]:
         def _query():
-            query = db.query(GameModel)
+            query = scoped_query(db, GameModel, ctx)
             if search:
                 query = query.filter(GameModel.name.ilike(f"%{search}%"))
             if category:
@@ -62,6 +65,7 @@ async def get_games_count(
     search: str | None = None,
     category: str | None = None,
     enabled: bool | None = None,
+    ctx: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ):
     """Get total count of games with optional filtering (cached)."""
@@ -73,7 +77,7 @@ async def get_games_count(
 
     async def _compute() -> int:
         def _query() -> int:
-            query = db.query(GameModel)
+            query = scoped_query(db, GameModel, ctx)
             if search:
                 query = query.filter(GameModel.name.ilike(f"%{search}%"))
             if category:
@@ -98,7 +102,10 @@ async def get_games_count(
 
 @router.post("", response_model=GameSchema)
 async def create_game(
-    game: GameCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    game: GameCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
 ):
     """Create a new game and invalidate cached catalogs."""
 
@@ -108,7 +115,7 @@ async def create_game(
             raise HTTPException(
                 status_code=400, detail=f"Game with name '{game.name}' already exists"
             )
-        db_game = GameModel(**game.dict())
+        db_game = GameModel(**game.dict(), cafe_id=ctx.cafe_id)
         db.add(db_game)
         db.commit()
         db.refresh(db_game)
@@ -136,6 +143,7 @@ async def update_game(
     game_update: GameUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
 ):
     """Update an existing game and invalidate cached catalogs."""
 
@@ -143,6 +151,7 @@ async def update_game(
         db_game = db.query(GameModel).filter(GameModel.id == game_id).first()
         if not db_game:
             raise HTTPException(status_code=404, detail="Game not found")
+        enforce_cafe_ownership(db_game, ctx)
 
         update_data = game_update.dict(exclude_unset=True)
         for field, value in update_data.items():
@@ -172,7 +181,10 @@ async def update_game(
 
 @router.delete("/{game_id}")
 async def delete_game(
-    game_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    game_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
 ):
     """Delete a game and invalidate cached catalogs."""
 
@@ -180,6 +192,7 @@ async def delete_game(
         db_game = db.query(GameModel).filter(GameModel.id == game_id).first()
         if not db_game:
             raise HTTPException(status_code=404, detail="Game not found")
+        enforce_cafe_ownership(db_game, ctx)
 
         game_name = db_game.name
         db.delete(db_game)
@@ -209,11 +222,12 @@ async def bulk_toggle_games(
     enabled: bool,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
 ):
     """Bulk toggle games enabled/disabled status and invalidate cached catalogs."""
 
     def _toggle() -> int:
-        games = db.query(GameModel).filter(GameModel.id.in_(game_ids)).all()
+        games = scoped_query(db, GameModel, ctx).filter(GameModel.id.in_(game_ids)).all()
         for game in games:
             game.enabled = enabled
             game.last_updated = datetime.now(UTC)
