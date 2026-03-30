@@ -119,7 +119,8 @@ def upgrade() -> None:
     """))
 
     # 10. Hash existing device_secret values into device_secret_hash
-    # We do this in SQL using PostgreSQL's encode(digest(...)) for SHA-256
+    # digest() requires pgcrypto; enable it if not already present.
+    conn.execute(text("CREATE EXTENSION IF NOT EXISTS pgcrypto"))
     conn.execute(text("""
         UPDATE client_pcs
         SET device_secret_hash = encode(digest(device_secret, 'sha256'), 'hex')
