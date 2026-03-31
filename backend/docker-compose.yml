@@ -20,6 +20,8 @@ services:
   backend:
     build: .
     container_name: primus_backend
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=redis://redis:6379/0
