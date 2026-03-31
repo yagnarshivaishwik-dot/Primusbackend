@@ -1,26 +1,6 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
-  db:
-    image: postgres:15
-    container_name: primus_db
-    environment:
-      POSTGRES_DB: primus_db
-      POSTGRES_USER: primus_user
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./backups:/backups
-    ports:
-      - "5432:5432"
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U primus_user"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
   # Redis Cache
   redis:
     image: redis:7-alpine
@@ -41,7 +21,7 @@ services:
     build: .
     container_name: primus_backend
     environment:
-      - DATABASE_URL=postgresql+psycopg2://primus_user:${POSTGRES_PASSWORD}@db:5432/primus_db
+      - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=${SECRET_KEY}
       - JWT_SECRET=${JWT_SECRET}
@@ -62,9 +42,9 @@ services:
       - ./backups:/app/backups
     ports:
       - "8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
@@ -101,7 +81,6 @@ services:
       - nginx
 
 volumes:
-  postgres_data:
   redis_data:
 
 networks:
