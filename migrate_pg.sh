@@ -9,8 +9,8 @@ set -euo pipefail
 CONTAINER="primus_db"
 PG_USER="primus_user"
 PG_PASS="PrimusDbSecureP4ssw0rd!"
-DATA_DISK="/dev/sdc"
-MOUNT_POINT="/data"
+DATA_DISK="/dev/nvme0n2p1"
+MOUNT_POINT="/mnt/data"
 DUMP_FILE="/tmp/primus_full_dump.sql"
 EXPECTED_DBS="primus_db primus_global primus_cafe_1 primus_cafe_2 primus_cafe_3"
 
@@ -61,7 +61,7 @@ if [[ "$DISK_ALREADY_MOUNTED" == "false" ]]; then
 
     if [[ -z "$FS_TYPE" ]]; then
         log "  Formatting $DATA_DISK with ext4..."
-        mkfs.ext4 -F "$DATA_DISK"
+        mkfs.ext4 -F -E nodiscard "$DATA_DISK"
         ok "Formatted $DATA_DISK as ext4"
     else
         ok "Disk already formatted as $FS_TYPE — skipping format"
