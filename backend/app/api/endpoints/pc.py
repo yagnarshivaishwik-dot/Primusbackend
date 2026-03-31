@@ -4,20 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import get_current_user  # Import JWT protector
-from app.database import SessionLocal
+from app.db.dependencies import get_cafe_db as get_db
 from app.models import PC
 from app.schemas import PCOut, PCRegister
 
 router = APIRouter()
 
-
-# Database dependency
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 # Register a new PC (protected: only logged-in users/admins can register)

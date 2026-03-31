@@ -2,19 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import _normalize_password, ph, require_role
-from app.database import SessionLocal
+from app.db.dependencies import get_global_db as get_db
 from app.models import User
 from app.schemas import UserCreate, UserOut
 
 router = APIRouter()
 
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 # Cafeadmin: Add a new staff user (to own cafe)

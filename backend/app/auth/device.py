@@ -8,7 +8,7 @@ from fastapi import Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.auth.context import AuthContext, get_auth_context
-from app.database import get_db
+from app.db.dependencies import get_global_db as get_db
 from app.models import ClientPC, DeviceIpHistory
 
 logger = logging.getLogger(__name__)

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.api.endpoints.auth import require_role
 from app.auth.context import AuthContext, get_auth_context
 from app.auth.tenant import enforce_cafe_ownership, scoped_query
-from app.database import get_db
+from app.db.dependencies import get_cafe_db as get_db
 from app.models import ClientPC, DeviceIpHistory, RefreshToken
 
 logger = logging.getLogger(__name__)

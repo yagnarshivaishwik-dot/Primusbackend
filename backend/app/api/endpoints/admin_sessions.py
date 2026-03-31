@@ -10,7 +10,7 @@ from app.api.endpoints.auth import require_role
 from app.auth.context import AuthContext, get_auth_context
 from app.auth.tenant import enforce_cafe_ownership
 from app.auth.tokens import revoke_all_refresh_tokens
-from app.database import get_db
+from app.db.dependencies import get_cafe_db as get_db
 from app.models import ClientPC, RefreshToken, User
 
 logger = logging.getLogger(__name__)

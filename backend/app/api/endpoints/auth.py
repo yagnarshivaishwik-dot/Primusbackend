@@ -22,7 +22,7 @@ from app.config import (
     OIDC_AUDIENCE,
     OIDC_ISSUER,
 )
-from app.database import get_db
+from app.db.dependencies import get_global_db as get_db
 from app.models import User
 from app.schemas import UserOut, UserUpdate
 from app.utils.security import validate_password_strength

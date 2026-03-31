@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from app.api.endpoints.auth import get_current_user, require_role
-from app.database import get_db
+from app.db.dependencies import get_cafe_db as get_db
 from app.models import ClientPC, License, SystemEvent
 from app.schemas import ClientPCCreate, ClientPCOut
 from app.utils.cache import publish_invalidation

@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from app.database import SessionLocal
+from app.db.global_db import global_session_factory as SessionLocal
 from app.models import ClientPC, SystemEvent
 from app.utils.cache import publish_invalidation
 from app.ws.admin import broadcast_admin

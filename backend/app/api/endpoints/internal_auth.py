@@ -18,7 +18,7 @@ from app.api.endpoints.auth import (
     get_current_user,
     ph,
 )
-from app.database import get_db
+from app.db.dependencies import get_global_db as get_db
 from app.models import User
 
 router = APIRouter()

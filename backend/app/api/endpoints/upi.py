@@ -16,7 +16,7 @@ from sqlalchemy import update
 from sqlalchemy.orm import Session as DBSession
 
 from app.auth.context import AuthContext, get_auth_context, require_role
-from app.database import get_db
+from app.db.dependencies import get_cafe_db as get_db
 from app.middleware.idempotency import (
     check_idempotency,
     make_idempotent_response,

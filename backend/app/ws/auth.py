@@ -5,7 +5,7 @@ from typing import Optional
 from jose import JWTError, jwt
 
 from app.config import ALGORITHM, JWT_SECRET
-from app.database import SessionLocal
+from app.db.global_db import global_session_factory as SessionLocal
 from app.models import User
 
 

@@ -7,7 +7,7 @@ from app.api.endpoints.audit import log_action
 from app.api.endpoints.auth import require_role
 from app.auth.context import AuthContext, get_auth_context
 from app.auth.tenant import scoped_query, enforce_cafe_ownership
-from app.database import get_db
+from app.db.dependencies import get_cafe_db as get_db
 from app.models import Webhook
 from app.schemas import WebhookIn, WebhookOut
 from app.utils.encryption import encrypt_value

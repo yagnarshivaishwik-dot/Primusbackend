@@ -3,19 +3,12 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from app.api.endpoints.auth import require_role
-from app.database import SessionLocal
+from app.db.dependencies import get_cafe_db as get_db
 from app.models import PC
 from app.utils.cache import get_or_set, publish_invalidation
 
 router = APIRouter()
 
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 # Admin: ban a PC

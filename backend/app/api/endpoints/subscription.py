@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session as DBSession
 
 from app.auth.context import AuthContext, get_auth_context, require_role
-from app.database import get_db
+from app.db.dependencies import get_global_db as get_db
 
 logger = logging.getLogger(__name__)
 

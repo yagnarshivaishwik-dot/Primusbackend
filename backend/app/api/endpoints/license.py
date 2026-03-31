@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import get_current_user, require_role
-from app.database import SessionLocal
+from app.db.dependencies import get_global_db as get_db
 from app.models import Cafe, ClientPC, License, LicenseAssignment, PlatformAccount
 from app.schemas import (
     LicenseAssignIn,
@@ -20,13 +20,6 @@ from app.utils.license import create_signed_license_key, decode_signed_license_k
 
 router = APIRouter()
 
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 # SUPERADMIN: Issue license for a cafe

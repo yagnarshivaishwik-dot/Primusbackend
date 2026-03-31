@@ -4,19 +4,11 @@ from sqlalchemy.orm import Session
 from app.api.endpoints.auth import get_current_user, require_role
 from app.auth.context import AuthContext, get_auth_context
 from app.auth.tenant import scoped_query
-from app.database import SessionLocal
+from app.db.dependencies import get_cafe_db as get_db
 from app.models import User, UserGroup
 from app.schemas import UserGroupIn, UserGroupOut
 
 router = APIRouter()
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @router.post("/", response_model=UserGroupOut)

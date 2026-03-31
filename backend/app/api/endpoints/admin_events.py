@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
 from app.config import ALGORITHM, JWT_SECRET
-from app.database import get_db
+from app.db.dependencies import get_global_db as get_db
 from app.models import SystemEvent, User
 
 router = APIRouter()

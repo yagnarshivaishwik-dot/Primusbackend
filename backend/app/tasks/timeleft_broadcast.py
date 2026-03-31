@@ -7,7 +7,7 @@ import asyncio
 import json
 from datetime import datetime
 
-from app.database import SessionLocal
+from app.db.global_db import global_session_factory as SessionLocal
 from app.models import ClientPC, PCToGroup, PricingRule, User, UserGroup, UserOffer
 from app.ws import pc as ws_pc
 

@@ -20,7 +20,7 @@ from app.api.endpoints.audit import log_action
 from app.api.endpoints.auth import get_current_user
 from app.auth.context import AuthContext, get_auth_context
 from app.auth.tenant import scoped_query, enforce_cafe_ownership
-from app.database import get_db
+from app.db.dependencies import get_cafe_db as get_db
 from app.schemas import WalletAction, WalletTransactionOut
 from app.utils.cache import publish_invalidation
 

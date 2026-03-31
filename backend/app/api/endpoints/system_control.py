@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.api.endpoints.audit import log_action
 from app.api.endpoints.auth import require_role
-from app.database import get_db
+from app.db.dependencies import get_cafe_db as get_db
 
 router = APIRouter()
 

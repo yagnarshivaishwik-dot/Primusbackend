@@ -9,21 +9,13 @@ from app.api.endpoints.auth import get_current_user
 from app.api.endpoints.remote_command import queue_device_event
 from app.auth.context import AuthContext, get_auth_context
 from app.auth.tenant import scoped_query
-from app.database import SessionLocal
+from app.db.dependencies import get_cafe_db as get_db
 from app.models import ChatMessage, ClientPC, User
 from app.schemas import ChatMessageIn, ChatMessageOut
 from app.ws import admin as ws_admin
 from app.ws.auth import build_event
 
 router = APIRouter()
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 # Send message

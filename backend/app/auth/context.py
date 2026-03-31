@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from fastapi import Depends, HTTPException, Request
 from sqlalchemy.orm import Session as DBSession
 
-from app.database import get_db
+from app.db.dependencies import get_global_db as get_db
 from app.models import User
 
 # Role hierarchy for permission checks

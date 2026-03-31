@@ -4,19 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import get_current_user, require_role
-from app.database import SessionLocal
+from app.db.dependencies import get_global_db as get_db
 from app.models import AuditLog
 from app.schemas import AuditLogOut
 
 router = APIRouter()
 
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 # Utility: log an action (call from other endpoints!)

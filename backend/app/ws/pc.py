@@ -8,7 +8,7 @@ from datetime import datetime, UTC
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from app.database import SessionLocal
+from app.db.global_db import global_session_factory as SessionLocal
 from app.models import ClientPC, SystemEvent, User
 from app.ws.admin import broadcast_admin
 from app.ws.auth import WSAuthError, authenticate_ws_token, build_event

@@ -7,20 +7,12 @@ from starlette.concurrency import run_in_threadpool
 from app.api.endpoints.auth import get_current_user, require_role
 from app.auth.context import AuthContext, get_auth_context
 from app.auth.tenant import scoped_query, enforce_cafe_ownership
-from app.database import SessionLocal
+from app.db.dependencies import get_cafe_db as get_db
 from app.models import Leaderboard, LeaderboardEntry
 from app.schemas import LeaderboardEntryOut, LeaderboardIn, LeaderboardOut
 from app.utils.cache import get_or_set, publish_invalidation
 
 router = APIRouter()
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @router.post("/", response_model=LeaderboardOut)

@@ -15,7 +15,7 @@ from app.api.endpoints.auth import (
 )
 from app.auth.context import AuthContext, get_auth_context
 from app.auth.tenant import scoped_query, enforce_cafe_ownership
-from app.database import get_db
+from app.db.dependencies import get_cafe_db as get_db
 from app.models import User
 
 router = APIRouter()
