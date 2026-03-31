@@ -181,8 +181,11 @@ install_prometheus() {
         mv "prometheus-${PROM_VER}.linux-amd64/prometheus"   /usr/local/bin/
         mv "prometheus-${PROM_VER}.linux-amd64/promtool"     /usr/local/bin/
         mkdir -p /etc/prometheus
-        mv "prometheus-${PROM_VER}.linux-amd64/consoles"      /etc/prometheus/
-        mv "prometheus-${PROM_VER}.linux-amd64/console_libraries" /etc/prometheus/
+        # consoles/console_libraries removed in Prometheus 3.x — skip if absent
+        [[ -d "prometheus-${PROM_VER}.linux-amd64/consoles" ]] && \
+            mv "prometheus-${PROM_VER}.linux-amd64/consoles" /etc/prometheus/ || true
+        [[ -d "prometheus-${PROM_VER}.linux-amd64/console_libraries" ]] && \
+            mv "prometheus-${PROM_VER}.linux-amd64/console_libraries" /etc/prometheus/ || true
         rm -rf "prometheus-${PROM_VER}.linux-amd64"*
         ok "Prometheus binaries installed"
     fi
