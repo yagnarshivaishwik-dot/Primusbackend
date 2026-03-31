@@ -61,10 +61,10 @@ async def event_stream(
                 if await request.is_disconnected():
                     break
 
-                # Fetch new events for this cafe
+                # Fetch new events — cafe_db is already scoped to this cafe's DB
                 events = (
                     cafe_db.query(SystemEvent)
-                    .filter(SystemEvent.id > cursor, SystemEvent.cafe_id == cafe_id)
+                    .filter(SystemEvent.id > cursor)
                     .order_by(SystemEvent.id.asc())
                     .all()
                 )
