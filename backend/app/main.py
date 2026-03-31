@@ -14,6 +14,7 @@ from pydantic import BaseModel, EmailStr
 from app.api.endpoints import (
     admin_events,
     admin_sessions,
+    analytics,
     announcement,
     audit,
     auth,
@@ -257,6 +258,7 @@ app.include_router(wallet.router, prefix="/api/wallet", tags=["wallet"])
 app.include_router(game.router, prefix="/api/game", tags=["game"])
 app.include_router(remote_command.router, prefix="/api/command", tags=["remote_command"])
 app.include_router(stats.router, prefix="/api/stats", tags=["stats"])
+app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 app.include_router(notification.router, prefix="/api/notification", tags=["notification"])
 app.include_router(support_ticket.router, prefix="/api/support", tags=["support"])
