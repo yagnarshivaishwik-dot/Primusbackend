@@ -42,6 +42,8 @@ def provision_cafe_database(cafe_id: int, owner_global_user_id: int = None) -> b
         _create_database(db_name)
 
         # Step 2: Create all tables from CafeBase metadata
+        # Import models_cafe to ensure all models are registered on CafeBase
+        import app.db.models_cafe  # noqa
         engine = create_engine(cafe_url, pool_pre_ping=True, future=True)
         CafeBase.metadata.create_all(bind=engine)
         logger.info("Created schema for cafe database %s", db_name)
