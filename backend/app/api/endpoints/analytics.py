@@ -71,9 +71,9 @@ async def analytics_summary(
     period: str | None = None,
     start: str | None = None,
     end: str | None = None,
-    db: Session = Depends(get_db),
     _=Depends(require_role("admin")),
     ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
     """
     KPI summary for the Statistics page top row.
@@ -154,9 +154,9 @@ async def analytics_timeseries(
     period: str | None = None,
     start: str | None = None,
     end: str | None = None,
-    db: Session = Depends(get_db),
     _=Depends(require_role("admin")),
     ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
     """
     Hourly breakdown of revenue and session counts.
@@ -224,9 +224,9 @@ async def analytics_top_products(
     start: str | None = None,
     end: str | None = None,
     limit: int = 50,
-    db: Session = Depends(get_db),
     _=Depends(require_role("admin")),
     ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
     """
     Product sales breakdown with price, qty, and revenue.
@@ -274,9 +274,9 @@ async def analytics_users(
     start: str | None = None,
     end: str | None = None,
     limit: int = 50,
-    db: Session = Depends(get_db),
     _=Depends(require_role("admin")),
     ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
     """
     User activity table: session count, spend, last active.
@@ -325,9 +325,9 @@ async def analytics_users(
 @router.get("/peak-hours")
 async def analytics_peak_hours(
     period: str | None = None,
-    db: Session = Depends(get_db),
     _=Depends(require_role("admin")),
     ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
     """
     24-hour activity heatmap data: sessions + revenue per hour.
@@ -368,9 +368,9 @@ async def analytics_peak_hours(
 @router.get("/payment-breakdown")
 async def analytics_payment_breakdown(
     period: str | None = None,
-    db: Session = Depends(get_db),
     _=Depends(require_role("admin")),
     ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
     """
     Wallet transaction breakdown by type (topup / deduct / refund).
