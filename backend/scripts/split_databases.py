@@ -56,7 +56,7 @@ def migrate_global_tables(source_engine, global_engine):
 
     # Create global schema
     from app.db.global_db import GlobalBase
-    from app.db.models_global import *  # noqa: ensure models registered
+    import app.db.models_global  # noqa: ensure models registered
     GlobalBase.metadata.create_all(bind=global_engine)
     logger.info("Global schema created")
 
