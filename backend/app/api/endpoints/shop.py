@@ -1,3 +1,9 @@
+"""
+Shop endpoints — time pack listings, purchases, and admin CRUD.
+
+Multi-tenant: all Offer queries run against the per-cafe DB resolved
+from ctx.cafe_id (set by JWT). cafe_id is NEVER accepted from the frontend.
+"""
 import json
 import uuid
 from datetime import UTC, datetime
@@ -7,186 +13,46 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.audit import log_action
-from app.api.endpoints.auth import get_current_user, require_role
-from app.api.endpoints.remote_command import queue_device_event
+from app.api.endpoints.auth import require_role
 from app.auth.context import AuthContext, get_auth_context
-from app.auth.tenant import scoped_query, enforce_cafe_ownership
-from app.db.dependencies import get_cafe_db as get_db
-from app.models import ClientPC, Offer
+from app.db.models_cafe import ClientPC, Offer, Session as PCSession, UserOffer
+from app.db.router import cafe_db_router
 from app.tasks.timeleft_broadcast import _compute_minutes_for_pc
 from app.ws import admin as ws_admin
 from app.ws.auth import build_event
+from app.api.endpoints.remote_command import queue_device_event
 
 router = APIRouter()
 
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _get_cafe_db(ctx: AuthContext) -> Session:
+    """Open per-cafe DB session from ctx. Raises 400 if cafe_id unresolvable."""
+    if not ctx.cafe_id:
+        raise HTTPException(status_code=400, detail="cafe_id could not be resolved from token")
+    return cafe_db_router.get_session(ctx.cafe_id)
+
+
+def _minutes(offer: Offer) -> int:
+    """Return offer duration in minutes. hours_minutes column stores minutes."""
+    return int(offer.hours_minutes or 0)
+
+
+# ── Schemas ───────────────────────────────────────────────────────────────────
 
 class ShopPack(BaseModel):
     id: str
     name: str
     minutes: int
     price: float
+    description: str | None = None
+    active: bool = True
 
-
-# Default fallback packs if no offers exist in database
-DEFAULT_PACKS: list[ShopPack] = [
-    ShopPack(id="pack1", name="1 Hour", minutes=60, price=100.0),
-    ShopPack(id="pack2", name="2 Hours", minutes=120, price=180.0),
-    ShopPack(id="pack3", name="5 Hours", minutes=300, price=400.0),
-]
-
-
-def get_packs_from_db(db: Session) -> list[ShopPack]:
-    """
-    Fetch active offers from the database and convert to ShopPack format.
-    Falls back to default packs if no offers exist.
-    """
-    offers = db.query(Offer).filter(Offer.active.is_(True)).all()
-    if not offers:
-        return DEFAULT_PACKS
-
-    return [
-        ShopPack(
-            id=str(o.id),
-            name=o.name,
-            minutes=int((o.hours or 0) * 60),
-            price=float(o.price or 0)
-        )
-        for o in offers
-    ]
-
-
-@router.get("/packs", response_model=list[ShopPack])
-async def list_packs(
-    ctx: AuthContext = Depends(get_auth_context),
-    db: Session = Depends(get_db),
-):
-    """
-    Return available time packs from the database (Offer table), scoped by cafe.
-    """
-    offers = scoped_query(db, Offer, ctx).filter(Offer.active.is_(True)).all()
-    if not offers:
-        return DEFAULT_PACKS
-    return [
-        ShopPack(
-            id=str(o.id),
-            name=o.name,
-            minutes=int((o.hours or 0) * 60),
-            price=float(o.price or 0),
-        )
-        for o in offers
-    ]
-
-
-class ShopPurchaseIn(BaseModel):
-    client_id: int
-    user_id: int
-    pack_id: str
-    payment_method: str | None = None
-    queue_id: str | None = None
-
-
-@router.post("/purchase", response_model=dict)
-async def purchase_pack(
-    body: ShopPurchaseIn,
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
-    """
-    Record a time pack purchase and emit real-time WebSocket events.
-
-    NOTE: For now this endpoint does not modify billing tables; it computes
-    remaining time based on existing billing state and the purchased minutes,
-    then broadcasts the new effective remaining time.
-    """
-    # Look up pack from database
-    packs = get_packs_from_db(db)
-    pack = next((p for p in packs if p.id == body.pack_id), None)
-    if not pack:
-        raise HTTPException(status_code=404, detail="Unknown pack_id")
-
-    # Ensure the caller is the same user or an admin/staff-like role
-    if current_user.id != body.user_id and getattr(current_user, "role", None) not in (
-        "admin",
-        "owner",
-        "superadmin",
-        "staff",
-    ):
-        raise HTTPException(status_code=403, detail="Not allowed to purchase for this user")
-
-    # Look up cafe_id for scoped broadcasting
-    _pc = db.query(ClientPC).filter_by(id=body.client_id).first()
-    _cafe_id = _pc.cafe_id if _pc else None
-
-    # Compute previous remaining minutes for this client PC, if any
-    try:
-        prev_minutes = _compute_minutes_for_pc(db, body.client_id)
-    except Exception:
-        prev_minutes = 0
-
-    minutes_added = pack.minutes
-    new_minutes = max(0, (prev_minutes or 0) + minutes_added)
-
-    status = "pending" if body.queue_id else "completed"
-    purchase_id = uuid.uuid4().hex
-
-    payload = {
-        "purchase_id": purchase_id,
-        "client_id": body.client_id,
-        "user_id": body.user_id,
-        "pack_id": body.pack_id,
-        "minutes_added": minutes_added,
-        "new_remaining_time": new_minutes * 60,
-        "status": status,
-    }
-
-    envelope = json.dumps(build_event("shop.purchase", payload))
-
-    # Emit purchase event to admins and the specific PC
-    try:
-        await ws_admin.broadcast_admin(envelope, cafe_id=_cafe_id)
-    except Exception:
-        pass
-    try:
-        queue_device_event(db, body.client_id, "shop.purchase", payload)
-    except Exception:
-        pass
-
-    # Also broadcast a pc.time.update event to keep remaining_time in sync
-    time_payload = {
-        "client_id": body.client_id,
-        "remaining_time_seconds": new_minutes * 60,
-    }
-    time_envelope = json.dumps(build_event("pc.time.update", time_payload))
-    try:
-        await ws_admin.broadcast_admin(time_envelope, cafe_id=_cafe_id)
-    except Exception:
-        pass
-    try:
-        queue_device_event(db, body.client_id, "pc.time.update", time_payload)
-    except Exception:
-        pass
-
-    # Audit log the purchase
-    try:
-        log_action(db, body.user_id, "shop_purchase", f"Pack:{body.pack_id} Minutes:{minutes_added} Status:{status}", None)
-    except Exception:
-        pass
-
-    return {
-        "purchase_id": purchase_id,
-        "minutes_added": minutes_added,
-        "new_remaining_time": new_minutes * 60,
-        "status": status,
-        "pack": pack.dict(),
-        "ts": int(datetime.now(UTC).timestamp()),
-    }
-
-
-# Admin CRUD endpoints for managing time packages (Offers)
 
 class OfferCreate(BaseModel):
     name: str
-    hours: float
+    hours: float          # frontend sends hours; we store as minutes
     price: float
     description: str | None = None
     active: bool = True
@@ -200,70 +66,13 @@ class OfferUpdate(BaseModel):
     active: bool | None = None
 
 
-@router.post("/offers", response_model=dict)
-async def create_offer(
-    data: OfferCreate,
-    db: Session = Depends(get_db),
-    current_user=Depends(require_role("admin")),
-):
-    """Admin: Create a new time package/offer."""
-    offer = Offer(
-        name=data.name,
-        hours=data.hours,
-        price=data.price,
-        description=data.description,
-        active=data.active,
-    )
-    db.add(offer)
-    db.commit()
-    db.refresh(offer)
-    return {"id": offer.id, "name": offer.name, "hours": offer.hours, "price": offer.price, "active": offer.active}
+class ShopPurchaseIn(BaseModel):
+    client_id: int
+    user_id: int
+    pack_id: str
+    payment_method: str | None = None
+    queue_id: str | None = None
 
-
-@router.put("/offers/{offer_id}", response_model=dict)
-async def update_offer(
-    offer_id: int,
-    data: OfferUpdate,
-    db: Session = Depends(get_db),
-    current_user=Depends(require_role("admin")),
-):
-    """Admin: Update an existing time package/offer."""
-    offer = db.query(Offer).filter_by(id=offer_id).first()
-    if not offer:
-        raise HTTPException(status_code=404, detail="Offer not found")
-
-    if data.name is not None:
-        offer.name = data.name
-    if data.hours is not None:
-        offer.hours = data.hours
-    if data.price is not None:
-        offer.price = data.price
-    if data.description is not None:
-        offer.description = data.description
-    if data.active is not None:
-        offer.active = data.active
-
-    db.commit()
-    return {"id": offer.id, "name": offer.name, "hours": offer.hours, "price": offer.price, "active": offer.active}
-
-
-@router.delete("/offers/{offer_id}", response_model=dict)
-async def delete_offer(
-    offer_id: int,
-    db: Session = Depends(get_db),
-    current_user=Depends(require_role("admin")),
-):
-    """Admin: Delete a time package/offer."""
-    offer = db.query(Offer).filter_by(id=offer_id).first()
-    if not offer:
-        raise HTTPException(status_code=404, detail="Offer not found")
-
-    db.delete(offer)
-    db.commit()
-    return {"status": "deleted", "id": offer_id}
-
-
-# Admin Payment Confirmation - confirms pending order and auto-starts session
 
 class PaymentConfirmIn(BaseModel):
     purchase_id: str
@@ -273,104 +82,333 @@ class PaymentConfirmIn(BaseModel):
     payment_method: str = "cash"
 
 
-@router.post("/confirm-payment", response_model=dict)
-async def confirm_payment(
-    body: PaymentConfirmIn,
-    db: Session = Depends(get_db),
-    current_user=Depends(require_role("admin")),
+# ── Admin: Time Pack CRUD ─────────────────────────────────────────────────────
+
+@router.get("/packs", response_model=list[ShopPack])
+async def list_packs(
+    _=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
 ):
     """
-    Admin: Confirm payment for a pending purchase.
-    This will:
-    1. Add time to user's billing
-    2. Auto-start a session on the client PC
-    3. Broadcast real-time updates to admin and client
+    Admin: Return all active time packs for this cafe.
+    Scoped exclusively to the admin's own cafe via JWT.
     """
-    from app.models import ClientPC, UserOffer
-    from app.models import Session as PCSession
+    db = _get_cafe_db(ctx)
+    try:
+        offers = db.query(Offer).filter(Offer.active.is_(True)).all()
+        return [
+            ShopPack(
+                id=str(o.id),
+                name=o.name,
+                minutes=_minutes(o),
+                price=float(o.price or 0),
+                description=o.description,
+                active=o.active,
+            )
+            for o in offers
+        ]
+    finally:
+        db.close()
 
-    # Add time to user's account via UserOffer
-    user_offer = UserOffer(
-        user_id=body.user_id,
-        offer_id=None,  # Direct time addition
-        hours_remaining=body.minutes / 60.0,
-    )
-    db.add(user_offer)
 
-    # Auto-start session on the PC
-    pc = db.query(ClientPC).filter_by(id=body.client_id).first()
-    if pc:
-        # Update PC status
-        pc.status = "in_use"
-        pc.current_user_id = body.user_id
-
-        # Create new session
-        new_session = PCSession(
-            user_id=body.user_id,
-            client_pc_id=body.client_id,
-            start_time=datetime.now(UTC),
+@router.post("/offers", response_model=dict)
+async def create_offer(
+    data: OfferCreate,
+    _=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+):
+    """
+    Admin: Create a new time package.
+    cafe_id injected from JWT — never from frontend payload.
+    """
+    db = _get_cafe_db(ctx)
+    try:
+        minutes = int(round(data.hours * 60))
+        offer = Offer(
+            name=data.name,
+            hours_minutes=minutes,
+            price=data.price,
+            description=data.description,
+            active=data.active,
         )
-        db.add(new_session)
+        db.add(offer)
         db.commit()
-        db.refresh(new_session)
-        session_id = new_session.id
-    else:
+        db.refresh(offer)
+        return {
+            "id": offer.id,
+            "name": offer.name,
+            "minutes": _minutes(offer),
+            "price": float(offer.price),
+            "active": offer.active,
+        }
+    finally:
+        db.close()
+
+
+@router.put("/offers/{offer_id}", response_model=dict)
+async def update_offer(
+    offer_id: int,
+    data: OfferUpdate,
+    _=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+):
+    """
+    Admin: Update a time package.
+    Validates ownership via the per-cafe DB session (implicit scoping).
+    """
+    db = _get_cafe_db(ctx)
+    try:
+        offer = db.query(Offer).filter_by(id=offer_id).first()
+        if not offer:
+            raise HTTPException(status_code=404, detail="Offer not found")
+
+        if data.name is not None:
+            offer.name = data.name
+        if data.hours is not None:
+            offer.hours_minutes = int(round(data.hours * 60))
+        if data.price is not None:
+            offer.price = data.price
+        if data.description is not None:
+            offer.description = data.description
+        if data.active is not None:
+            offer.active = data.active
+
         db.commit()
-        session_id = None
+        db.refresh(offer)
+        return {
+            "id": offer.id,
+            "name": offer.name,
+            "minutes": _minutes(offer),
+            "price": float(offer.price),
+            "active": offer.active,
+        }
+    finally:
+        db.close()
 
-    # Calculate new remaining minutes
+
+@router.delete("/offers/{offer_id}", response_model=dict)
+async def delete_offer(
+    offer_id: int,
+    _=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+):
+    """
+    Admin: Soft-delete a time package (sets active=False).
+    Only affects this cafe's DB — cross-cafe deletion is impossible.
+    """
+    db = _get_cafe_db(ctx)
     try:
-        new_minutes = _compute_minutes_for_pc(db, body.client_id)
-    except Exception:
-        new_minutes = body.minutes
+        offer = db.query(Offer).filter_by(id=offer_id).first()
+        if not offer:
+            raise HTTPException(status_code=404, detail="Offer not found")
+        offer.active = False
+        db.commit()
+        return {"status": "deleted", "id": offer_id}
+    finally:
+        db.close()
 
-    # Broadcast payment confirmed event
-    payload = {
-        "purchase_id": body.purchase_id,
-        "client_id": body.client_id,
-        "user_id": body.user_id,
-        "minutes_added": body.minutes,
-        "new_remaining_time": new_minutes * 60,
-        "session_id": session_id,
-        "status": "confirmed",
-    }
 
-    envelope = json.dumps(build_event("payment.confirmed", payload))
-    _confirm_cafe_id = pc.cafe_id if pc else None
+# ── Client: Browse Packs (Tauri Shop) ────────────────────────────────────────
+
+@router.get("/client/packs", response_model=list[ShopPack])
+async def client_list_packs(
+    ctx: AuthContext = Depends(get_auth_context),
+):
+    """
+    Client-facing: Return active time packs for the client's own cafe only.
+    Clients NEVER see packs from another cafe.
+    """
+    db = _get_cafe_db(ctx)
     try:
-        await ws_admin.broadcast_admin(envelope, cafe_id=_confirm_cafe_id)
-    except Exception:
-        pass
-    try:
-        queue_device_event(db, body.client_id, "payment.confirmed", payload)
-    except Exception:
-        pass
+        offers = db.query(Offer).filter(Offer.active.is_(True)).all()
+        return [
+            ShopPack(
+                id=str(o.id),
+                name=o.name,
+                minutes=_minutes(o),
+                price=float(o.price or 0),
+                description=o.description,
+                active=True,
+            )
+            for o in offers
+        ]
+    finally:
+        db.close()
 
-    # Also send session.started event to client
-    if session_id:
-        session_payload = {
-            "session_id": session_id,
+
+# ── Purchase Flow ─────────────────────────────────────────────────────────────
+
+@router.post("/purchase", response_model=dict)
+async def purchase_pack(
+    body: ShopPurchaseIn,
+    ctx: AuthContext = Depends(get_auth_context),
+):
+    """
+    Record a time pack purchase and broadcast real-time WebSocket events.
+    """
+    db = _get_cafe_db(ctx)
+    try:
+        # Resolve pack from this cafe's DB
+        try:
+            offer_id = int(body.pack_id)
+            offer = db.query(Offer).filter_by(id=offer_id, active=True).first()
+        except (ValueError, TypeError):
+            offer = None
+
+        if not offer:
+            raise HTTPException(status_code=404, detail="Unknown pack_id")
+
+        minutes_added = _minutes(offer)
+
+        pc = db.query(ClientPC).filter_by(id=body.client_id).first()
+        cafe_id = ctx.cafe_id
+
+        try:
+            prev_minutes = _compute_minutes_for_pc(db, body.client_id)
+        except Exception:
+            prev_minutes = 0
+
+        new_minutes = max(0, (prev_minutes or 0) + minutes_added)
+        status = "pending" if body.queue_id else "completed"
+        purchase_id = uuid.uuid4().hex
+
+        payload = {
+            "purchase_id": purchase_id,
             "client_id": body.client_id,
             "user_id": body.user_id,
-            "start_time": datetime.now(UTC).isoformat(),
-            "remaining_minutes": new_minutes,
+            "pack_id": body.pack_id,
+            "minutes_added": minutes_added,
+            "new_remaining_time": new_minutes * 60,
+            "status": status,
         }
-        # Broadcast session.started event to the device
+
+        envelope = json.dumps(build_event("shop.purchase", payload))
         try:
-            queue_device_event(db, body.client_id, "session.started", session_payload)
+            await ws_admin.broadcast_admin(envelope, cafe_id=cafe_id)
+        except Exception:
+            pass
+        try:
+            queue_device_event(db, body.client_id, "shop.purchase", payload)
         except Exception:
             pass
 
-    # Audit log the payment confirmation
-    try:
-        log_action(db, body.user_id, "payment_confirmed", f"Purchase:{body.purchase_id} Minutes:{body.minutes} SessionId:{session_id}", None)
-    except Exception:
-        pass
+        time_payload = {
+            "client_id": body.client_id,
+            "remaining_time_seconds": new_minutes * 60,
+        }
+        time_envelope = json.dumps(build_event("pc.time.update", time_payload))
+        try:
+            await ws_admin.broadcast_admin(time_envelope, cafe_id=cafe_id)
+        except Exception:
+            pass
+        try:
+            queue_device_event(db, body.client_id, "pc.time.update", time_payload)
+        except Exception:
+            pass
 
-    return {
-        "status": "confirmed",
-        "purchase_id": body.purchase_id,
-        "session_id": session_id,
-        "minutes_added": body.minutes,
-        "new_remaining_time": new_minutes * 60,
-    }
+        try:
+            log_action(db, body.user_id, "shop_purchase", f"Pack:{body.pack_id} Minutes:{minutes_added} Status:{status}", None)
+        except Exception:
+            pass
+
+        return {
+            "purchase_id": purchase_id,
+            "minutes_added": minutes_added,
+            "new_remaining_time": new_minutes * 60,
+            "status": status,
+            "pack": {"id": str(offer.id), "name": offer.name, "minutes": minutes_added, "price": float(offer.price)},
+            "ts": int(datetime.now(UTC).timestamp()),
+        }
+    finally:
+        db.close()
+
+
+@router.post("/confirm-payment", response_model=dict)
+async def confirm_payment(
+    body: PaymentConfirmIn,
+    _=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+):
+    """
+    Admin: Confirm payment for a pending purchase.
+    Adds time to user account, auto-starts a session, broadcasts updates.
+    """
+    db = _get_cafe_db(ctx)
+    try:
+        user_offer = UserOffer(
+            user_id=body.user_id,
+            offer_id=None,
+            minutes_remaining=body.minutes,
+        )
+        db.add(user_offer)
+
+        pc = db.query(ClientPC).filter_by(id=body.client_id).first()
+        session_id = None
+        if pc:
+            pc.status = "in_use"
+            pc.current_user_id = body.user_id
+            new_session = PCSession(
+                user_id=body.user_id,
+                pc_id=body.client_id,
+                start_time=datetime.now(UTC),
+            )
+            db.add(new_session)
+            db.commit()
+            db.refresh(new_session)
+            session_id = new_session.id
+        else:
+            db.commit()
+
+        try:
+            new_minutes = _compute_minutes_for_pc(db, body.client_id)
+        except Exception:
+            new_minutes = body.minutes
+
+        payload = {
+            "purchase_id": body.purchase_id,
+            "client_id": body.client_id,
+            "user_id": body.user_id,
+            "minutes_added": body.minutes,
+            "new_remaining_time": new_minutes * 60,
+            "session_id": session_id,
+            "status": "confirmed",
+        }
+
+        envelope = json.dumps(build_event("payment.confirmed", payload))
+        cafe_id = ctx.cafe_id
+        try:
+            await ws_admin.broadcast_admin(envelope, cafe_id=cafe_id)
+        except Exception:
+            pass
+        try:
+            queue_device_event(db, body.client_id, "payment.confirmed", payload)
+        except Exception:
+            pass
+
+        if session_id:
+            session_payload = {
+                "session_id": session_id,
+                "client_id": body.client_id,
+                "user_id": body.user_id,
+                "start_time": datetime.now(UTC).isoformat(),
+                "remaining_minutes": new_minutes,
+            }
+            try:
+                queue_device_event(db, body.client_id, "session.started", session_payload)
+            except Exception:
+                pass
+
+        try:
+            log_action(db, body.user_id, "payment_confirmed", f"Purchase:{body.purchase_id} Minutes:{body.minutes} SessionId:{session_id}", None)
+        except Exception:
+            pass
+
+        return {
+            "status": "confirmed",
+            "purchase_id": body.purchase_id,
+            "session_id": session_id,
+            "minutes_added": body.minutes,
+            "new_remaining_time": new_minutes * 60,
+        }
+    finally:
+        db.close()
