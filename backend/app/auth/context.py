@@ -70,10 +70,24 @@ def get_auth_context(
         if user is None:
             raise HTTPException(status_code=401, detail="User not found")
 
+        resolved_cafe_id = claims.get("cafe_id") or user.cafe_id
+
+        # If still None, resolve from UserCafeMap (primary mapping first)
+        if resolved_cafe_id is None:
+            from app.models import UserCafeMap
+            mapping = (
+                db.query(UserCafeMap)
+                .filter(UserCafeMap.user_id == user.id)
+                .order_by(UserCafeMap.is_primary.desc())
+                .first()
+            )
+            if mapping:
+                resolved_cafe_id = mapping.cafe_id
+
         ctx = AuthContext(
             user=user,
             user_id=user.id,
-            cafe_id=claims.get("cafe_id"),
+            cafe_id=resolved_cafe_id,
             device_id=claims.get("device_id"),
             role=claims.get("role", user.role),
             ip_address=request.client.host if request.client else None,
@@ -100,12 +114,28 @@ def get_auth_context(
     if user is None:
         raise HTTPException(status_code=401, detail="User not found")
 
+    resolved_cafe_id = user.cafe_id
+    resolved_role = user.role
+
+    # If cafe_id is not on the user record, try UserCafeMap (primary mapping first)
+    if resolved_cafe_id is None:
+        from app.models import UserCafeMap
+        mapping = (
+            db.query(UserCafeMap)
+            .filter(UserCafeMap.user_id == user.id)
+            .order_by(UserCafeMap.is_primary.desc())
+            .first()
+        )
+        if mapping:
+            resolved_cafe_id = mapping.cafe_id
+            resolved_role = mapping.role or resolved_role
+
     ctx = AuthContext(
         user=user,
         user_id=user.id,
-        cafe_id=user.cafe_id,
+        cafe_id=resolved_cafe_id,
         device_id=None,
-        role=user.role,
+        role=resolved_role,
         ip_address=request.client.host if request.client else None,
     )
     # Store on request.state for RLS tenant context injection
