@@ -44,3 +44,8 @@ publish/
 # Logs
 logs/
 *.log
+
+# Separate Entities / Frontend Repositories
+About-us/
+primus-admin/
+Super-Admin/

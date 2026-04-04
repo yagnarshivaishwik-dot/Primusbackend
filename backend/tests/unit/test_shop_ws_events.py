@@ -4,7 +4,7 @@ import json
 def test_shop_purchase_emits_ws_events(monkeypatch, client, regular_user, user_token):
     events = []
 
-    async def fake_broadcast_admin(payload: str):
+    async def fake_broadcast_admin(payload: str, cafe_id=None):
         events.append(("admin", json.loads(payload)))
 
     async def fake_notify_pc(pc_id: int, payload: str):

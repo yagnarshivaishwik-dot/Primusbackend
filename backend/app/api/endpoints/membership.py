@@ -4,19 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import get_current_user, require_role
-from app.database import SessionLocal
+from app.auth.context import AuthContext, get_auth_context
+from app.auth.tenant import scoped_query, enforce_cafe_ownership
+from app.db.dependencies import get_cafe_db as get_db
 from app.models import MembershipPackage, User, UserMembership
 from app.schemas import MembershipPackageIn, MembershipPackageOut, UserMembershipOut
 
 router = APIRouter()
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 # Admin: Create new package
@@ -24,9 +18,10 @@ def get_db():
 def create_package(
     pkg: MembershipPackageIn,
     current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ):
-    m = MembershipPackage(**pkg.dict(), active=True)
+    m = MembershipPackage(**pkg.dict(), cafe_id=ctx.cafe_id, active=True)
     db.add(m)
     db.commit()
     db.refresh(m)
@@ -35,18 +30,25 @@ def create_package(
 
 # List all active packages
 @router.get("/package", response_model=list[MembershipPackageOut])
-def list_packages(db: Session = Depends(get_db)):
-    return db.query(MembershipPackage).filter_by(active=True).all()
+def list_packages(
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
+    return scoped_query(db, MembershipPackage, ctx).filter(MembershipPackage.active.is_(True)).all()
 
 
 # User: buy a package
 @router.post("/buy/{package_id}", response_model=UserMembershipOut)
 def buy_package(
-    package_id: int, current_user=Depends(get_current_user), db: Session = Depends(get_db)
+    package_id: int,
+    current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
     pkg = db.query(MembershipPackage).filter_by(id=package_id, active=True).first()
     if not pkg:
         raise HTTPException(status_code=404, detail="Package not found")
+    enforce_cafe_ownership(pkg, ctx)
     # Deduct price from wallet
     user = db.query(User).filter_by(id=current_user.id).first()
     if user.wallet_balance < pkg.price:

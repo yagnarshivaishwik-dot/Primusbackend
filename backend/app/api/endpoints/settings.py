@@ -6,7 +6,9 @@ from sqlalchemy.orm import Session
 
 from app.api.endpoints.audit import log_action
 from app.api.endpoints.auth import get_current_user
-from app.database import get_db
+from app.auth.context import AuthContext, get_auth_context
+from app.auth.tenant import scoped_query, enforce_cafe_ownership
+from app.db.dependencies import get_cafe_db as get_db
 from app.models import Setting, User
 from app.schemas import SettingIn, SettingOut, SettingsBulkUpdate, SettingUpdate
 
@@ -48,10 +50,11 @@ def get_settings(
     category: str | None = None,
     key: str | None = None,
     public_only: bool = False,
+    ctx: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ):
     """Get settings, optionally filtered by category or key"""
-    query = db.query(Setting)
+    query = scoped_query(db, Setting, ctx)
 
     if category:
         query = query.filter(Setting.category == category)
@@ -73,12 +76,16 @@ def get_settings(
 
 @router.get("/{setting_id}", response_model=SettingOut)
 def get_setting(
-    setting_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    setting_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
 ):
     """Get a specific setting by ID"""
     setting = db.query(Setting).filter(Setting.id == setting_id).first()
     if not setting:
         raise HTTPException(status_code=404, detail="Setting not found")
+    enforce_cafe_ownership(setting, ctx)
 
     # Convert stored value to appropriate type
     setting.value = parse_value(setting.value, setting.value_type)
@@ -90,6 +97,7 @@ def create_setting(
     setting: SettingIn,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
 ):
     """Create a new setting"""
     # Check if setting with same category and key already exists
@@ -114,6 +122,7 @@ def create_setting(
         value_type=setting.value_type,
         description=setting.description,
         updated_by=current_user.id,
+        cafe_id=ctx.cafe_id,
     )
 
     db.add(db_setting)
@@ -139,11 +148,13 @@ def update_setting(
     setting_update: SettingUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
 ):
     """Update an existing setting"""
     db_setting = db.query(Setting).filter(Setting.id == setting_id).first()
     if not db_setting:
         raise HTTPException(status_code=404, detail="Setting not found")
+    enforce_cafe_ownership(db_setting, ctx)
 
     # Store old value for logging
     old_value = parse_value(db_setting.value, db_setting.value_type)
@@ -179,6 +190,7 @@ def bulk_update_settings(
     bulk_update: SettingsBulkUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
 ):
     """Bulk update multiple settings"""
     updated_settings = []
@@ -193,6 +205,7 @@ def bulk_update_settings(
 
         if db_setting:
             # Update existing setting
+            enforce_cafe_ownership(db_setting, ctx)
             old_value = parse_value(db_setting.value, db_setting.value_type)
             stored_value = serialize_value(setting_data.value, setting_data.value_type)
 
@@ -224,6 +237,7 @@ def bulk_update_settings(
                 value_type=setting_data.value_type,
                 description=setting_data.description,
                 updated_by=current_user.id,
+                cafe_id=ctx.cafe_id,
             )
 
             db.add(db_setting)
@@ -245,12 +259,16 @@ def bulk_update_settings(
 
 @router.delete("/{setting_id}")
 def delete_setting(
-    setting_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    setting_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
 ):
     """Delete a setting"""
     db_setting = db.query(Setting).filter(Setting.id == setting_id).first()
     if not db_setting:
         raise HTTPException(status_code=404, detail="Setting not found")
+    enforce_cafe_ownership(db_setting, ctx)
 
     setting_info = f"{db_setting.category}.{db_setting.key}"
 
@@ -266,10 +284,11 @@ def delete_setting(
 @router.get("/categories/{category}", response_model=list[SettingOut])
 def get_settings_by_category(
     category: str,
+    ctx: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ):
     """Get all settings for a specific category"""
-    settings = db.query(Setting).filter(Setting.category == category).all()
+    settings = scoped_query(db, Setting, ctx).filter(Setting.category == category).all()
 
     # Convert stored values to appropriate types
     for setting in settings:
@@ -279,9 +298,12 @@ def get_settings_by_category(
 
 
 @router.get("/public", response_model=list[SettingOut])
-def get_public_settings(db: Session = Depends(get_db)):
-    """Get all public settings (no authentication required)"""
-    settings = db.query(Setting).filter(Setting.is_public.is_(True)).all()
+def get_public_settings(
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
+    """Get all public settings (scoped by cafe)"""
+    settings = scoped_query(db, Setting, ctx).filter(Setting.is_public.is_(True)).all()
 
     # Convert stored values to appropriate types
     for setting in settings:
@@ -292,7 +314,9 @@ def get_public_settings(db: Session = Depends(get_db)):
 
 @router.post("/initialize-defaults")
 def initialize_default_settings(
-    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
     """Initialize default settings for all categories"""
     if current_user.role not in ["admin", "owner", "superadmin"]:
@@ -652,6 +676,7 @@ def initialize_default_settings(
                 category=setting_data["category"],
                 description=setting_data.get("description", ""),
                 is_public=False,
+                cafe_id=ctx.cafe_id,
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
             )

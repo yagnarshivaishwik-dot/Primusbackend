@@ -6,20 +6,14 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from app.api.endpoints.auth import require_role
-from app.database import SessionLocal
+from app.auth.context import AuthContext, get_auth_context
+from app.auth.tenant import scoped_query
+from app.db.dependencies import get_cafe_db as get_db
 from app.models import PC, Order, OrderItem, User, WalletTransaction
 from app.models import Session as PCSession
 from app.utils.cache import get_or_set
 
 router = APIRouter()
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 def _range(period: str | None, custom_start: str | None, custom_end: str | None):
@@ -63,6 +57,7 @@ async def stats_summary(
     end: str | None = None,
     db: Session = Depends(get_db),
     current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
 ):
     start_dt, end_dt = _range(period, start, end)
 
@@ -72,14 +67,15 @@ async def stats_summary(
 
     async def _compute() -> dict:
         def _query() -> dict:
-            active_sessions = db.query(PCSession).filter(PCSession.end_time.is_(None)).count()
+            active_sessions = scoped_query(db, PCSession, ctx).filter(PCSession.end_time.is_(None)).count()
             todays_sessions = (
-                db.query(PCSession)
+                scoped_query(db, PCSession, ctx)
                 .filter(PCSession.start_time >= start_dt, PCSession.start_time < end_dt)
                 .count()
             )
             revenue_today = (
-                db.query(func.sum(WalletTransaction.amount))
+                scoped_query(db, WalletTransaction, ctx)
+                .with_entities(func.sum(WalletTransaction.amount))
                 .filter(
                     WalletTransaction.timestamp >= start_dt,
                     WalletTransaction.timestamp < end_dt,
@@ -89,13 +85,14 @@ async def stats_summary(
                 or 0.0
             )
             order_total = (
-                db.query(func.sum(Order.total))
+                scoped_query(db, Order, ctx)
+                .with_entities(func.sum(Order.total))
                 .filter(Order.created_at >= start_dt, Order.created_at < end_dt)
                 .scalar()
                 or 0.0
             )
-            total_users = db.query(User).count()
-            total_pcs = db.query(PC).count()
+            total_users = scoped_query(db, User, ctx).count()
+            total_pcs = scoped_query(db, PC, ctx).count()
             return {
                 "active_sessions": active_sessions,
                 "todays_sessions": todays_sessions,
@@ -122,16 +119,22 @@ async def stats_summary(
 
 # Top users by spending
 @router.get("/top-users")
-async def top_users(db: Session = Depends(get_db), current_user=Depends(require_role("admin"))):
+async def top_users(
+    db: Session = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+):
     cache_id = "top-users"
 
     async def _compute() -> list[dict]:
         def _query() -> list[dict]:
+            q = db.query(User.name, func.sum(WalletTransaction.amount).label("spent")).join(
+                WalletTransaction, WalletTransaction.user_id == User.id
+            ).filter(WalletTransaction.type == "deduct")
+            if not ctx.is_superadmin and ctx.cafe_id:
+                q = q.filter(User.cafe_id == ctx.cafe_id)
             res = (
-                db.query(User.name, func.sum(WalletTransaction.amount).label("spent"))
-                .join(WalletTransaction, WalletTransaction.user_id == User.id)
-                .filter(WalletTransaction.type == "deduct")
-                .group_by(User.name)
+                q.group_by(User.name)
                 .order_by(func.sum(WalletTransaction.amount))
                 .limit(10)
                 .all()
@@ -154,20 +157,20 @@ async def top_users(db: Session = Depends(get_db), current_user=Depends(require_
 
 # Peak hours (sessions started by hour of day)
 @router.get("/peak-hours")
-async def peak_hours(db: Session = Depends(get_db), current_user=Depends(require_role("admin"))):
+async def peak_hours(
+    db: Session = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+):
     cache_id = "peak-hours"
 
     async def _compute() -> list[dict]:
         def _query() -> list[dict]:
-            res = (
-                db.query(
-                    func.extract("hour", PCSession.start_time).label("hour"),
-                    func.count().label("count"),
-                )
-                .group_by("hour")
-                .order_by("hour")
-                .all()
+            q = scoped_query(db, PCSession, ctx).with_entities(
+                func.extract("hour", PCSession.start_time).label("hour"),
+                func.count().label("count"),
             )
+            res = q.group_by("hour").order_by("hour").all()
             return [{"hour": int(r.hour), "count": r.count} for r in res]
 
         return await run_in_threadpool(_query)
@@ -192,6 +195,7 @@ async def sales_series(
     end: str | None = None,
     db: Session = Depends(get_db),
     current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
 ):
     start_dt, end_dt = _range(period, start, end)
     cache_id = (
@@ -201,7 +205,8 @@ async def sales_series(
     async def _compute() -> dict:
         def _query() -> dict:
             res = (
-                db.query(
+                scoped_query(db, WalletTransaction, ctx)
+                .with_entities(
                     func.extract("hour", WalletTransaction.timestamp).label("hour"),
                     func.sum(WalletTransaction.amount).label("amt"),
                 )
@@ -241,6 +246,7 @@ async def users_series(
     end: str | None = None,
     db: Session = Depends(get_db),
     current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
 ):
     start_dt, end_dt = _range(period, start, end)
     cache_id = (
@@ -250,7 +256,8 @@ async def users_series(
     async def _compute() -> dict:
         def _query() -> dict:
             res = (
-                db.query(
+                scoped_query(db, User, ctx)
+                .with_entities(
                     func.extract("hour", User.created_at).label("hour"),
                     func.count().label("cnt"),
                 )
@@ -286,6 +293,7 @@ async def sales_table(
     end: str | None = None,
     db: Session = Depends(get_db),
     current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
 ):
     start_dt, end_dt = _range(period, start, end)
     cache_id = (
@@ -296,7 +304,7 @@ async def sales_table(
         def _query() -> list[dict]:
             from app.models import Product
 
-            res = (
+            q = (
                 db.query(
                     Product.name,
                     func.count(OrderItem.id).label("qty"),
@@ -305,10 +313,10 @@ async def sales_table(
                 .join(OrderItem, OrderItem.product_id == Product.id)
                 .join(Order, Order.id == OrderItem.order_id)
                 .filter(Order.created_at >= start_dt, Order.created_at < end_dt)
-                .group_by(Product.name)
-                .order_by(Product.name)
-                .all()
             )
+            if not ctx.is_superadmin and ctx.cafe_id:
+                q = q.filter(Order.cafe_id == ctx.cafe_id)
+            res = q.group_by(Product.name).order_by(Product.name).all()
             return [
                 {"product": r.name, "qty": int(r.qty or 0), "revenue": float(r.revenue or 0.0)}
                 for r in res

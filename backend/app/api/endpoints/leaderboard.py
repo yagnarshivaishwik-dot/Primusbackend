@@ -5,7 +5,9 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from app.api.endpoints.auth import get_current_user, require_role
-from app.database import SessionLocal
+from app.auth.context import AuthContext, get_auth_context
+from app.auth.tenant import scoped_query, enforce_cafe_ownership
+from app.db.dependencies import get_cafe_db as get_db
 from app.models import Leaderboard, LeaderboardEntry
 from app.schemas import LeaderboardEntryOut, LeaderboardIn, LeaderboardOut
 from app.utils.cache import get_or_set, publish_invalidation
@@ -13,20 +15,15 @@ from app.utils.cache import get_or_set, publish_invalidation
 router = APIRouter()
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 @router.post("/", response_model=LeaderboardOut)
 async def create_lb(
-    lb: LeaderboardIn, current_user=Depends(require_role("admin")), db: Session = Depends(get_db)
+    lb: LeaderboardIn,
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
     def _create() -> Leaderboard:
-        leaderboard = Leaderboard(**lb.dict(), active=True)
+        leaderboard = Leaderboard(**lb.dict(), cafe_id=ctx.cafe_id, active=True)
         db.add(leaderboard)
         db.commit()
         db.refresh(leaderboard)
@@ -47,10 +44,13 @@ async def create_lb(
 
 
 @router.get("/", response_model=list[LeaderboardOut])
-async def list_lbs(db: Session = Depends(get_db)):
+async def list_lbs(
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
     async def _compute() -> list[LeaderboardOut]:
         def _query():
-            return db.query(Leaderboard).filter_by(active=True).all()
+            return scoped_query(db, Leaderboard, ctx).filter(Leaderboard.active.is_(True)).all()
 
         return await run_in_threadpool(_query)
 
@@ -90,12 +90,14 @@ async def record_value(
     leaderboard_id: int,
     value: int,
     current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ):
     def _record() -> None:
         lb = db.query(Leaderboard).filter_by(id=leaderboard_id, active=True).first()
         if not lb:
             raise HTTPException(status_code=404, detail="Leaderboard not found")
+        enforce_cafe_ownership(lb, ctx)
         start, end = period_bounds(lb.scope)
         entry = (
             db.query(LeaderboardEntry)

@@ -8,7 +8,7 @@ from google.oauth2 import id_token as google_id_token
 from pydantic import BaseModel
 from starlette.config import Config
 
-from app.database import SessionLocal
+from app.db.global_db import global_session_factory as SessionLocal
 from app.models import User
 
 router = APIRouter()

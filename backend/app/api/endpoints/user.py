@@ -13,17 +13,23 @@ from app.api.endpoints.auth import (
     ph,
     require_role,
 )
-from app.database import get_db
+from app.auth.context import AuthContext, get_auth_context
+from app.auth.tenant import scoped_query, enforce_cafe_ownership
+from app.db.dependencies import get_cafe_db as get_db
 from app.models import User
 
 router = APIRouter()
 
 
 @router.get("/", response_model=list[dict])
-def list_users(current_user=Depends(require_role("admin")), db: Session = Depends(get_db)):
+def list_users(
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
     from app.models import UserOffer
-    
-    users = db.query(User).order_by(User.id.asc()).all()
+
+    users = scoped_query(db, User, ctx).order_by(User.id.asc()).all()
     out = []
     for u in users:
         # Calculate total hours remaining from UserOffers
@@ -57,6 +63,7 @@ def create_user(
     payload: RegisterIn,
     request: Request,
     current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ):
     """Create a new user (admin only)."""
@@ -83,6 +90,7 @@ def create_user(
         phone=payload.phone,
         birthdate=bd,
         is_email_verified=True,
+        cafe_id=ctx.cafe_id,
     )
     db.add(user)
     db.commit()
@@ -105,9 +113,12 @@ def create_user(
 
 @router.get("/export")
 def export_users(
-    request: Request, current_user=Depends(require_role("admin")), db: Session = Depends(get_db)
+    request: Request,
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
-    users = db.query(User).order_by(User.id.asc()).all()
+    users = scoped_query(db, User, ctx).order_by(User.id.asc()).all()
     buf = io.StringIO()
     writer = csv.writer(buf)
     writer.writerow(["username", "email", "role", "first_name", "last_name", "phone"])
@@ -148,6 +159,7 @@ def import_users(
     request: Request,
     file: UploadFile = File(...),
     current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ):
     import os
@@ -230,6 +242,7 @@ def import_users(
                 last_name=sanitize_csv_cell((row.get("last_name") or "").strip()) or None,
                 phone=sanitize_csv_cell((row.get("phone") or "").strip()) or None,
                 is_email_verified=False,  # Require email verification for imported users
+                cafe_id=ctx.cafe_id,
             )
             db.add(user)
             created += 1

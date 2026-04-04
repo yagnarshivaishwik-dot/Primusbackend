@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import get_current_user, require_role
-from app.database import SessionLocal
+from app.db.dependencies import get_global_db as get_db
 from app.models import Cafe, ClientPC, License, LicenseAssignment, PlatformAccount
 from app.schemas import (
     LicenseAssignIn,
@@ -16,16 +16,10 @@ from app.schemas import (
     PlatformAccountOut,
 )
 from app.utils.encryption import encrypt_value
+from app.utils.license import create_signed_license_key, decode_signed_license_key
 
 router = APIRouter()
 
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 # SUPERADMIN: Issue license for a cafe
@@ -49,7 +43,7 @@ def create_license(
     return license_obj
 
 
-# SUPERADMIN: Auto-generate license key
+# SUPERADMIN: Auto-generate license key (signed JWT)
 @router.post("/auto", response_model=LicenseOut)
 def create_auto_license(
     cafe_id: int,
@@ -58,12 +52,48 @@ def create_auto_license(
     current_user=Depends(require_role("superadmin")),
     db: Session = Depends(get_db),
 ):
-    key = secrets.token_urlsafe(16)
+    cafe = db.query(Cafe).filter_by(id=cafe_id).first()
+    if not cafe:
+        raise HTTPException(status_code=404, detail="Cafe not found")
+    key = create_signed_license_key(cafe_id=cafe_id, max_pcs=max_pcs, expires_at=expires_at)
     license_obj = License(key=key, cafe_id=cafe_id, expires_at=expires_at, max_pcs=max_pcs)
     db.add(license_obj)
     db.commit()
     db.refresh(license_obj)
     return license_obj
+
+
+# SUPERADMIN: Generate a signed license key without persisting (for offline provisioning)
+@router.post("/signed/generate")
+def generate_signed_license(
+    cafe_id: int,
+    max_pcs: int,
+    expires_at: datetime | None = None,
+    current_user=Depends(require_role("superadmin")),
+    db: Session = Depends(get_db),
+):
+    """
+    Generate a cryptographically signed license key (JWT).
+    The caller is responsible for storing this key and sending it to the cafe admin.
+    """
+    cafe = db.query(Cafe).filter_by(id=cafe_id).first()
+    if not cafe:
+        raise HTTPException(status_code=404, detail="Cafe not found")
+    key = create_signed_license_key(cafe_id=cafe_id, max_pcs=max_pcs, expires_at=expires_at)
+    return {"key": key, "cafe_id": cafe_id, "max_pcs": max_pcs, "expires_at": expires_at}
+
+
+# Inspect / decode a signed license key (superadmin only)
+@router.get("/signed/inspect")
+def inspect_signed_license(
+    key: str,
+    current_user=Depends(require_role("superadmin")),
+):
+    """Decode a signed license key to inspect its embedded claims."""
+    payload = decode_signed_license_key(key)
+    if payload is None:
+        raise HTTPException(status_code=400, detail="Not a valid signed license key")
+    return payload
 
 
 # SUPERADMIN/CAFEADMIN: List all licenses for my cafe

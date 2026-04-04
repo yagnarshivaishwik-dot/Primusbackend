@@ -4,24 +4,23 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import get_current_user, require_role
-from app.database import SessionLocal
+from app.db.dependencies import get_global_db as get_db
 from app.models import AuditLog
 from app.schemas import AuditLogOut
 
 router = APIRouter()
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
 
 # Utility: log an action (call from other endpoints!)
 def log_action(
-    db: Session, user_id: int | None, action: str, detail: str, ip: str | None = None
+    db: Session,
+    user_id: int | None,
+    action: str,
+    detail: str,
+    ip: str | None = None,
+    cafe_id: int | None = None,
+    device_id: str | None = None,
 ) -> None:
     """
     Log an action to the audit log.
@@ -53,6 +52,8 @@ def log_action(
                 detail[:1000] if detail and len(detail) > 1000 else detail
             ),  # Limit detail length
             ip=ip,
+            cafe_id=cafe_id,
+            device_id=device_id,
             timestamp=datetime.now(UTC),
         )
         db.add(entry)

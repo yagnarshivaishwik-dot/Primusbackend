@@ -4,24 +4,23 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import get_current_user
-from app.database import SessionLocal
+from app.auth.context import AuthContext, get_auth_context
+from app.auth.tenant import scoped_query, enforce_cafe_ownership
+from app.db.dependencies import get_cafe_db as get_db
 from app.models import PC, Game, PCGame
 from app.schemas import GameBase, GameOut, PCGameOut
 
 router = APIRouter()
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 # Add new game (admin-only in future)
 @router.post("/", response_model=GameOut)
-def add_game(game: GameBase, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+def add_game(
+    game: GameBase,
+    current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
     db_game = db.query(Game).filter_by(name=game.name).first()
     if db_game:
         raise HTTPException(status_code=400, detail="Game already exists")
@@ -32,6 +31,7 @@ def add_game(game: GameBase, current_user=Depends(get_current_user), db: Session
         version=game.version,
         last_updated=datetime.utcnow(),
         is_free=getattr(game, "is_free", False),
+        cafe_id=ctx.cafe_id,
     )
     db.add(db_game)
     db.commit()
@@ -41,8 +41,12 @@ def add_game(game: GameBase, current_user=Depends(get_current_user), db: Session
 
 # List all games
 @router.get("/", response_model=list[GameOut])
-def list_games(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
-    return db.query(Game).order_by(Game.name).all()
+def list_games(
+    current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
+    return scoped_query(db, Game, ctx).order_by(Game.name).all()
 
 
 # Assign game to PC

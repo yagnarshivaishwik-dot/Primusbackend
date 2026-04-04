@@ -4,26 +4,23 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import get_current_user, require_role
-from app.database import SessionLocal
+from app.auth.context import AuthContext, get_auth_context
+from app.auth.tenant import scoped_query, enforce_cafe_ownership
+from app.db.dependencies import get_cafe_db as get_db
 from app.models import CoinTransaction, Prize, PrizeRedemption, User
 from app.schemas import PrizeIn, PrizeOut, PrizeRedemptionOut
 
 router = APIRouter()
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 @router.post("/", response_model=PrizeOut)
 def create_prize(
-    prize: PrizeIn, current_user=Depends(require_role("admin")), db: Session = Depends(get_db)
+    prize: PrizeIn,
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
-    p = Prize(**prize.dict(), active=True)
+    p = Prize(**prize.dict(), cafe_id=ctx.cafe_id, active=True)
     db.add(p)
     db.commit()
     db.refresh(p)
@@ -31,17 +28,24 @@ def create_prize(
 
 
 @router.get("/", response_model=list[PrizeOut])
-def list_prizes(db: Session = Depends(get_db)):
-    return db.query(Prize).filter_by(active=True).all()
+def list_prizes(
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
+    return scoped_query(db, Prize, ctx).filter(Prize.active.is_(True)).all()
 
 
 @router.post("/redeem/{prize_id}", response_model=PrizeRedemptionOut)
 def redeem_prize(
-    prize_id: int, current_user=Depends(get_current_user), db: Session = Depends(get_db)
+    prize_id: int,
+    current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ):
     prize = db.query(Prize).filter_by(id=prize_id, active=True).first()
     if not prize:
         raise HTTPException(status_code=404, detail="Prize not found")
+    enforce_cafe_ownership(prize, ctx)
     user = db.query(User).filter_by(id=current_user.id).first()
     if user.coins_balance < prize.coin_cost:
         raise HTTPException(status_code=400, detail="Not enough coins")

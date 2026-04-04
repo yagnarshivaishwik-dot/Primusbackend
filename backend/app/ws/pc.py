@@ -1,12 +1,18 @@
 import asyncio
+import ipaddress
 import json
+import time
+import hmac
+import hashlib
+from datetime import datetime, UTC
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from app.database import SessionLocal
-from app.models import ClientPC, User
+from app.db.global_db import global_session_factory as SessionLocal
+from app.models import ClientPC, SystemEvent, User
 from app.ws.admin import broadcast_admin
 from app.ws.auth import WSAuthError, authenticate_ws_token, build_event
+from app.utils.cache import publish_invalidation
 
 router = APIRouter()
 
@@ -15,17 +21,25 @@ _pc_connections: dict[int, list[WebSocket]] = {}
 
 async def notify_pc(pc_id: int, payload: str):
     conns = _pc_connections.get(pc_id, [])
+    if not conns:
+        print(f"[notify_pc] No active connections for PC #{pc_id} — command will rely on HTTP polling")
+        return
+
     living: list[WebSocket] = []
     for ws in conns:
         try:
             await ws.send_text(payload)
             living.append(ws)
-        except Exception:
+        except Exception as e:
+            print(f"[notify_pc] Failed to send to PC #{pc_id}: {e} — removing dead connection")
             try:
                 await ws.close()
             except Exception:
                 pass
     _pc_connections[pc_id] = living
+
+    if not living:
+        print(f"[notify_pc] All connections dead for PC #{pc_id} — command will rely on HTTP polling")
 
 
 async def broadcast(payload: str):
@@ -54,22 +68,137 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
     try:
         raw = await websocket.receive_text()
         msg = json.loads(raw)
-        if msg.get("event") != "auth":
-            raise WSAuthError("First message must be auth")
-        token = (msg.get("payload") or {}).get("token") or ""
-        user = authenticate_ws_token(token)
+        if msg.get("event") not in ("auth", "device_auth"):
+            raise WSAuthError("First message must be auth or device_auth")
 
-        # Optional: ensure the user belongs to the same cafe as the PC
+        event_type = msg.get("event")
         db = SessionLocal()
+        status_changed = False
+        pc_hostname = None
         try:
             pc = db.query(ClientPC).filter_by(id=pc_id).first()
             if not pc:
                 raise WSAuthError("PC not found")
-            if getattr(pc, "cafe_id", None) and getattr(user, "cafe_id", None):
-                if pc.cafe_id != user.cafe_id:
-                    raise WSAuthError("PC not in same cafe")
+
+            if event_type == "auth":
+                token = (msg.get("payload") or {}).get("token") or ""
+                auth_result = authenticate_ws_token(token)
+                user = auth_result.user
+                if getattr(pc, "cafe_id", None) and auth_result.cafe_id:
+                    if pc.cafe_id != auth_result.cafe_id:
+                        raise WSAuthError("PC not in same cafe")
+
+                # Update PC status on JWT reconnection
+                prev_status = pc.status
+                pc.status = "online"
+                pc.last_seen = datetime.now(UTC)
+                db.commit()
+
+                if prev_status != "online":
+                    event = SystemEvent(
+                        type="pc.status",
+                        cafe_id=pc.cafe_id,
+                        pc_id=pc.id,
+                        payload={"status": "online", "reason": "ws_reconnect"},
+                    )
+                    db.add(event)
+                    db.commit()
+                    status_changed = True
+
+            elif event_type == "device_auth":
+                payload = msg.get("payload") or {}
+                signature = payload.get("signature")
+                timestamp = payload.get("timestamp")
+
+                if not signature or not timestamp:
+                    raise WSAuthError("Missing signature or timestamp")
+
+                try:
+                    ts_int = int(timestamp)
+                    now = int(time.time())
+                    if abs(now - ts_int) > 300:
+                        raise WSAuthError("Timestamp expired")
+                except ValueError:
+                    raise WSAuthError("Invalid timestamp")
+
+                if not pc.device_secret:
+                    raise WSAuthError("PC has no device secret")
+
+                message = f"{timestamp}".encode()
+                expected_sig = hmac.new(
+                    pc.device_secret.encode(), message, hashlib.sha256
+                ).hexdigest()
+
+                if not hmac.compare_digest(signature, expected_sig):
+                    raise WSAuthError("Invalid device signature")
+
+                # Reject devices that are not active (pending/revoked)
+                if getattr(pc, "device_status", "active") != "active":
+                    raise WSAuthError(
+                        f"Device not active (status: {pc.device_status})"
+                    )
+
+                # Validate connecting IP against allowed range if configured
+                if pc.allowed_ip_range:
+                    try:
+                        client_host = websocket.client.host if websocket.client else None
+                        if client_host:
+                            client_ip = ipaddress.ip_address(client_host)
+                            allowed_net = ipaddress.ip_network(
+                                pc.allowed_ip_range, strict=False
+                            )
+                            if client_ip not in allowed_net:
+                                raise WSAuthError(
+                                    f"IP {client_host} not in allowed range {pc.allowed_ip_range}"
+                                )
+                    except ValueError:
+                        # Malformed IP or CIDR — reject to be safe
+                        raise WSAuthError("Invalid IP or allowed_ip_range configuration")
+
+                prev_status = pc.status
+                pc.status = "online"
+                pc.last_seen = datetime.now(UTC)
+                db.commit()
+
+                if prev_status != "online":
+                    event = SystemEvent(
+                        type="pc.status",
+                        cafe_id=pc.cafe_id,
+                        pc_id=pc.id,
+                        payload={"status": "online", "reason": "ws_reconnect"},
+                    )
+                    db.add(event)
+                    db.commit()
+                    status_changed = True
+
+            pc_hostname = pc.name
+            pc_cafe_id = pc.cafe_id
         finally:
             db.close()
+
+        # Broadcast status change and invalidate cache (after db is closed)
+        if status_changed:
+            try:
+                await publish_invalidation({
+                    "scope": "client_pc",
+                    "items": [{"type": "client_pc_list", "id": "*"}]
+                })
+            except Exception:
+                pass
+
+            status_payload = {
+                "client_id": pc_id,
+                "online": True,
+                "hostname": pc_hostname,
+            }
+            try:
+                await broadcast_admin(
+                    json.dumps(build_event("pc.status.update", status_payload)),
+                    cafe_id=pc_cafe_id,
+                )
+            except Exception:
+                pass
+
     except (WSAuthError, json.JSONDecodeError):
         try:
             await websocket.send_text(
@@ -98,24 +227,31 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
             event = data.get("event")
             payload = data.get("payload") or {}
 
-            # Heartbeat: surface lightweight status to admins
+            # Heartbeat: update last_seen and surface status to admins
             if event == "heartbeat":
-                # Lookup current user attached to this client PC for user_name
+                # Update last_seen so presence_monitor_loop knows this PC is alive.
+                # Also lookup current user for admin display.
                 user_name: str | None = None
                 try:
                     db_hb = SessionLocal()
                     try:
                         pc_obj = db_hb.query(ClientPC).filter_by(id=pc_id).first()
-                        if pc_obj and pc_obj.current_user_id:
-                            user_obj = (
-                                db_hb.query(User).filter_by(id=pc_obj.current_user_id).first()
-                            )
-                            if user_obj:
-                                user_name = (
-                                    getattr(user_obj, "name", None)
-                                    or f"{getattr(user_obj, 'first_name', '')} {getattr(user_obj, 'last_name', '')}".strip()
-                                    or getattr(user_obj, "email", "")
+                        if pc_obj:
+                            pc_obj.last_seen = datetime.now(UTC)
+                            if pc_obj.status != "online":
+                                pc_obj.status = "online"
+                            db_hb.commit()
+
+                            if pc_obj.current_user_id:
+                                user_obj = (
+                                    db_hb.query(User).filter_by(id=pc_obj.current_user_id).first()
                                 )
+                                if user_obj:
+                                    user_name = (
+                                        getattr(user_obj, "name", None)
+                                        or f"{getattr(user_obj, 'first_name', '')} {getattr(user_obj, 'last_name', '')}".strip()
+                                        or getattr(user_obj, "email", "")
+                                    )
                     finally:
                         db_hb.close()
                 except Exception:
@@ -134,7 +270,8 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
                 }
                 try:
                     await broadcast_admin(
-                        json.dumps(build_event("pc.status.update", status_payload))
+                        json.dumps(build_event("pc.status.update", status_payload)),
+                        cafe_id=pc_cafe_id,
                     )
                 except Exception:
                     pass
@@ -149,21 +286,24 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
                     "remaining_time_seconds": remaining,
                 }
                 try:
-                    await broadcast_admin(json.dumps(build_event("pc.time.update", status_payload)))
+                    await broadcast_admin(
+                        json.dumps(build_event("pc.time.update", status_payload)),
+                        cafe_id=pc_cafe_id,
+                    )
                 except Exception:
                     pass
 
             # Command acknowledgement from client
             elif event == "command.ack":
                 try:
-                    await broadcast_admin(json.dumps(data))
+                    await broadcast_admin(json.dumps(data), cafe_id=pc_cafe_id)
                 except Exception:
                     pass
 
             # Chat message from PC (optional real-time path)
             elif event == "chat.message":
                 try:
-                    await broadcast_admin(json.dumps(data))
+                    await broadcast_admin(json.dumps(data), cafe_id=pc_cafe_id)
                 except Exception:
                     pass
 
@@ -172,5 +312,55 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
     finally:
         try:
             _pc_connections[pc_id].remove(websocket)
+        except Exception:
+            pass
+
+        # Only mark offline if NO other connections remain for this PC.
+        # This prevents a race condition where a reconnecting client's new
+        # WebSocket has already been registered before this finally block runs,
+        # which would incorrectly overwrite the "online" status.
+        remaining = _pc_connections.get(pc_id, [])
+        if remaining:
+            return
+
+        # Small grace period to allow fast reconnects to establish
+        # before we mark offline and broadcast.
+        await asyncio.sleep(2)
+
+        # Re-check after grace period — a new connection may have arrived
+        remaining = _pc_connections.get(pc_id, [])
+        if remaining:
+            return
+
+        # No connections remain — mark PC offline
+        try:
+            db = SessionLocal()
+            try:
+                pc = db.query(ClientPC).filter_by(id=pc_id).first()
+                if pc and pc.status != "offline":
+                    pc.status = "offline"
+                    db.commit()
+            finally:
+                db.close()
+
+            try:
+                await publish_invalidation({
+                    "scope": "client_pc",
+                    "items": [{"type": "client_pc_list", "id": "*"}]
+                })
+            except Exception:
+                pass
+
+            status_payload = {
+                "client_id": pc_id,
+                "online": False
+            }
+            try:
+                await broadcast_admin(
+                    json.dumps(build_event("pc.status.update", status_payload)),
+                    cafe_id=pc_cafe_id,
+                )
+            except Exception:
+                pass
         except Exception:
             pass

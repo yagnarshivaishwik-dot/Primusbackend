@@ -13,6 +13,8 @@ from pydantic import BaseModel, EmailStr
 
 from app.api.endpoints import (
     admin_events,
+    admin_sessions,
+    analytics,
     announcement,
     audit,
     auth,
@@ -23,6 +25,7 @@ from app.api.endpoints import (
     chat,
     client_pc,
     coupon,
+    device_admin,
     event,
     game,
     games,
@@ -42,6 +45,7 @@ from app.api.endpoints import (
     pc_group,
     prize,
     remote_command,
+    reports,
     screenshot,
     security_utils,
     session,
@@ -50,9 +54,11 @@ from app.api.endpoints import (
     social_auth,
     staff,
     stats,
+    subscription,
     support_ticket,
     system_control,
     update,
+    upi,
     user,
     user_group,
     wallet,
@@ -65,6 +71,7 @@ from app.middleware.security import (
     SecurityHeadersMiddleware,
 )
 from app.tasks.presence import presence_monitor_loop
+from app.tasks.revenue_aggregation import revenue_aggregation_loop
 from app.tasks.timeleft_broadcast import _broadcast_timeleft_loop
 from app.utils.cache import (
     close_redis_client,
@@ -95,6 +102,7 @@ async def lifespan(app: FastAPI):
     try:
         asyncio.create_task(_broadcast_timeleft_loop())
         asyncio.create_task(presence_monitor_loop())
+        asyncio.create_task(revenue_aggregation_loop())
     except Exception as e:
         logging.error(f"Failed to start background task: {e}")
 
@@ -250,6 +258,7 @@ app.include_router(wallet.router, prefix="/api/wallet", tags=["wallet"])
 app.include_router(game.router, prefix="/api/game", tags=["game"])
 app.include_router(remote_command.router, prefix="/api/command", tags=["remote_command"])
 app.include_router(stats.router, prefix="/api/stats", tags=["stats"])
+app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 app.include_router(notification.router, prefix="/api/notification", tags=["notification"])
 app.include_router(support_ticket.router, prefix="/api/support", tags=["support"])
@@ -286,6 +295,14 @@ app.include_router(games.router, prefix="/api/games", tags=["games"])
 app.include_router(shop.router, prefix="/api/v1/shop", tags=["shop"])
 app.include_router(shop.router, prefix="/api/shop", tags=["shop"])  # Also mount at /api/shop for client compatibility
 app.include_router(admin_events.router, prefix="/api/admin/events", tags=["events"])
+app.include_router(admin_sessions.router, prefix="/api/admin/sessions", tags=["admin_sessions"])
+app.include_router(device_admin.router, prefix="/api/device", tags=["device"])
+
+# Financial subsystem routes
+app.include_router(upi.router)  # prefix already set in router (/api/upi)
+app.include_router(subscription.router)  # prefix already set (/api/subscription)
+app.include_router(subscription.invoices_router)  # prefix already set (/api/invoices)
+app.include_router(reports.router)  # prefix already set (/api/reports)
 
 # Internal SuperAdmin routes
 app.include_router(internal_auth.router, prefix="/api/internal/auth", tags=["internal"])

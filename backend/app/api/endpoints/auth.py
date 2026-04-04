@@ -22,7 +22,7 @@ from app.config import (
     OIDC_AUDIENCE,
     OIDC_ISSUER,
 )
-from app.database import get_db
+from app.db.dependencies import get_global_db as get_db
 from app.models import User
 from app.schemas import UserOut, UserUpdate
 from app.utils.security import validate_password_strength
@@ -90,23 +90,25 @@ def get_current_user(token: str = Depends(get_token), db: Session = Depends(get_
 # ---- Role-based Dependency ----
 def require_role(role: str):
     """
-    Create a dependency that requires a specific role.
+    Create a dependency that requires a specific role (or higher in the hierarchy).
+
+    Delegates to app.auth.context.require_role for unified role-hierarchy checking
+    (superadmin > cafeadmin/admin/owner > staff > client), then unwraps the
+    AuthContext back to a plain User object so all existing endpoints keep working
+    without changes.
 
     Args:
-        role: Required role name (e.g., 'admin', 'staff', 'client')
+        role: Minimum required role name (e.g., 'admin', 'staff', 'client')
 
     Returns:
-        Dependency function that checks user role
+        Dependency function that checks user role and returns the User object.
     """
+    from app.auth.context import require_role as _ctx_require_role
 
-    def role_checker(current_user: User = Depends(get_current_user)) -> User:
-        # Allow superadmin to access admin routes
-        if role == "admin" and current_user.role == "superadmin":
-            return current_user
+    _ctx_checker = _ctx_require_role(role)
 
-        if current_user.role != role:
-            raise HTTPException(status_code=403, detail="Not enough permissions")
-        return current_user
+    def role_checker(ctx=Depends(_ctx_checker)) -> User:
+        return ctx.user
 
     return role_checker
 
@@ -308,32 +310,219 @@ async def login(
     except Exception:
         pass
 
-    # Create Token
-    access_token = create_access_token(
-        data={"sub": user.email, "role": user.role, "cafe_id": user.cafe_id}
+    # ---- Device-based cafe resolution ----
+    from app.auth.tokens import (
+        create_access_token as create_enriched_token,
+        create_refresh_token,
+    )
+    from app.models import ClientPC, UserCafeMap
+    from app.config import REQUIRE_DEVICE_ID_ON_LOGIN
+
+    # Extract device_id from form data (optional for backwards compat)
+    form = await request.form()
+    device_id = form.get("device_id")
+    resolved_cafe_id = user.cafe_id
+    resolved_role = user.role
+
+    if device_id:
+        # Resolve cafe from device
+        device = db.query(ClientPC).filter(ClientPC.device_id == device_id).first()
+        if device is None:
+            raise HTTPException(status_code=400, detail="Unknown device")
+        if getattr(device, "device_status", "active") == "revoked":
+            raise HTTPException(status_code=403, detail="Device has been revoked")
+
+        resolved_cafe_id = device.cafe_id
+
+        # Validate user has access to this cafe
+        mapping = (
+            db.query(UserCafeMap)
+            .filter(UserCafeMap.user_id == user.id, UserCafeMap.cafe_id == resolved_cafe_id)
+            .first()
+        )
+        if mapping:
+            resolved_role = mapping.role
+        elif user.cafe_id == resolved_cafe_id:
+            resolved_role = user.role
+        elif user.role == "superadmin":
+            resolved_role = "superadmin"
+        else:
+            raise HTTPException(
+                status_code=403,
+                detail="User does not have access to this cafe",
+            )
+    elif REQUIRE_DEVICE_ID_ON_LOGIN:
+        raise HTTPException(status_code=400, detail="device_id is required for login")
+
+    # ---- Concurrent cafe session guard ----
+    # Prevent client-role users from being logged in at multiple cafes simultaneously.
+    # Admins/staff are exempt (they may legitimately manage multiple cafes).
+    if resolved_role == "client" and resolved_cafe_id is not None:
+        from app.models import RefreshToken as RefreshTokenModel, Cafe
+        active_elsewhere = (
+            db.query(RefreshTokenModel)
+            .filter(
+                RefreshTokenModel.user_id == user.id,
+                RefreshTokenModel.revoked == False,
+                RefreshTokenModel.expires_at > datetime.now(UTC),
+                RefreshTokenModel.cafe_id != resolved_cafe_id,
+                RefreshTokenModel.cafe_id != None,
+            )
+            .first()
+        )
+        if active_elsewhere:
+            other_cafe = db.query(Cafe).filter(Cafe.id == active_elsewhere.cafe_id).first()
+            cafe_name = other_cafe.name if other_cafe else f"Cafe #{active_elsewhere.cafe_id}"
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "already_logged_in",
+                    "message": f"User is already logged in at {cafe_name}. Please log out there first.",
+                    "cafe_id": active_elsewhere.cafe_id,
+                    "cafe_name": cafe_name,
+                },
+            )
+
+    # Create enriched access token
+    access_token = create_enriched_token(
+        email=user.email,
+        user_id=user.id,
+        cafe_id=resolved_cafe_id,
+        device_id=device_id,
+        role=resolved_role,
     )
 
-    # SET HTTPONLY COOKIE
-    # We still return the token in body for legacy clients temporarily, 
-    # but the cookie is the primary security mechanism now.
+    # Create refresh token
+    refresh_token = create_refresh_token(
+        db,
+        user_id=user.id,
+        cafe_id=resolved_cafe_id,
+        device_id=device_id,
+        ip_address=client_ip,
+    )
+
+    # SET HTTPONLY COOKIES
     response.set_cookie(
         key="access_token",
         value=f"Bearer {access_token}",
         httponly=True,
-        secure=True,  # TLS only
+        secure=True,
         samesite="lax",
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=60 * 60 * 24 * 7,  # 7 days
+        path="/api/auth/refresh",
+    )
 
-    return {"access_token": access_token, "token_type": "bearer", "msg": "Cookie set"}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "cafe_id": resolved_cafe_id,
+        "role": resolved_role,
+        "msg": "Cookie set",
+    }
 
 
 @router.post("/logout")
-def logout(response: Response):
-    """Clear the auth cookie."""
-    from fastapi import Response
+def logout(request: Request, response: Response, db: Session = Depends(get_db)):
+    """Clear auth cookies and revoke refresh token."""
+    # Revoke the refresh token if present
+    refresh_cookie = request.cookies.get("refresh_token")
+    if refresh_cookie:
+        from app.auth.tokens import verify_refresh_token, revoke_refresh_token
+        rt = verify_refresh_token(db, refresh_cookie)
+        if rt:
+            revoke_refresh_token(db, rt)
+
     response.delete_cookie(key="access_token")
+    response.delete_cookie(key="refresh_token", path="/api/auth/refresh")
     return {"ok": True}
+
+
+@router.post("/refresh")
+def refresh_tokens(request: Request, response: Response, db: Session = Depends(get_db)):
+    """Rotate refresh token and issue new access + refresh token pair."""
+    from app.auth.tokens import (
+        create_access_token as create_enriched_token,
+        create_refresh_token,
+        verify_refresh_token,
+        revoke_refresh_token,
+    )
+
+    # Get refresh token from cookie or body
+    raw_token = request.cookies.get("refresh_token")
+    if not raw_token:
+        raise HTTPException(status_code=401, detail="Refresh token missing")
+
+    device_id = request.headers.get("x-device-id")
+
+    rt = verify_refresh_token(db, raw_token, device_id=device_id)
+    if rt is None:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+    # Get user
+    user = db.query(User).filter(User.id == rt.user_id).first()
+    if user is None:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    # Resolve role from user_cafe_map if available
+    from app.models import UserCafeMap
+    resolved_role = user.role
+    if rt.cafe_id:
+        mapping = (
+            db.query(UserCafeMap)
+            .filter(UserCafeMap.user_id == user.id, UserCafeMap.cafe_id == rt.cafe_id)
+            .first()
+        )
+        if mapping:
+            resolved_role = mapping.role
+
+    # Revoke old refresh token (rotation)
+    revoke_refresh_token(db, rt)
+
+    client_ip = str(request.client.host) if request.client else None
+
+    # Issue new tokens
+    new_access = create_enriched_token(
+        email=user.email,
+        user_id=user.id,
+        cafe_id=rt.cafe_id,
+        device_id=rt.device_id,
+        role=resolved_role,
+    )
+    new_refresh = create_refresh_token(
+        db,
+        user_id=user.id,
+        cafe_id=rt.cafe_id,
+        device_id=rt.device_id,
+        ip_address=client_ip,
+    )
+
+    response.set_cookie(
+        key="access_token",
+        value=f"Bearer {new_access}",
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=new_refresh,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=60 * 60 * 24 * 7,
+        path="/api/auth/refresh",
+    )
+
+    return {"access_token": new_access, "token_type": "bearer"}
 
 
 # ---- Simple Registration (no OTP) ----

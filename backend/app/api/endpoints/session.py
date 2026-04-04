@@ -7,7 +7,9 @@ from starlette.concurrency import run_in_threadpool
 from app.api.endpoints.audit import log_action
 from app.api.endpoints.auth import get_current_user, require_role
 from app.api.endpoints.billing import calculate_billing
-from app.database import SessionLocal
+from app.auth.context import AuthContext, get_auth_context
+from app.auth.tenant import scoped_query, enforce_cafe_ownership
+from app.db.dependencies import get_cafe_db as get_db
 from app.models import ClientPC
 from app.models import Session as PCSession
 from app.schemas import SessionOut, SessionStart
@@ -16,20 +18,17 @@ from app.utils.cache import get_or_set, publish_invalidation
 router = APIRouter()
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 @router.post("/start", response_model=SessionOut)
-async def start_session(data: SessionStart, db: Session = Depends(get_db)):
+async def start_session(
+    data: SessionStart,
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
     def _create() -> PCSession:
         session = PCSession(
             pc_id=data.pc_id,
             user_id=data.user_id,
+            cafe_id=ctx.cafe_id,
             start_time=datetime.now(UTC),
             paid=False,
             amount=0.0,
@@ -65,11 +64,16 @@ async def start_session(data: SessionStart, db: Session = Depends(get_db)):
 
 
 @router.post("/stop/{session_id}", response_model=SessionOut)
-async def stop_session(session_id: int, db: Session = Depends(get_db)):
+async def stop_session(
+    session_id: int,
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
     def _stop() -> PCSession:
         session = db.query(PCSession).filter_by(id=session_id).first()
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
+        enforce_cafe_ownership(session, ctx)
         if session.end_time:
             return session
         session.end_time = datetime.now(UTC)
@@ -137,6 +141,7 @@ async def session_history(
     user_id: int | None = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
 ):
     """
     Return past sessions for a user. If `user_id` is not provided,
@@ -148,7 +153,7 @@ async def session_history(
     async def _compute() -> list[PCSession]:
         def _query():
             return (
-                db.query(PCSession)
+                scoped_query(db, PCSession, ctx)
                 .filter(PCSession.user_id == effective_user_id)
                 .order_by(PCSession.start_time.desc())
                 .all()
@@ -161,11 +166,15 @@ async def session_history(
 
 # Admin: list active guest sessions
 @router.get("/guests", response_model=list[SessionOut])
-async def list_guests(db: Session = Depends(get_db), current_user=Depends(require_role("admin"))):
+async def list_guests(
+    db: Session = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+):
     async def _compute() -> list[SessionOut]:
         def _query():
             return (
-                db.query(PCSession)
+                scoped_query(db, PCSession, ctx)
                 .filter(PCSession.end_time.is_(None))
                 .order_by(PCSession.start_time.desc())
                 .all()
