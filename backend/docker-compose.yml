@@ -28,12 +28,9 @@ services:
       - SECRET_KEY=${SECRET_KEY}
       - JWT_SECRET=${JWT_SECRET}
       - APP_SECRET=${APP_SECRET}
-      # Use development for local testing with Tauri client (skips CSRF on auth endpoints)
-      # Change to production when deploying to real servers
-      - ENVIRONMENT=development
-      # Allow all CORS in development for Tauri desktop client
-      - ALLOW_ALL_CORS=true
-      - DEBUG=True
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - ALLOW_ALL_CORS=${ALLOW_ALL_CORS:-false}
+      - DEBUG=${DEBUG:-False}
       - MAIL_USERNAME=${MAIL_USERNAME}
       - MAIL_PASSWORD=${MAIL_PASSWORD}
       - MAIL_FROM=${MAIL_FROM}
@@ -71,14 +68,12 @@ services:
       - backend
     restart: unless-stopped
 
-  # Cloudflare Tunnel (optional)
+  # Cloudflare Tunnel
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: clutchhh_cloudflared
     restart: unless-stopped
-    environment:
-      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
-    command: tunnel run
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
     depends_on:
       - nginx
 
