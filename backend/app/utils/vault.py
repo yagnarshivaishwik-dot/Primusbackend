@@ -19,7 +19,7 @@ def read_kv_secret(path: str) -> dict[str, Any]:
     Read a KV v2 secret from Vault.
 
     Args:
-        path: Path under /v1, e.g. "secret/data/primus/db"
+        path: Path under /v1, e.g. "secret/data/clutchhh/db"
     """
     if not VAULT_ADDR or not VAULT_TOKEN:
         raise HTTPException(status_code=503, detail="Vault is not configured")
@@ -43,7 +43,7 @@ def get_db_credentials() -> dict[str, str]:
     """
     Fetch DB credentials from Vault KV v2 at secret/primus/db.
     """
-    data = read_kv_secret("secret/data/primus/db")
+    data = read_kv_secret("secret/data/clutchhh/db")
     return {
         "username": str(data.get("username", "")),
         "password": str(data.get("password", "")),
@@ -57,7 +57,7 @@ def get_master_key() -> bytes:
     If the key is missing, this raises; key creation/rotation should be handled by
     external scripts (see vault/ init scripts).
     """
-    data = read_kv_secret("secret/data/primus/master-key")
+    data = read_kv_secret("secret/data/clutchhh/master-key")
     key_hex = data.get("key")
     if not key_hex:
         raise HTTPException(status_code=500, detail="Master key not present in Vault")

@@ -89,7 +89,7 @@ class RedisSettings(BaseSettings):
 
     redis_url: str = ""
     redis_password: str = ""
-    redis_namespace: str = "primus"
+    redis_namespace: str = "clutchhh"
     cache_default_ttl: int = 300
     cache_version: str = "v1"
 

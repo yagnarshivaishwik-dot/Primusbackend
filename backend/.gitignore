@@ -161,6 +161,7 @@ backend/*_secret*.json
 .env.*
 !.env.example
 !.env.sample
+!.env.template
 env.production
 *.env.local
 *.env.production.local
