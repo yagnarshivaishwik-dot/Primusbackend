@@ -1,3 +1,13 @@
+"""
+DEPRECATED: Legacy single-database engine and session factory.
+
+This module is only kept alive for backward compat with app.models (also deprecated).
+For new code, use:
+    - app.db.global_db   (global platform database)
+    - app.db.cafe_db     (per-cafe databases)
+    - app.db.dependencies (FastAPI DI for sessions)
+"""
+
 import logging
 from collections.abc import Generator
 

@@ -183,6 +183,15 @@ def _aggregate_cafe(cafe_id: int, report_date: date) -> None:
         )
         db.commit()
 
+        # Refresh materialized views after daily aggregation
+        try:
+            db.execute(text("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_hourly_revenue"))
+            db.execute(text("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_daily_session_stats"))
+            db.commit()
+        except Exception:
+            db.rollback()
+            logger.debug("Materialized view refresh skipped (views may not exist yet)")
+
         logger.info(
             "Report for cafe %d on %s: revenue=%s sessions=%d orders=%d",
             cafe_id, report_date, total_revenue, total_sessions, total_orders,

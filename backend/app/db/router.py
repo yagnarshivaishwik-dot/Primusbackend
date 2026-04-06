@@ -13,7 +13,7 @@ import threading
 from collections import OrderedDict
 from urllib.parse import urlparse, urlunparse
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -22,9 +22,14 @@ from app.config import DATABASE_URL
 logger = logging.getLogger(__name__)
 
 GLOBAL_DATABASE_URL = os.getenv("GLOBAL_DATABASE_URL", DATABASE_URL)
-CAFE_DB_ENGINE_CACHE_SIZE = int(os.getenv("CAFE_DB_ENGINE_CACHE_SIZE", "100"))
-CAFE_DB_POOL_SIZE = int(os.getenv("CAFE_DB_POOL_SIZE", "3"))
-CAFE_DB_MAX_OVERFLOW = int(os.getenv("CAFE_DB_MAX_OVERFLOW", "5"))
+# Reduced defaults to prevent PostgreSQL connection exhaustion
+# Old: 100 × (3+5) = 800 connections  →  New: 50 × (2+3) = 250 connections
+CAFE_DB_ENGINE_CACHE_SIZE = int(os.getenv("CAFE_DB_ENGINE_CACHE_SIZE", "50"))
+CAFE_DB_POOL_SIZE = int(os.getenv("CAFE_DB_POOL_SIZE", "2"))
+CAFE_DB_MAX_OVERFLOW = int(os.getenv("CAFE_DB_MAX_OVERFLOW", "3"))
+
+# When using PgBouncer, use NullPool (PgBouncer manages connections)
+USE_PGBOUNCER = os.getenv("USE_PGBOUNCER", "false").lower() == "true"
 
 
 def _derive_cafe_url(cafe_id: int) -> str:
@@ -79,13 +84,24 @@ class CafeDBRouter:
 
             # Create new engine
             url = _derive_cafe_url(cafe_id)
-            engine = create_engine(
-                url,
-                pool_pre_ping=True,
-                pool_size=self._pool_size,
-                max_overflow=self._max_overflow,
-                future=True,
-            )
+            if USE_PGBOUNCER:
+                from sqlalchemy.pool import NullPool
+
+                engine = create_engine(
+                    url,
+                    poolclass=NullPool,
+                    pool_pre_ping=True,
+                    future=True,
+                )
+            else:
+                engine = create_engine(
+                    url,
+                    pool_pre_ping=True,
+                    pool_size=self._pool_size,
+                    max_overflow=self._max_overflow,
+                    pool_recycle=1800,  # Recycle connections every 30 minutes
+                    future=True,
+                )
             self._engines[cafe_id] = engine
             self._session_factories[cafe_id] = sessionmaker(
                 autocommit=False, autoflush=False, bind=engine,

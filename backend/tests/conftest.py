@@ -24,6 +24,11 @@ if "/" in sys.path:
 os.environ["ENABLE_CSRF_PROTECTION"] = "false"
 os.environ["ENVIRONMENT"] = "test"
 
+# Set dummy mail config so otp_email.py doesn't fail on import validation
+os.environ.setdefault("MAIL_FROM", "test@example.com")
+os.environ.setdefault("MAIL_SERVER", "localhost")
+os.environ.setdefault("MAIL_SUPPRESS_SEND", "true")
+
 # Force tests to use the isolated PostgreSQL DB regardless of any .env loaded by app.main.
 # app.main calls load_dotenv() at import time; load_dotenv() does NOT override existing env vars,
 # so setting this early prevents accidental use of a different DB with stale schema.

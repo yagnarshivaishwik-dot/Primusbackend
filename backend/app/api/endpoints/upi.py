@@ -205,6 +205,34 @@ async def verify_upi_payment(
     }
 
 
+def _verify_webhook_source_ip(request: Request) -> None:
+    """
+    Defence-in-depth: verify the webhook originates from Razorpay's IP ranges.
+    Configurable via RAZORPAY_WEBHOOK_ALLOWED_CIDRS env var.
+    Skipped if the env var is empty (to avoid breaking existing deployments).
+    """
+    import os
+    cidrs_raw = os.getenv("RAZORPAY_WEBHOOK_ALLOWED_CIDRS", "")
+    if not cidrs_raw:
+        return  # IP check disabled — rely on HMAC only
+
+    from ipaddress import ip_address, ip_network
+    client_ip = request.client.host if request.client else None
+    if not client_ip:
+        raise HTTPException(status_code=403, detail="Cannot determine source IP")
+
+    allowed = [cidr.strip() for cidr in cidrs_raw.split(",") if cidr.strip()]
+    for cidr in allowed:
+        try:
+            if ip_address(client_ip) in ip_network(cidr, strict=False):
+                return
+        except ValueError:
+            continue
+
+    logger.warning("Webhook from non-allowed IP: %s", client_ip)
+    raise HTTPException(status_code=403, detail="Webhook source IP not allowed")
+
+
 @router.post("/webhook")
 async def upi_webhook(request: Request, db: DBSession = Depends(get_db)):
     """
@@ -213,6 +241,9 @@ async def upi_webhook(request: Request, db: DBSession = Depends(get_db)):
     Verifies webhook signature and processes payment events.
     This endpoint does NOT require authentication (called by Razorpay).
     """
+    # Defence-in-depth: IP allowlist check (in addition to HMAC)
+    _verify_webhook_source_ip(request)
+
     from app.utils.upi import verify_webhook_signature
 
     body = await request.body()

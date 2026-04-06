@@ -1,4 +1,7 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import _normalize_password, ph, require_role
@@ -7,6 +10,12 @@ from app.models import User
 from app.schemas import UserCreate, UserOut
 
 router = APIRouter()
+
+
+class StaffUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    password: Optional[str] = None
 
 
 
@@ -37,6 +46,30 @@ def add_staff(
 @router.get("/", response_model=list[UserOut])
 def list_staff(current_user=Depends(require_role("cafeadmin")), db: Session = Depends(get_db)):
     return db.query(User).filter_by(cafe_id=current_user.cafe_id, role="staff").all()
+
+
+# Cafeadmin: Update staff info
+@router.patch("/{staff_id}", response_model=UserOut)
+def update_staff(
+    staff_id: int,
+    data: StaffUpdate,
+    current_user=Depends(require_role("cafeadmin")),
+    db: Session = Depends(get_db),
+):
+    staff = db.query(User).filter_by(id=staff_id, cafe_id=current_user.cafe_id, role="staff").first()
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff user not found")
+    if data.name is not None:
+        staff.name = data.name
+    if data.email is not None:
+        if db.query(User).filter(User.email == data.email, User.id != staff_id).first():
+            raise HTTPException(status_code=400, detail="Email already in use")
+        staff.email = data.email
+    if data.password is not None:
+        staff.password_hash = ph.hash(_normalize_password(data.password))
+    db.commit()
+    db.refresh(staff)
+    return staff
 
 
 # Cafeadmin: Remove staff (soft delete)

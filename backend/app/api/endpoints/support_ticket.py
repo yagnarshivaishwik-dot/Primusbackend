@@ -1,6 +1,8 @@
 from datetime import datetime
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import get_current_user, require_role
@@ -11,6 +13,11 @@ from app.models import SupportTicket
 from app.schemas import SupportTicketIn, SupportTicketOut
 
 router = APIRouter()
+
+
+class TicketUpdateBody(BaseModel):
+    status: str
+    assigned_staff: Optional[int] = None
 
 
 # Create a ticket (user or staff)
@@ -67,8 +74,7 @@ def list_tickets(
 @router.post("/update/{ticket_id}", response_model=SupportTicketOut)
 def update_ticket(
     ticket_id: int,
-    status: str,
-    assigned_staff: int | None = None,
+    body: TicketUpdateBody,
     current_user=Depends(require_role("admin")),
     ctx: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
@@ -77,8 +83,9 @@ def update_ticket(
     if not t:
         raise HTTPException(status_code=404, detail="Ticket not found")
     enforce_cafe_ownership(t, ctx)
-    t.status = status
-    t.assigned_staff = assigned_staff
+    t.status = body.status
+    if body.assigned_staff is not None:
+        t.assigned_staff = body.assigned_staff
     t.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(t)

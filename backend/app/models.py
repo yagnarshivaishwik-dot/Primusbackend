@@ -1,3 +1,25 @@
+"""
+Legacy single-database ORM models.
+
+DEPRECATION NOTICE:
+    This module is used when MULTI_DB_ENABLED=false (single-database mode).
+    For multi-database deployments, use:
+        - app.db.models_global  (platform-level: UserGlobal, Cafe, Subscription, ...)
+        - app.db.models_cafe    (per-cafe: CafeUser, WalletTransaction, Session, ...)
+
+    New code should prefer the app.db.models_* modules. These legacy models will
+    be removed once the single-DB mode is fully deprecated.
+"""
+
+import warnings as _warnings
+
+_warnings.warn(
+    "app.models is deprecated for multi-DB deployments. "
+    "Use app.db.models_global or app.db.models_cafe instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
 from datetime import datetime
 
 from sqlalchemy import JSON, Boolean, Column, DateTime, Float, ForeignKey, Integer, String, UniqueConstraint
@@ -554,6 +576,7 @@ class User(Base):
     tos_accepted_at = Column(DateTime, nullable=True)
     user_group_id = Column(Integer, ForeignKey("user_groups.id"), nullable=True)
     two_factor_secret = Column(String, nullable=True)
+    two_factor_recovery_codes = Column(JSON, nullable=True)  # hashed one-time recovery codes
     # Email verification
     is_email_verified = Column(Boolean, default=False)
     email_verification_sent_at = Column(DateTime, nullable=True)

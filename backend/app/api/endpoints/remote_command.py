@@ -19,28 +19,72 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# ── Command allowlist with per-command param schemas ──────────────────
+# Each command maps to a dict of allowed param keys and their types.
+# None means the command accepts no params.
+ALLOWED_COMMANDS: dict[str, dict | None] = {
+    "lock": None,
+    "unlock": None,
+    "message": {"text": str},
+    "shutdown": None,
+    "reboot": None,
+    "screenshot": None,
+    "login": {"user_id": int},
+    "logout": None,
+    "restart": None,
+}
+
+# Valid states a client may report in /ack
+VALID_ACK_STATES = {"RUNNING", "SUCCEEDED", "FAILED"}
+
+# Internal event types that may bypass the user-facing command allowlist
+# (used by queue_device_event for system-generated events)
+ALLOWED_DEVICE_EVENT_TYPES = {
+    *ALLOWED_COMMANDS.keys(),
+    "session.started",
+    "session.ended",
+    "pc.status",
+    "command.created",
+    "command.ack",
+}
+
 
 def _validate_command_params(command: str, params: str | None) -> None:
     """
-    Validate that command parameters are within reasonable limits.
+    Validate command name against allowlist and params against per-command schema.
     """
+    if command not in ALLOWED_COMMANDS:
+        raise HTTPException(status_code=400, detail=f"Unsupported command: {command}")
+
     if params and len(params) > 1024:
         raise HTTPException(status_code=400, detail="Command parameters too large")
 
-    # Only allow specific commands for now
-    allowed_commands = {
-        "lock",
-        "unlock",
-        "message",
-        "shutdown",
-        "reboot",
-        "screenshot",
-        "login",
-        "logout",
-        "restart",
-    }
-    if command not in allowed_commands:
-        raise HTTPException(status_code=400, detail=f"Unsupported command: {command}")
+    schema = ALLOWED_COMMANDS[command]
+    if schema is not None and params:
+        try:
+            parsed = json.loads(params) if isinstance(params, str) else params
+            if not isinstance(parsed, dict):
+                raise HTTPException(status_code=400, detail="Params must be a JSON object")
+            for key in parsed:
+                if key not in schema:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Invalid param key '{key}' for command '{command}'",
+                    )
+        except (json.JSONDecodeError, TypeError):
+            raise HTTPException(status_code=400, detail="Invalid params JSON format")
+    elif schema is None and params:
+        # Command accepts no params but caller sent some — warn but allow
+        # (keeps backward compat for clients that send empty-ish params)
+        try:
+            parsed = json.loads(params) if isinstance(params, str) else params
+            if parsed and parsed != {}:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Command '{command}' does not accept parameters",
+                )
+        except (json.JSONDecodeError, TypeError):
+            pass
 
 
 # Admin sends a command to a PC
@@ -140,6 +184,10 @@ def queue_device_event(db: Session, pc_id: int, event_type: str, payload: dict):
     MASTER SYSTEM: Queue an event for a device to pick up via Long Polling.
     This replaces WebSocket notification for better reliability.
     """
+    if event_type not in ALLOWED_DEVICE_EVENT_TYPES:
+        logger.warning("Blocked unrecognised device event type: %s for PC %d", event_type, pc_id)
+        return
+
     pc = db.query(ClientPC).filter_by(id=pc_id).first()
     if not pc:
         return
@@ -245,6 +293,14 @@ async def ack_command(
     cmd_id = payload.get("command_id")
     state = payload.get("state")  # RUNNING, SUCCEEDED, FAILED
     result = payload.get("result")
+
+    if not cmd_id:
+        raise HTTPException(status_code=400, detail="command_id is required")
+    if state not in VALID_ACK_STATES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid state '{state}'. Must be one of: {', '.join(sorted(VALID_ACK_STATES))}",
+        )
 
     rc = db.query(RemoteCommand).filter_by(id=cmd_id, pc_id=pc.id).first()
     if not rc:

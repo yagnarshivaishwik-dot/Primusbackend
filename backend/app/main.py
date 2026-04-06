@@ -20,6 +20,7 @@ from app.api.endpoints import (
     auth,
     backup,
     billing,
+    campaign,
     booking,
     cafe,
     chat,
@@ -67,11 +68,13 @@ from app.api.endpoints import (
 from app.middleware.csrf import CSRFProtectionMiddleware
 from app.middleware.security import (
     RateLimitMiddleware,
+    RedisRateLimitMiddleware,
     RequestSizeLimitMiddleware,
     SecurityHeadersMiddleware,
 )
 from app.tasks.presence import presence_monitor_loop
 from app.tasks.revenue_aggregation import revenue_aggregation_loop
+from app.tasks.supervisor import supervised_task
 from app.tasks.timeleft_broadcast import _broadcast_timeleft_loop
 from app.utils.cache import (
     close_redis_client,
@@ -100,15 +103,15 @@ async def lifespan(app: FastAPI):
     and can be extended later for graceful shutdown if needed.
     """
     try:
-        asyncio.create_task(_broadcast_timeleft_loop())
-        asyncio.create_task(presence_monitor_loop())
-        asyncio.create_task(revenue_aggregation_loop())
+        asyncio.create_task(supervised_task("timeleft_broadcast", _broadcast_timeleft_loop))
+        asyncio.create_task(supervised_task("presence_monitor", presence_monitor_loop))
+        asyncio.create_task(supervised_task("revenue_aggregation", revenue_aggregation_loop))
     except Exception as e:
         logging.error(f"Failed to start background task: {e}")
 
     try:
         await init_redis_client()
-        asyncio.create_task(subscribe_invalidation_loop())
+        asyncio.create_task(supervised_task("cache_invalidation", subscribe_invalidation_loop))
     except Exception as e:  # pragma: no cover - startup failures should not crash app
         logging.error(f"Failed to initialize Redis caching: {e}")
 
@@ -148,6 +151,11 @@ else:
 
 app = FastAPI(lifespan=lifespan)
 
+# OpenTelemetry distributed tracing (if enabled)
+from app.core.tracing import setup_tracing
+
+setup_tracing(app)
+
 # CSRF protection middleware (applied first, before other middleware)
 csrf_enabled = os.getenv("ENABLE_CSRF_PROTECTION", "true").lower() == "true"
 app.add_middleware(CSRFProtectionMiddleware, enabled=csrf_enabled)
@@ -155,10 +163,15 @@ app.add_middleware(CSRFProtectionMiddleware, enabled=csrf_enabled)
 # Security headers middleware (applied to all responses)
 app.add_middleware(SecurityHeadersMiddleware)
 
-# Rate limiting middleware - set high to avoid blocking legitimate admin usage
+# Rate limiting middleware — Redis-backed with in-memory fallback
 rate_limit_rpm = int(os.getenv("RATE_LIMIT_PER_MINUTE", "1000"))
 rate_limit_burst = int(os.getenv("RATE_LIMIT_BURST", "100"))
-app.add_middleware(RateLimitMiddleware, requests_per_minute=rate_limit_rpm, burst=rate_limit_burst)
+app.add_middleware(
+    RedisRateLimitMiddleware,
+    requests_per_minute=rate_limit_rpm,
+    burst=rate_limit_burst,
+    redis_url=os.getenv("REDIS_URL", ""),
+)
 
 # Request size limit middleware
 max_request_size = int(os.getenv("MAX_REQUEST_SIZE_BYTES", str(10 * 1024 * 1024)))  # 10MB default
@@ -238,9 +251,19 @@ async def json_logging_middleware(request: Request, call_next):
     response = await call_next(request)
     duration_ms = (datetime.now(UTC) - start).total_seconds() * 1000
 
+    # Include OpenTelemetry trace ID if available
+    trace_id = None
+    try:
+        from app.core.tracing import get_current_trace_id
+
+        trace_id = get_current_trace_id()
+    except Exception:
+        pass
+
     log_record = {
         "ts": start.isoformat(),
         "request_id": request_id,
+        "trace_id": trace_id,
         "method": request.method,
         "path": request.url.path,
         "status": response.status_code,
@@ -251,6 +274,12 @@ async def json_logging_middleware(request: Request, call_next):
     return response
 
 
+# ── Versioned API (v1) ─────────────────────────────────────────────────
+from app.api.v1 import v1_router
+
+app.include_router(v1_router)
+
+# ── Legacy /api/* routes (backward compat — will be deprecated) ────────
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(pc.router, prefix="/api/pc", tags=["pc"])
 app.include_router(session.router, prefix="/api/session", tags=["session"])
@@ -290,6 +319,7 @@ app.include_router(user.router, prefix="/api/user", tags=["user"])
 app.include_router(leaderboard.router, prefix="/api/leaderboard", tags=["leaderboard"])
 app.include_router(event.router, prefix="/api/event", tags=["event"])
 app.include_router(coupon.router, prefix="/api/coupon", tags=["coupon"])
+app.include_router(campaign.router, prefix="/api/campaign", tags=["campaign"])
 app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
 app.include_router(games.router, prefix="/api/games", tags=["games"])
 app.include_router(shop.router, prefix="/api/v1/shop", tags=["shop"])
@@ -337,22 +367,56 @@ def root():
 
 
 @app.get("/health")
-def health_check():
-    """Health check endpoint for monitoring"""
-    return {
-        "status": "ok",
-        "service": "lance-backend",
-        "timestamp": datetime.now(UTC).isoformat(),
-    }
+async def health_check():
+    """
+    Health check endpoint for monitoring and load balancers.
+    Returns 503 if any critical dependency (PostgreSQL, Redis) is unreachable.
+    """
+    checks: dict = {"service": "primus-backend", "timestamp": datetime.now(UTC).isoformat()}
+    healthy = True
+
+    # Check PostgreSQL global database
+    try:
+        from app.db.global_db import global_session_factory
+        from sqlalchemy import text
+
+        db = global_session_factory()
+        try:
+            db.execute(text("SELECT 1"))
+            checks["postgres"] = "ok"
+        finally:
+            db.close()
+    except Exception as e:
+        checks["postgres"] = f"error: {e}"
+        healthy = False
+
+    # Check Redis (non-critical — cache only)
+    try:
+        from app.utils.cache import _redis_client
+
+        if _redis_client:
+            await _redis_client.ping()
+            checks["redis"] = "ok"
+        else:
+            checks["redis"] = "not_configured"
+    except Exception as e:
+        checks["redis"] = f"error: {e}"
+        # Redis is non-critical — don't set healthy=False
+
+    checks["status"] = "ok" if healthy else "degraded"
+
+    from fastapi.responses import JSONResponse as _JSONResponse
+
+    return _JSONResponse(content=checks, status_code=200 if healthy else 503)
 
 
 @app.get("/api/health")
-def api_health_check():
+async def api_health_check():
     """
     Backwards-compatible health check endpoint for Docker / infrastructure
     that still probes /api/health instead of /health.
     """
-    return health_check()
+    return await health_check()
 
 
 # Background task: moved to lifespan handler above for FastAPI 0.115+ compatibility.
