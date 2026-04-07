@@ -169,13 +169,13 @@ def list_existing_pcs(admin_token: str) -> list[dict]:
     return data if isinstance(data, list) else []
 
 
-def delete_pc(admin_token: str, pc_id: int) -> bool:
+def delete_pc(admin_token: str, pc_id: int) -> tuple[bool, str]:
     """
     DELETE a single PC by id (admin role required).
 
     The endpoint does a manual cascade delete across system_events,
     remote_commands, sessions and hardware_stats, so it can be slow.
-    Use a generous per-call timeout and swallow errors.
+    Use a generous per-call timeout. Returns (ok, error_detail).
     """
     try:
         resp = requests.delete(
@@ -184,9 +184,11 @@ def delete_pc(admin_token: str, pc_id: int) -> bool:
             verify=VERIFY_SSL,
             timeout=60,
         )
-        return resp.status_code in (200, 204)
-    except Exception:
-        return False
+        if resp.status_code in (200, 204):
+            return True, ""
+        return False, f"HTTP {resp.status_code}: {resp.text[:200]}"
+    except Exception as e:
+        return False, f"exception: {type(e).__name__}: {e}"
 
 
 def register_user(email: str, password: str, name: str) -> tuple[bool, str]:
@@ -313,17 +315,19 @@ def setup_phase() -> dict:
         if loadtest_pcs:
             info(f"Found {len(loadtest_pcs)} stale LoadTest PC(s); deleting in parallel…")
 
-            cleanup_done = {"deleted": 0, "failed": 0}
+            cleanup_done = {"deleted": 0, "failed": 0, "first_err": ""}
             cleanup_lock = threading.Lock()
             total_to_delete = len(loadtest_pcs)
 
             def _del(pc_id: int):
-                ok_flag = delete_pc(admin_token, pc_id)
+                ok_flag, err = delete_pc(admin_token, pc_id)
                 with cleanup_lock:
                     if ok_flag:
                         cleanup_done["deleted"] += 1
                     else:
                         cleanup_done["failed"] += 1
+                        if not cleanup_done["first_err"]:
+                            cleanup_done["first_err"] = err
                     done = cleanup_done["deleted"] + cleanup_done["failed"]
                     if done % 10 == 0 or done == total_to_delete:
                         print(f"    {GREY}…{done}/{total_to_delete} processed{RESET}")
@@ -335,8 +339,11 @@ def setup_phase() -> dict:
 
             ok(f"Deleted {cleanup_done['deleted']} stale PC(s)")
             if cleanup_done["failed"]:
-                warn(f"{cleanup_done['failed']} PC(s) could not be deleted "
-                     f"(license capacity may stay full — bump max_pcs or retry)")
+                warn(f"{cleanup_done['failed']} PC(s) could not be deleted")
+                if cleanup_done["first_err"]:
+                    warn(f"First delete error: {cleanup_done['first_err']}")
+                warn("Tip: bump max_pcs on the license, or delete via SQL:")
+                warn("  DELETE FROM client_pcs WHERE name LIKE 'LoadTest-PC-%';")
         else:
             ok("No stale LoadTest PCs found")
 
