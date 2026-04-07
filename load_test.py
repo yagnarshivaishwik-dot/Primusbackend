@@ -38,6 +38,7 @@ Tunables (env vars, all optional):
 from __future__ import annotations
 
 import base64
+import functools
 import hashlib
 import hmac
 import json
@@ -52,6 +53,10 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from typing import Optional
+
+# Force every print() in this module to flush so progress lines show
+# up immediately under nohup, SSH multiplexers, and any non-TTY stdout.
+print = functools.partial(print, flush=True)
 
 try:
     import requests
@@ -105,19 +110,44 @@ VERIFY_SSL = False
 # ============================================================
 # Pretty output
 # ============================================================
+# ANSI colors are auto-disabled when stdout is not a TTY (piped,
+# captured by nohup, viewed through some SSH/tmux configurations,
+# etc.) to keep the layout clean. Force on/off with the env vars
+# NO_COLOR=1 or LOAD_TEST_COLOR=1.
 
-GREEN  = "\033[92m"
-RED    = "\033[91m"
-YELLOW = "\033[93m"
-CYAN   = "\033[96m"
-GREY   = "\033[90m"
-RESET  = "\033[0m"
-BOLD   = "\033[1m"
+def _use_color() -> bool:
+    if os.environ.get("NO_COLOR"):
+        return False
+    if os.environ.get("LOAD_TEST_COLOR") == "1":
+        return True
+    if os.environ.get("LOAD_TEST_COLOR") == "0":
+        return False
+    return sys.stdout.isatty()
+
+if _use_color():
+    GREEN  = "\033[92m"
+    RED    = "\033[91m"
+    YELLOW = "\033[93m"
+    CYAN   = "\033[96m"
+    GREY   = "\033[90m"
+    RESET  = "\033[0m"
+    BOLD   = "\033[1m"
+else:
+    GREEN = RED = YELLOW = CYAN = GREY = RESET = BOLD = ""
+
+
+def _print(msg: str = ""):
+    """Print + flush so the line shows up immediately even when
+    stdout is buffered (nohup, SSH multiplexers, etc.)."""
+    print(msg, flush=True)
 
 
 def section(title: str):
-    bar = "─" * 64
-    print(f"\n{CYAN}{BOLD}{bar}\n  {title}\n{bar}{RESET}")
+    # Plain ASCII bar so it renders cleanly in any terminal/pager.
+    bar = "-" * 64
+    print(f"\n{CYAN}{BOLD}{bar}{RESET}")
+    print(f"{CYAN}{BOLD}  {title}{RESET}")
+    print(f"{CYAN}{BOLD}{bar}{RESET}")
 
 
 def info(msg: str):
@@ -125,15 +155,15 @@ def info(msg: str):
 
 
 def ok(msg: str):
-    print(f"  {GREEN}✓{RESET} {msg}")
+    print(f"  {GREEN}[OK]{RESET}   {msg}")
 
 
 def warn(msg: str):
-    print(f"  {YELLOW}⚠{RESET} {msg}")
+    print(f"  {YELLOW}[WARN]{RESET} {msg}")
 
 
 def fail(msg: str):
-    print(f"  {RED}✗{RESET} {msg}")
+    print(f"  {RED}[FAIL]{RESET} {msg}")
 
 
 # ============================================================
@@ -340,7 +370,7 @@ def setup_phase() -> dict:
                             cleanup_done["first_err"] = err
                     done = cleanup_done["deleted"] + cleanup_done["failed"]
                     if done % 10 == 0 or done == total_to_delete:
-                        print(f"    {GREY}…{done}/{total_to_delete} processed{RESET}")
+                        print(f"    ... {done}/{total_to_delete} processed")
 
             # 10 concurrent deletes — keeps the cascade load on the server
             # manageable while finishing 100 PCs in well under a minute.
@@ -661,8 +691,10 @@ def load_phase(state: dict):
             delta = cur - last_total
             rps = delta / 2.0
             elapsed = DURATION_SEC - max(0, int(stop_at - time.time()))
-            print(f"  {GREY}[{elapsed:>3}s]{RESET} requests={cur:<6} "
-                  f"rps={rps:<6.1f} failures={fails}")
+            print(
+                f"  [{elapsed:>3}s]  requests={cur:>6}  "
+                f"rps={rps:>6.1f}  failures={fails:>5}"
+            )
             last_total = cur
 
     progress_thread = threading.Thread(target=progress, daemon=True)
@@ -707,41 +739,49 @@ def report(stats: Stats, elapsed: float):
     rps = stats.total / elapsed if elapsed > 0 else 0
     lat = stats.latencies_ms
 
-    print(f"  {BOLD}Total requests   :{RESET} {stats.total}")
-    print(f"  {BOLD}Successful       :{RESET} {GREEN}{stats.success}{RESET} ({success_rate:.1f}%)")
-    print(f"  {BOLD}Failed           :{RESET} {RED if stats.failure else GREY}{stats.failure}{RESET}")
-    print(f"  {BOLD}Duration         :{RESET} {elapsed:.1f}s")
-    print(f"  {BOLD}Throughput       :{RESET} {rps:.1f} req/s")
+    print(f"  {BOLD}Total requests {RESET} : {stats.total}")
+    print(f"  {BOLD}Successful     {RESET} : {GREEN}{stats.success}{RESET} ({success_rate:.1f}%)")
+    print(f"  {BOLD}Failed         {RESET} : {RED if stats.failure else GREY}{stats.failure}{RESET}")
+    print(f"  {BOLD}Duration       {RESET} : {elapsed:.1f}s")
+    print(f"  {BOLD}Throughput     {RESET} : {rps:.1f} req/s")
 
-    print(f"\n  {BOLD}Latency (ms){RESET}")
+    print()
+    print(f"  {BOLD}Latency (ms){RESET}")
     if lat:
-        print(f"    avg : {statistics.mean(lat):>7.1f}")
-        print(f"    p50 : {_percentile(lat, 0.50):>7.1f}")
-        print(f"    p95 : {_percentile(lat, 0.95):>7.1f}")
-        print(f"    p99 : {_percentile(lat, 0.99):>7.1f}")
-        print(f"    max : {max(lat):>7.1f}")
+        print(f"    avg : {statistics.mean(lat):>8.1f}")
+        print(f"    p50 : {_percentile(lat, 0.50):>8.1f}")
+        print(f"    p95 : {_percentile(lat, 0.95):>8.1f}")
+        print(f"    p99 : {_percentile(lat, 0.99):>8.1f}")
+        print(f"    max : {max(lat):>8.1f}")
 
-    print(f"\n  {BOLD}HTTP status codes{RESET}")
+    print()
+    print(f"  {BOLD}HTTP status codes{RESET}")
     for code in sorted(stats.status_codes.keys()):
         count = stats.status_codes[code]
         colour = GREEN if 200 <= code < 300 else (YELLOW if code == 429 else RED)
         label = "ok" if 200 <= code < 300 else ("rate-limited" if code == 429 else "error")
-        print(f"    {colour}{code}{RESET}  {count:>6}  {GREY}{label}{RESET}")
+        print(f"    {colour}{code:>5}{RESET}  {count:>7}  {label}")
 
-    print(f"\n  {BOLD}Per-endpoint{RESET}")
-    print(f"    {'endpoint':<12} {'total':>7} {'ok':>7} {'fail':>6} "
-          f"{'avg(ms)':>9} {'p95(ms)':>9}")
+    print()
+    print(f"  {BOLD}Per-endpoint{RESET}")
+    print(f"    {'endpoint':<12}  {'total':>7}  {'ok':>7}  {'fail':>6}  "
+          f"{'avg(ms)':>9}  {'p95(ms)':>9}")
+    print(f"    {'-'*12}  {'-'*7}  {'-'*7}  {'-'*6}  {'-'*9}  {'-'*9}")
     for ep, d in sorted(stats.by_endpoint.items()):
         avg_ms = statistics.mean(d["lat_ms"]) if d["lat_ms"] else 0
         p95_ms = _percentile(d["lat_ms"], 0.95) if d["lat_ms"] else 0
-        print(f"    {ep:<12} {d['total']:>7} {GREEN}{d['success']:>7}{RESET} "
-              f"{(RED if d['fail'] else GREY)}{d['fail']:>6}{RESET} "
-              f"{avg_ms:>9.1f} {p95_ms:>9.1f}")
+        print(
+            f"    {ep:<12}  {d['total']:>7}  "
+            f"{GREEN}{d['success']:>7}{RESET}  "
+            f"{(RED if d['fail'] else '')}{d['fail']:>6}{RESET}  "
+            f"{avg_ms:>9.1f}  {p95_ms:>9.1f}"
+        )
 
     if stats.errors:
-        print(f"\n  {BOLD}Sample errors (first 20){RESET}")
+        print()
+        print(f"  {BOLD}Sample errors (first 20){RESET}")
         for e in stats.errors[:20]:
-            print(f"    {RED}•{RESET} {e}")
+            print(f"    - {e}")
 
     # If most failures are 429, call it out — the operator probably forgot
     # to bump RATE_LIMIT_PER_MINUTE on the backend.
