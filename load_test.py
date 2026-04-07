@@ -704,13 +704,29 @@ def report(stats: Stats, elapsed: float):
         for e in stats.errors[:20]:
             print(f"    {RED}•{RESET} {e}")
 
+    # If most failures are 429, call it out — the operator probably forgot
+    # to bump RATE_LIMIT_PER_MINUTE on the backend.
+    rate_limited = stats.status_codes.get(429, 0)
+    if rate_limited and rate_limited >= max(1, stats.failure * 0.5):
+        print()
+        print(f"  {YELLOW}{BOLD}NOTE{RESET}: {rate_limited} of {stats.failure} failures were "
+              f"HTTP 429 (rate-limited).")
+        print(f"  The server is NOT struggling — the rate limiter is throttling the test.")
+        print(f"  Restart the backend with a higher cap, e.g.:")
+        print(f"    {GREY}RATE_LIMIT_PER_MINUTE=1000000 RATE_LIMIT_BURST=10000 \\{RESET}")
+        print(f"    {GREY}  uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4{RESET}")
+
     print()
     if success_rate >= 99:
         print(f"  {GREEN}{BOLD}PASS{RESET} — server handled the load with {success_rate:.1f}% success rate")
     elif success_rate >= 95:
         print(f"  {YELLOW}{BOLD}MARGINAL{RESET} — {success_rate:.1f}% success; investigate failures above")
     else:
-        print(f"  {RED}{BOLD}FAIL{RESET} — only {success_rate:.1f}% success; server is struggling")
+        if rate_limited and rate_limited >= max(1, stats.failure * 0.5):
+            print(f"  {YELLOW}{BOLD}BLOCKED{RESET} — only {success_rate:.1f}% success "
+                  f"because of rate limiter (see note above)")
+        else:
+            print(f"  {RED}{BOLD}FAIL{RESET} — only {success_rate:.1f}% success; server is struggling")
     print()
 
 

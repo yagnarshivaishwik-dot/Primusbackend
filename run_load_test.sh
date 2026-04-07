@@ -40,6 +40,26 @@ echo "  Concurrency : $LOAD_TEST_CONCURRENCY"
 echo "  Duration    : ${LOAD_TEST_DURATION_SEC}s"
 echo "══════════════════════════════════════════════════════════"
 
+cat <<'EOM'
+
+  IMPORTANT: For meaningful capacity testing the backend's rate
+  limiter must be relaxed. The default RATE_LIMIT_PER_MINUTE=1000
+  caps everyone at ~16 req/s and produces a sea of HTTP 429s.
+
+  Restart the backend with a high limit AND multiple workers:
+
+      pkill -f 'python main.py' ; pkill -f 'uvicorn' ; sleep 1
+      cd ~/Primusbackend/backend
+      RATE_LIMIT_PER_MINUTE=1000000 \
+      RATE_LIMIT_BURST=10000 \
+      nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 \
+          --workers 4 > /tmp/primus.log 2>&1 &
+
+  Then re-run this script. (You can ignore this notice if the
+  backend is already started with those env vars.)
+
+EOM
+
 # Pull latest code (if running from a git checkout)
 if [ -d .git ]; then
     echo ""
