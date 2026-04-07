@@ -471,13 +471,19 @@ async def delete_pc(
     # 2. Remote Commands
     db.query(RemoteCommand).filter(RemoteCommand.pc_id == pc.id).delete()
 
-    # 3. Sessions (client_pc_id is the FK)
-    # WARNING: Deleting sessions might lose financial history. 
-    # Ideally, we should set client_pc_id to NULL, but if strict constraint, we delete or nullify.
-    # Let's nullify to preserve history if possible, else delete?
-    # Inspecting models.py: client_pc_id = Column(Integer, ForeignKey("client_pcs.id"), nullable=True)
-    # So we can set it to NULL.
-    db.query(PCSession).filter(PCSession.client_pc_id == pc.id).update({PCSession.client_pc_id: None})
+    # 3. Sessions — nullify the PC FK to preserve financial history.
+    # The legacy global Session model uses `client_pc_id` to reference
+    # client_pcs.id, but the cafe-scoped models_cafe.Session uses `pc_id`
+    # (each per-cafe DB has only one PCs table). Pick the right column
+    # based on which model is in scope.
+    if MULTI_DB_ENABLED:
+        db.query(PCSession).filter(PCSession.pc_id == pc.id).update(
+            {PCSession.pc_id: None}
+        )
+    else:
+        db.query(PCSession).filter(PCSession.client_pc_id == pc.id).update(
+            {PCSession.client_pc_id: None}
+        )
 
     # Finally, delete the PC
     db.delete(pc)

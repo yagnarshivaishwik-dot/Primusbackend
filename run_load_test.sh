@@ -52,6 +52,24 @@ if [ "$LOAD_TEST_FRESH" = "1" ] && [ -f load_test_state.json ]; then
     rm -f load_test_state.json
 fi
 
+# SQL fallback cleanup: nuke stale LoadTest PCs in every per-cafe DB
+# directly. Only runs if LOAD_TEST_SQL_CLEANUP=1 AND psql is available
+# AND we can sudo to postgres. Useful when the DELETE API has bugs.
+if [ "${LOAD_TEST_SQL_CLEANUP:-0}" = "1" ]; then
+    echo ""
+    echo "▶  LOAD_TEST_SQL_CLEANUP=1 — running SQL cleanup"
+    if command -v psql >/dev/null 2>&1; then
+        for db in $(sudo -u postgres psql -tAc \
+            "SELECT datname FROM pg_database WHERE datname LIKE 'clutchhh_cafe_%' OR datname LIKE 'primus_cafe_%';" 2>/dev/null); do
+            echo "   → cleaning $db"
+            sudo -u postgres psql -d "$db" -c \
+                "DELETE FROM client_pcs WHERE name LIKE 'LoadTest-PC-%';" || true
+        done
+    else
+        echo "   ⚠ psql not found, skipping SQL cleanup"
+    fi
+fi
+
 # Ensure requests is installed
 echo ""
 echo "▶  Checking dependencies..."
