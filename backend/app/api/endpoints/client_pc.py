@@ -10,19 +10,20 @@ from app.api.endpoints.auth import get_current_user, require_role
 from app.db.dependencies import MULTI_DB_ENABLED, get_cafe_db as get_db, get_global_db
 from app.db.global_db import global_session_factory
 from app.db.router import cafe_db_router
-from app.models import ClientPC, License, SystemEvent
 
-# Multi-DB cafe-scoped models. In multi-DB mode the `client_pcs` and
-# `system_events` tables live in per-cafe databases (clutchhh_cafe_{id})
-# and DO NOT have a `cafe_id` column — each database IS a cafe. The
-# legacy `app.models.ClientPC` has `cafe_id`, so we have to use the
-# cafe-scoped class when talking to a cafe DB session.
+# License lives in the GLOBAL database in both single-DB and multi-DB
+# mode (the user's global DB schema matches app.models.License). Always
+# import it from the legacy models module.
+from app.models import License
+
+# ClientPC and SystemEvent live in per-cafe databases when MULTI_DB_ENABLED
+# is true. The cafe-scoped schema does NOT have a `cafe_id` column (each
+# database IS a cafe). We pick the right model class at module load so the
+# rest of the file can refer to ClientPC / SystemEvent without aliasing.
 if MULTI_DB_ENABLED:
-    from app.db.models_cafe import ClientPC as CafeClientPC
-    from app.db.models_cafe import SystemEvent as CafeSystemEvent
+    from app.db.models_cafe import ClientPC, SystemEvent
 else:
-    CafeClientPC = ClientPC  # type: ignore[assignment]
-    CafeSystemEvent = SystemEvent  # type: ignore[assignment]
+    from app.models import ClientPC, SystemEvent  # type: ignore[no-redef]
 from app.schemas import ClientPCCreate, ClientPCOut
 from app.utils.cache import publish_invalidation
 from app.utils.license import is_signed_key, verify_signed_license
@@ -126,7 +127,7 @@ async def register_pc(
         # (each database IS the cafe), so we filter on hardware_fingerprint
         # only. In single-DB mode we additionally scope by cafe_id to keep
         # the same behaviour as before.
-        query = cafe_db.query(CafeClientPC).filter_by(
+        query = cafe_db.query(ClientPC).filter_by(
             hardware_fingerprint=pc.hardware_fingerprint
         )
         if not MULTI_DB_ENABLED:
@@ -143,7 +144,7 @@ async def register_pc(
         else:
             # Check PC limit before creating
             existing_pcs = (
-                cafe_db.query(CafeClientPC).filter_by(license_key=license_key).count()
+                cafe_db.query(ClientPC).filter_by(license_key=license_key).count()
             )
             if existing_pcs >= license_max_pcs:
                 raise HTTPException(
@@ -169,7 +170,7 @@ async def register_pc(
             # Only set cafe_id in single-DB mode (legacy schema has the column)
             if not MULTI_DB_ENABLED:
                 pc_kwargs["cafe_id"] = cafe_id
-            pc_obj = CafeClientPC(**pc_kwargs)
+            pc_obj = ClientPC(**pc_kwargs)
             cafe_db.add(pc_obj)
 
         cafe_db.commit()
@@ -184,7 +185,7 @@ async def register_pc(
         )
         if not MULTI_DB_ENABLED:
             event_kwargs["cafe_id"] = cafe_id
-        event = CafeSystemEvent(**event_kwargs)
+        event = SystemEvent(**event_kwargs)
         cafe_db.add(event)
         cafe_db.commit()
 
@@ -220,9 +221,11 @@ async def pc_heartbeat(
 
     # Emit event if status changed
     if prev_status != "online":
-        event = SystemEvent(
-            type="pc.status", cafe_id=pc.cafe_id, pc_id=pc.id, payload={"status": "online"}
-        )
+        _resolved_cafe = getattr(pc, "cafe_id", None)
+        event_kwargs = dict(type="pc.status", pc_id=pc.id, payload={"status": "online"})
+        if _resolved_cafe is not None:
+            event_kwargs["cafe_id"] = _resolved_cafe
+        event = SystemEvent(**event_kwargs)
         db.add(event)
         db.commit()
 
@@ -245,7 +248,7 @@ async def pc_heartbeat(
         try:
             await broadcast_admin(
                 json.dumps(build_event("pc.status.update", status_payload)),
-                cafe_id=pc.cafe_id,
+                cafe_id=_resolved_cafe,
             )
         except Exception:
             pass
@@ -312,9 +315,11 @@ async def pc_heartbeat_simple(
 
     # Emit event if status changed
     if prev_status != "online":
-        event = SystemEvent(
-            type="pc.status", cafe_id=pc.cafe_id, pc_id=pc.id, payload={"status": "online"}
-        )
+        _resolved_cafe = getattr(pc, "cafe_id", None)
+        event_kwargs = dict(type="pc.status", pc_id=pc.id, payload={"status": "online"})
+        if _resolved_cafe is not None:
+            event_kwargs["cafe_id"] = _resolved_cafe
+        event = SystemEvent(**event_kwargs)
         db.add(event)
         db.commit()
 
@@ -337,7 +342,7 @@ async def pc_heartbeat_simple(
         try:
             await broadcast_admin(
                 json.dumps(build_event("pc.status.update", status_payload)),
-                cafe_id=pc.cafe_id,
+                cafe_id=_resolved_cafe,
             )
         except Exception:
             pass
@@ -385,12 +390,24 @@ async def list_pcs(current_user=Depends(get_current_user), db: Session = Depends
     """
     MASTER SYSTEM: Multi-tenancy isolation for PC list.
     Returns basic PC data for fast loading.
+
+    In multi-DB mode the per-cafe database only ever contains rows for
+    that cafe, so we don't filter by cafe_id (the column doesn't exist).
+    The dependency `get_db` (=get_cafe_db) routes us to the correct
+    cafe_db based on the JWT's cafe_id claim, which gives us the
+    isolation guarantee for free.
+
+    In single-DB mode we still filter explicitly by cafe_id since the
+    legacy schema has it.
     """
     if not current_user.cafe_id:
         if current_user.role == "superadmin":
             pcs = db.query(ClientPC).all()
         else:
             return []
+    elif MULTI_DB_ENABLED:
+        # Cafe DB is already scoped — no cafe_id column to filter on
+        pcs = db.query(ClientPC).all()
     else:
         pcs = db.query(ClientPC).filter_by(cafe_id=current_user.cafe_id).all()
 
@@ -403,7 +420,7 @@ async def list_pcs(current_user=Depends(get_current_user), db: Session = Depends
             "status": pc.status,
             "ip_address": pc.ip_address,
             "last_seen": pc.last_seen.isoformat() if pc.last_seen else None,
-            "cafe_id": pc.cafe_id,
+            "cafe_id": getattr(pc, "cafe_id", current_user.cafe_id),
             "capabilities": pc.capabilities,
             "current_user_id": pc.current_user_id,
             "user_name": None,
@@ -423,15 +440,29 @@ async def delete_pc(
     """
     Remove a PC from the registry.
     """
-    from app.models import RemoteCommand, Session as PCSession, SystemEvent  # Import here to avoid circulars if any
+    # Re-import in this scope. In multi-DB mode SystemEvent comes from
+    # the cafe-scoped models module to match the cafe DB schema.
+    if MULTI_DB_ENABLED:
+        from app.db.models_cafe import SystemEvent as _SystemEvent
+        # RemoteCommand and PCSession are also cafe-scoped
+        from app.db.models_cafe import RemoteCommand
+        from app.db.models_cafe import Session as PCSession
+    else:
+        from app.models import RemoteCommand, SystemEvent as _SystemEvent  # noqa: F401
+        from app.models import Session as PCSession  # noqa: F401
+    SystemEvent = _SystemEvent  # noqa: F811 — local rebind for downstream code below
 
     pc = db.query(ClientPC).filter_by(id=pc_id).first()
     if not pc:
         raise HTTPException(status_code=404, detail="PC not found")
 
-    # Superadmin can delete any, Admin can only delete their own
-    if current_user.role != "superadmin" and pc.cafe_id != current_user.cafe_id:
-        raise HTTPException(status_code=403, detail="Not authorized to delete this PC")
+    # Superadmin can delete any. In multi-DB mode the cafe DB router
+    # already enforces tenant isolation (only PCs in the user's cafe DB
+    # are visible), so the cafe_id ownership check is redundant. In
+    # single-DB mode the legacy schema has cafe_id and we still check.
+    if not MULTI_DB_ENABLED and current_user.role != "superadmin":
+        if getattr(pc, "cafe_id", None) != current_user.cafe_id:
+            raise HTTPException(status_code=403, detail="Not authorized to delete this PC")
 
     # Manual Cascade Delete to satisfy Foreign Keys
     # 1. System Events
