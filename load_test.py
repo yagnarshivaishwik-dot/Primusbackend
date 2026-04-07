@@ -82,7 +82,7 @@ ACTION_WEIGHTS = {
 # Generated test users use this prefix so they're easy to identify and never
 # collide with real users.
 USER_PREFIX  = "loadtest_user_"
-USER_DOMAIN  = "loadtest.local"
+USER_DOMAIN  = "example.com"    # must pass Pydantic EmailStr validation
 USER_PASSWORD = "LoadTest123"   # 8+ chars, upper, lower, digit (validator-compliant)
 
 PC_PREFIX = "LoadTest-PC-"
@@ -162,10 +162,20 @@ def fetch_license_key(admin_token: str) -> str:
 
 
 def register_user(email: str, password: str, name: str) -> tuple[bool, str]:
-    """Register a single client user. Returns (ok, detail)."""
+    """Register a single client user. Returns (ok, detail).
+
+    Sent as form-encoded data because the endpoint's mixed
+    `body: Model | None = None` + `Form(...)` signature doesn't
+    parse JSON reliably.
+    """
     resp = _post(
         "/api/auth/register",
-        json={"name": name, "email": email, "password": password},
+        data={
+            "name": name,
+            "email": email,
+            "password": password,
+            "tos_accepted": "true",
+        },
     )
     if resp.status_code == 200:
         return True, ""
@@ -462,9 +472,13 @@ def load_phase(state: dict):
     pcs = state["pcs"]
     users = state["users"]
 
-    if not pcs or not users:
-        fail("Setup did not produce any PCs or users — aborting load phase.")
+    if not pcs and not users:
+        fail("Setup produced neither PCs nor users — aborting load phase.")
         sys.exit(1)
+    if not pcs:
+        warn("No PCs available — heartbeat actions will be skipped")
+    if not users:
+        warn("No verified users — login/logout actions will be skipped")
 
     section(
         f"Load Phase · {NUM_PCS} PCs, {NUM_USERS} users, "
@@ -483,8 +497,17 @@ def load_phase(state: dict):
     stop_at = time.time() + DURATION_SEC
     stop_flag = threading.Event()
 
-    actions = list(ACTION_WEIGHTS.keys())
-    weights = list(ACTION_WEIGHTS.values())
+    # Drop actions whose dependent fixtures are missing so workers don't
+    # waste cycles on impossible work.
+    enabled_actions = {
+        k: v for k, v in ACTION_WEIGHTS.items()
+        if (k != "heartbeat" or pcs) and (k not in ("login", "logout") or users)
+    }
+    if not enabled_actions:
+        fail("No viable actions available — aborting load phase.")
+        sys.exit(1)
+    actions = list(enabled_actions.keys())
+    weights = list(enabled_actions.values())
 
     def worker():
         while not stop_flag.is_set() and time.time() < stop_at:
