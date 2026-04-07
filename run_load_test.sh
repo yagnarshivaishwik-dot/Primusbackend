@@ -155,14 +155,29 @@ needs_restart() {
 }
 
 if [ "$AUTO_RESTART_BACKEND" = "1" ]; then
-    if needs_restart; then
-        if ! restart_backend; then
-            echo "   ⚠ Auto-restart failed — falling back to client-side pacing"
-            export LOAD_TEST_TARGET_RPS=15
-        fi
-    else
+    # Prime sudo upfront so the restart later doesn't have to prompt
+    # mid-run. If the user has no sudo, this fails and we fall through
+    # to client-side pacing.
+    if ! sudo -n true 2>/dev/null; then
         echo ""
-        echo "▶  Backend already running with high rate limit and $BACKEND_WORKERS+ workers — skipping restart"
+        echo "▶  Backend restart needs sudo. Enter your password once:"
+        if ! sudo -v 2>/dev/null; then
+            echo "   ⚠ Could not acquire sudo — will use client-side pacing instead"
+            export LOAD_TEST_TARGET_RPS=10
+            AUTO_RESTART_BACKEND=0
+        fi
+    fi
+
+    if [ "$AUTO_RESTART_BACKEND" = "1" ]; then
+        if needs_restart; then
+            if ! restart_backend; then
+                echo "   ⚠ Auto-restart failed — falling back to client-side pacing"
+                export LOAD_TEST_TARGET_RPS=10
+            fi
+        else
+            echo ""
+            echo "▶  Backend already running with high rate limit and $BACKEND_WORKERS+ workers — skipping restart"
+        fi
     fi
 fi
 

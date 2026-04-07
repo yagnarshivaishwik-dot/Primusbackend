@@ -72,8 +72,12 @@ CONCURRENCY  = int(os.environ.get("LOAD_TEST_CONCURRENCY", "20"))
 NUM_PCS      = int(os.environ.get("LOAD_TEST_NUM_PCS", "40"))
 NUM_USERS    = int(os.environ.get("LOAD_TEST_NUM_USERS", "30"))
 # When set, paces total RPS across all workers to stay under the
-# server's rate limit. Use 15 if RATE_LIMIT_PER_MINUTE=1000 (default).
+# server's rate limit. Use 10 if RATE_LIMIT_PER_MINUTE=1000 (default).
+# When > 0, the setup phase also paces itself with sleep(1/TARGET_RPS)
+# between requests so the cumulative budget isn't blown before the
+# load phase starts.
 TARGET_RPS   = float(os.environ.get("LOAD_TEST_TARGET_RPS", "0"))
+SETUP_INTERVAL = (1.0 / TARGET_RPS) if TARGET_RPS > 0 else 0.0
 
 # Action weights (must sum to 1.0)
 # Realistic mix: 100 cafe users don't all login/out constantly. They
@@ -373,6 +377,8 @@ def setup_phase() -> dict:
                 first_reg_err = err
             users.append({"email": email, "password": USER_PASSWORD})
             new_count += 1
+            if SETUP_INTERVAL > 0:
+                time.sleep(SETUP_INTERVAL)
         state["users"] = users
         ok(f"Registered {new_count} new user(s); total {len(users)}")
         if first_reg_err:
@@ -391,6 +397,8 @@ def setup_phase() -> dict:
             failed_count += 1
             if not first_login_err:
                 first_login_err = err
+        if SETUP_INTERVAL > 0:
+            time.sleep(SETUP_INTERVAL)
     if failed_count == 0:
         ok(f"All {len(verified)} users can log in")
     else:
@@ -426,6 +434,8 @@ def setup_phase() -> dict:
                 fail_count += 1
                 if not first_pc_err:
                     first_pc_err = err
+            if SETUP_INTERVAL > 0:
+                time.sleep(SETUP_INTERVAL)
         state["pcs"] = pcs
         ok(f"Registered {new_count} new PC(s); total {len(pcs)}")
         if fail_count:
@@ -581,6 +591,8 @@ def load_phase(state: dict):
             tok = login_user(u["email"], u["password"])
             if tok:
                 token_jar[u["email"]] = tok
+            if SETUP_INTERVAL > 0:
+                time.sleep(SETUP_INTERVAL)
         ok(f"Token jar primed with {len(token_jar)} token(s)")
         print()
     jar_lock = threading.Lock()
