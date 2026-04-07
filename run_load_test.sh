@@ -90,36 +90,42 @@ restart_backend() {
         return 1
     fi
 
-    # Aggressive multi-pass kill: name match, port owner, repeat.
-    info "killing existing backend processes (pkill + fuser, 3 rounds)..."
+    # Aggressive multi-pass kill. Use pgrep + kill -9 by PID instead of
+    # `pkill -f`, because `pkill -f 'uvicorn app.main:app'` would also
+    # match the killer process itself (its argv contains the same
+    # pattern), and bash would emit "line N: PID Killed" job-control
+    # noise to stderr that interleaves with our stdout.
+    info "killing existing backend processes (3 rounds)..."
+    local round survivors final_survivors
     for round in 1 2 3; do
-        sudo pkill -9 -f 'uvicorn app.main:app' 2>/dev/null || true
-        sudo pkill -9 -f 'python.*main\.py'     2>/dev/null || true
-        sudo fuser -k -9 "$BACKEND_PORT/tcp"    2>/dev/null || true
+        survivors=$(pgrep -f 'uvicorn app.main:app' 2>/dev/null || true)
+        if [ -n "$survivors" ]; then
+            # Single sudo kill -9 with the PID list. Quiet stderr/stdout
+            # so bash job-control messages can't pollute the terminal.
+            sudo kill -9 $survivors >/dev/null 2>&1 || true
+        fi
+        sudo fuser -k -9 "$BACKEND_PORT/tcp" >/dev/null 2>&1 || true
         sleep 1
-        local survivors
         survivors=$(pgrep -f 'uvicorn app.main:app' 2>/dev/null || true)
         if [ -z "$survivors" ]; then
-            ok "all backend processes killed"
+            ok "all backend processes killed (round $round)"
             break
         fi
-        warn "round $round: still alive: $survivors - retrying"
     done
 
-    local final_survivors
     final_survivors=$(pgrep -f 'uvicorn app.main:app' 2>/dev/null || true)
     if [ -n "$final_survivors" ]; then
         say ""
-        err "Could not kill these uvicorn processes:"
+        err "Could not kill these uvicorn processes after 3 rounds:"
         for pid in $final_survivors; do
-            say "       pid=$pid  $(ps -o args= -p "$pid" 2>/dev/null | head -c 100)"
+            local cmd
+            cmd=$(ps -o args= -p "$pid" 2>/dev/null | head -c 100)
+            printf '       pid=%s  %s\n' "$pid" "$cmd"
         done
-        say  ""
-        say  "       These processes are likely still writing to your terminal,"
-        say  "       which would scramble the load test output. Manually kill them"
-        say  "       and re-run:"
-        say  "         sudo kill -9 $final_survivors"
-        say  ""
+        say ""
+        say "These processes are likely still writing to your terminal,"
+        say "which scrambles the load test output. Manually kill them:"
+        printf '\n       sudo kill -9 %s\n\n' "$final_survivors"
         return 1
     fi
 
