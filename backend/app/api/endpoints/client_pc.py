@@ -11,6 +11,18 @@ from app.db.dependencies import MULTI_DB_ENABLED, get_cafe_db as get_db, get_glo
 from app.db.global_db import global_session_factory
 from app.db.router import cafe_db_router
 from app.models import ClientPC, License, SystemEvent
+
+# Multi-DB cafe-scoped models. In multi-DB mode the `client_pcs` and
+# `system_events` tables live in per-cafe databases (clutchhh_cafe_{id})
+# and DO NOT have a `cafe_id` column — each database IS a cafe. The
+# legacy `app.models.ClientPC` has `cafe_id`, so we have to use the
+# cafe-scoped class when talking to a cafe DB session.
+if MULTI_DB_ENABLED:
+    from app.db.models_cafe import ClientPC as CafeClientPC
+    from app.db.models_cafe import SystemEvent as CafeSystemEvent
+else:
+    CafeClientPC = ClientPC  # type: ignore[assignment]
+    CafeSystemEvent = SystemEvent  # type: ignore[assignment]
 from app.schemas import ClientPCCreate, ClientPCOut
 from app.utils.cache import publish_invalidation
 from app.utils.license import is_signed_key, verify_signed_license
@@ -110,12 +122,16 @@ async def register_pc(
         cafe_db = global_session_factory()
 
     try:
-        # Idempotent upsert keyed on (cafe_id, hardware_fingerprint)
-        pc_obj = (
-            cafe_db.query(ClientPC)
-            .filter_by(cafe_id=cafe_id, hardware_fingerprint=pc.hardware_fingerprint)
-            .first()
+        # In multi-DB mode the cafe DB schema has no cafe_id column
+        # (each database IS the cafe), so we filter on hardware_fingerprint
+        # only. In single-DB mode we additionally scope by cafe_id to keep
+        # the same behaviour as before.
+        query = cafe_db.query(CafeClientPC).filter_by(
+            hardware_fingerprint=pc.hardware_fingerprint
         )
+        if not MULTI_DB_ENABLED:
+            query = query.filter_by(cafe_id=cafe_id)
+        pc_obj = query.first()
 
         if pc_obj:
             # Update metadata on existing record
@@ -127,7 +143,7 @@ async def register_pc(
         else:
             # Check PC limit before creating
             existing_pcs = (
-                cafe_db.query(ClientPC).filter_by(license_key=license_key).count()
+                cafe_db.query(CafeClientPC).filter_by(license_key=license_key).count()
             )
             if existing_pcs >= license_max_pcs:
                 raise HTTPException(
@@ -136,7 +152,7 @@ async def register_pc(
                 )
 
             _raw_secret = secrets.token_urlsafe(32)
-            pc_obj = ClientPC(
+            pc_kwargs = dict(
                 license_key=license_key,
                 name=pc.name,
                 hardware_fingerprint=pc.hardware_fingerprint,
@@ -146,23 +162,29 @@ async def register_pc(
                 ip_address=str(request.client.host),
                 status="online",
                 last_seen=datetime.now(UTC),
-                cafe_id=cafe_id,
                 capabilities=pc.capabilities,
                 bound=True,
                 bound_at=datetime.now(UTC),
             )
+            # Only set cafe_id in single-DB mode (legacy schema has the column)
+            if not MULTI_DB_ENABLED:
+                pc_kwargs["cafe_id"] = cafe_id
+            pc_obj = CafeClientPC(**pc_kwargs)
             cafe_db.add(pc_obj)
 
         cafe_db.commit()
         cafe_db.refresh(pc_obj)
 
-        # Emit event for Admin UI
-        event = SystemEvent(
+        # Emit event for Admin UI. In multi-DB mode SystemEvent has no
+        # cafe_id either, so build kwargs conditionally.
+        event_kwargs = dict(
             type="pc.status",
-            cafe_id=pc_obj.cafe_id,
             pc_id=pc_obj.id,
             payload={"name": pc_obj.name, "status": "online", "event": "registered"},
         )
+        if not MULTI_DB_ENABLED:
+            event_kwargs["cafe_id"] = cafe_id
+        event = CafeSystemEvent(**event_kwargs)
         cafe_db.add(event)
         cafe_db.commit()
 
@@ -171,7 +193,7 @@ async def register_pc(
             "id": pc_obj.id,
             "name": pc_obj.name,
             "status": pc_obj.status,
-            "cafe_id": pc_obj.cafe_id,
+            "cafe_id": cafe_id,  # always include in response, even if not on the row
             "device_secret": pc_obj.device_secret,  # CRITICAL: Returned once
             "license_key": pc_obj.license_key,
         }

@@ -169,24 +169,76 @@ def _extract_cafe_id(request: Optional[Request]) -> Optional[int]:
     Extract cafe_id from the request.
 
     Checks (in order):
-    1. request.state.cafe_id (set by auth dependency)
-    2. JWT payload cafe_id claim
+    1. request.state.cafe_id (set by get_auth_context dependency)
+    2. JWT access token in cookie or Authorization header (verified)
     3. X-Cafe-Id header (for internal services only)
+
+    The JWT path is critical because not every endpoint depends on
+    get_auth_context — many legacy endpoints only use get_current_user
+    which doesn't populate request.state. Without this fallback, those
+    endpoints would 400 with "cafe_id is required" in multi-DB mode.
     """
     if request is None:
         return None
 
-    # Check request state (set by get_auth_context)
+    # 1. Check request state (set by get_auth_context)
     cafe_id = getattr(request.state, "cafe_id", None)
     if cafe_id is not None:
-        return int(cafe_id)
+        try:
+            return int(cafe_id)
+        except (ValueError, TypeError):
+            pass
 
-    # Check header (internal services)
+    # 2. Try to decode the access token directly (verified) and read its
+    #    cafe_id claim. Cache the result on request.state so we don't
+    #    decode the same JWT multiple times in one request.
+    token = _extract_token_from_request(request)
+    if token:
+        try:
+            from app.auth.tokens import decode_access_token
+
+            claims = decode_access_token(token)
+            if claims:
+                jwt_cafe = claims.get("cafe_id")
+                if jwt_cafe is not None:
+                    try:
+                        cafe_int = int(jwt_cafe)
+                        # Cache for downstream consumers
+                        try:
+                            request.state.cafe_id = cafe_int
+                        except Exception:
+                            pass
+                        return cafe_int
+                    except (ValueError, TypeError):
+                        pass
+        except Exception:
+            # Don't crash request routing on token parse errors —
+            # the actual auth dependency will reject the request.
+            pass
+
+    # 3. Check header (internal services / cross-cafe admin tools)
     header_val = request.headers.get("X-Cafe-Id")
     if header_val is not None:
         try:
             return int(header_val)
         except (ValueError, TypeError):
             pass
+
+    return None
+
+
+def _extract_token_from_request(request: Request) -> Optional[str]:
+    """Get the JWT access token from cookie or Authorization header."""
+    # 1. httpOnly cookie (preferred — set by login endpoint)
+    cookie_token = request.cookies.get("access_token")
+    if cookie_token:
+        if cookie_token.startswith("Bearer "):
+            return cookie_token.split(" ", 1)[1]
+        return cookie_token
+
+    # 2. Authorization: Bearer <token>
+    auth_header = request.headers.get("authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        return auth_header.split(" ", 1)[1]
 
     return None
