@@ -13,11 +13,11 @@ set -euo pipefail
 
 # ── Credentials ───────────────────────────────────────────────
 export LOAD_TEST_BASE_URL="http://localhost:8000"
-export CAFE1_EMAIL="yagnarshivaishwik@gmail.com"
-export CAFE1_PASSWORD="j#J*zdDtCcS3"
+export CAFE1_EMAIL="vaishwik14366@gmail.com"
+export CAFE1_PASSWORD="DFO0O6hh9b9n"
 
 # ── Tunables ──────────────────────────────────────────────────
-export LOAD_TEST_NUM_PCS="${LOAD_TEST_NUM_PCS:-40}"
+export LOAD_TEST_NUM_PCS="${LOAD_TEST_NUM_PCS:-100}"
 export LOAD_TEST_NUM_USERS="${LOAD_TEST_NUM_USERS:-30}"
 export LOAD_TEST_CONCURRENCY="${LOAD_TEST_CONCURRENCY:-20}"
 export LOAD_TEST_DURATION_SEC="${LOAD_TEST_DURATION_SEC:-60}"
@@ -41,6 +41,13 @@ if [ -d .git ]; then
     echo ""
     echo "▶  Pulling latest code..."
     git pull origin main || true
+fi
+
+# Clear stale state if user explicitly asks for a fresh run
+if [ "${LOAD_TEST_FRESH:-0}" = "1" ] && [ -f load_test_state.json ]; then
+    echo ""
+    echo "▶  LOAD_TEST_FRESH=1 — clearing cached state file"
+    rm -f load_test_state.json
 fi
 
 # Ensure requests is installed

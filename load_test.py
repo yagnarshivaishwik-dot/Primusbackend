@@ -161,17 +161,27 @@ def fetch_license_key(admin_token: str) -> str:
     return licenses[0]["key"]
 
 
-def register_user(email: str, password: str, name: str) -> bool:
-    """Register a single client user. Returns True if request was accepted."""
+def register_user(email: str, password: str, name: str) -> tuple[bool, str]:
+    """Register a single client user. Returns (ok, detail)."""
     resp = _post(
         "/api/auth/register",
         json={"name": name, "email": email, "password": password},
     )
-    return resp.status_code == 200
+    if resp.status_code == 200:
+        return True, ""
+    return False, f"HTTP {resp.status_code}: {resp.text[:200]}"
 
 
-def register_pc(license_key: str, name: str, hardware_fingerprint: str) -> Optional[dict]:
-    """Register a single PC, return the response dict (incl. device_secret) or None."""
+def verify_user_login(email: str, password: str) -> tuple[bool, str]:
+    """Probe login to confirm the user actually exists and the password works."""
+    resp = _post("/api/auth/login", data={"username": email, "password": password})
+    if resp.status_code == 200:
+        return True, ""
+    return False, f"HTTP {resp.status_code}: {resp.text[:200]}"
+
+
+def register_pc(license_key: str, name: str, hardware_fingerprint: str) -> tuple[Optional[dict], str]:
+    """Register a single PC, return (response_dict, error_detail)."""
     resp = _post(
         "/api/clientpc/register",
         json={
@@ -182,18 +192,23 @@ def register_pc(license_key: str, name: str, hardware_fingerprint: str) -> Optio
         },
     )
     if resp.status_code != 200:
-        return None
-    return resp.json()
+        return None, f"HTTP {resp.status_code}: {resp.text[:200]}"
+    return resp.json(), ""
 
 
-def sign_heartbeat(device_secret: str, body: bytes = b"") -> tuple[dict, bytes]:
-    """Build the (headers, body) tuple for a signed heartbeat call."""
+def sign_heartbeat(device_secret: str, license_key: str, body: bytes = b"") -> tuple[dict, bytes]:
+    """Build the (headers, body) tuple for a signed heartbeat call.
+
+    The X-License-Key header is required so the backend can resolve cafe_id
+    for the per-cafe DB router (heartbeat carries no JWT).
+    """
     timestamp = str(int(time.time()))
     message = timestamp.encode() + body
     signature = hmac.new(device_secret.encode(), message, hashlib.sha256).hexdigest()
     headers = {
         "X-Signature": signature,
         "X-Timestamp": timestamp,
+        "X-License-Key": license_key,
         "Content-Type": "application/json",
     }
     return headers, body
@@ -263,39 +278,79 @@ def setup_phase() -> dict:
     users = state.get("users", [])
     if len(users) < NUM_USERS:
         new_count = 0
+        first_reg_err: str = ""
         for i in range(len(users), NUM_USERS):
             email = f"{USER_PREFIX}{i:03d}@{USER_DOMAIN}"
-            register_user(email, USER_PASSWORD, f"LoadTest User {i:03d}")
+            ok_reg, err = register_user(email, USER_PASSWORD, f"LoadTest User {i:03d}")
+            if not ok_reg and not first_reg_err:
+                first_reg_err = err
             users.append({"email": email, "password": USER_PASSWORD})
             new_count += 1
         state["users"] = users
         ok(f"Registered {new_count} new user(s); total {len(users)}")
+        if first_reg_err:
+            warn(f"First registration error: {first_reg_err}")
+
+    # Verify users can actually log in (registration is silent on duplicates).
+    section("Setup · Verify users can log in")
+    verified: list[dict] = []
+    failed_count = 0
+    first_login_err: str = ""
+    for u in users:
+        ok_login, err = verify_user_login(u["email"], u["password"])
+        if ok_login:
+            verified.append(u)
+        else:
+            failed_count += 1
+            if not first_login_err:
+                first_login_err = err
+    if failed_count == 0:
+        ok(f"All {len(verified)} users can log in")
     else:
-        ok(f"{len(users)} users already cached, skipping registration")
+        warn(f"{failed_count} of {len(users)} users failed login probe")
+        if first_login_err:
+            warn(f"First failure: {first_login_err}")
+        if not verified:
+            fail("No users could log in — load phase will skip login/logout actions")
+    state["users"] = verified
+    users = verified
 
     # ── PCs ─────────────────────────────────────────────────
     section(f"Setup · Register {NUM_PCS} PCs")
     pcs = state.get("pcs", [])
     if len(pcs) < NUM_PCS:
         new_count = 0
+        first_pc_err: str = ""
+        fail_count = 0
         for i in range(len(pcs), NUM_PCS):
             name = f"{PC_PREFIX}{i:03d}"
             hw_fp = f"{HW_PREFIX}{i:03d}-{secrets.token_hex(4)}"
-            pc = register_pc(license_key, name, hw_fp)
+            pc, err = register_pc(license_key, name, hw_fp)
             if pc and pc.get("device_secret"):
                 pcs.append({
                     "id": pc["id"],
                     "name": name,
                     "hardware_fingerprint": hw_fp,
                     "device_secret": pc["device_secret"],
+                    "license_key": license_key,
                 })
                 new_count += 1
             else:
-                warn(f"Failed to register PC {name}")
+                fail_count += 1
+                if not first_pc_err:
+                    first_pc_err = err
         state["pcs"] = pcs
         ok(f"Registered {new_count} new PC(s); total {len(pcs)}")
+        if fail_count:
+            warn(f"{fail_count} PC(s) failed to register")
+            if first_pc_err:
+                warn(f"First error: {first_pc_err}")
+            warn("Tip: bump max_pcs on the license to allow more registrations")
     else:
         ok(f"{len(pcs)} PCs already cached, skipping registration")
+        # Backfill license_key for state files written by older script versions
+        for p in pcs:
+            p.setdefault("license_key", license_key)
 
     state["base_url"] = BASE_URL
     save_state(state)
@@ -341,7 +396,7 @@ class Stats:
 
 
 def _do_heartbeat(pc: dict, stats: Stats):
-    headers, body = sign_heartbeat(pc["device_secret"])
+    headers, body = sign_heartbeat(pc["device_secret"], pc["license_key"])
     t0 = time.perf_counter()
     err = ""
     status = 0
