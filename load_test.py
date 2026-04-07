@@ -74,9 +74,9 @@ NUM_USERS    = int(os.environ.get("LOAD_TEST_NUM_USERS", "30"))
 
 # Action weights (must sum to 1.0)
 ACTION_WEIGHTS = {
-    "heartbeat": 0.70,
-    "login":     0.15,
-    "logout":    0.15,
+    "heartbeat": 0.50,
+    "login":     0.25,
+    "logout":    0.25,
 }
 
 # Generated test users use this prefix so they're easy to identify and never
@@ -154,11 +154,30 @@ def fetch_license_key(admin_token: str) -> str:
     licenses = resp.json()
     if not licenses:
         raise RuntimeError("No licenses found for this admin's cafe.")
-    # Prefer the first active one
     for lic in licenses:
         if lic.get("is_active", True):
             return lic["key"]
     return licenses[0]["key"]
+
+
+def list_existing_pcs(admin_token: str) -> list[dict]:
+    """Return all PCs visible to the admin (cafe-scoped)."""
+    resp = _get("/api/clientpc/", headers={"Authorization": f"Bearer {admin_token}"})
+    if resp.status_code != 200:
+        return []
+    data = resp.json()
+    return data if isinstance(data, list) else []
+
+
+def delete_pc(admin_token: str, pc_id: int) -> bool:
+    """DELETE a single PC by id (admin role required)."""
+    resp = requests.delete(
+        f"{BASE_URL}/api/clientpc/{pc_id}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        verify=VERIFY_SSL,
+        timeout=REQUEST_TIMEOUT,
+    )
+    return resp.status_code in (200, 204)
 
 
 def register_user(email: str, password: str, name: str) -> tuple[bool, str]:
@@ -275,6 +294,27 @@ def setup_phase() -> dict:
     # ── Admin token ─────────────────────────────────────────
     admin_token = admin_login()
     ok(f"Admin logged in ({ADMIN_EMAIL})")
+
+    # ── Cleanup of stale loadtest PCs (only on a fresh run) ─
+    fresh_run = os.environ.get("LOAD_TEST_FRESH", "0") == "1"
+    if fresh_run:
+        section("Setup · Cleanup stale LoadTest PCs")
+        existing = list_existing_pcs(admin_token)
+        loadtest_pcs = [p for p in existing if (p.get("name") or "").startswith(PC_PREFIX)]
+        if loadtest_pcs:
+            info(f"Found {len(loadtest_pcs)} stale LoadTest PC(s); deleting…")
+            deleted = 0
+            failed = 0
+            for p in loadtest_pcs:
+                if delete_pc(admin_token, p["id"]):
+                    deleted += 1
+                else:
+                    failed += 1
+            ok(f"Deleted {deleted} stale PC(s)")
+            if failed:
+                warn(f"{failed} PC(s) could not be deleted (license capacity may stay full)")
+        else:
+            ok("No stale LoadTest PCs found")
 
     # ── License key ─────────────────────────────────────────
     license_key = state.get("license_key")

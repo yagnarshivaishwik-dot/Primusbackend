@@ -18,8 +18,8 @@ export CAFE1_PASSWORD="DFO0O6hh9b9n"
 
 # ── Tunables ──────────────────────────────────────────────────
 export LOAD_TEST_NUM_PCS="${LOAD_TEST_NUM_PCS:-100}"
-export LOAD_TEST_NUM_USERS="${LOAD_TEST_NUM_USERS:-30}"
-export LOAD_TEST_CONCURRENCY="${LOAD_TEST_CONCURRENCY:-20}"
+export LOAD_TEST_NUM_USERS="${LOAD_TEST_NUM_USERS:-100}"
+export LOAD_TEST_CONCURRENCY="${LOAD_TEST_CONCURRENCY:-30}"
 export LOAD_TEST_DURATION_SEC="${LOAD_TEST_DURATION_SEC:-60}"
 
 # ── Setup ─────────────────────────────────────────────────────
@@ -43,8 +43,10 @@ if [ -d .git ]; then
     git pull origin main || true
 fi
 
-# Clear stale state if user explicitly asks for a fresh run
-if [ "${LOAD_TEST_FRESH:-0}" = "1" ] && [ -f load_test_state.json ]; then
+# Default to a fresh run: wipe state cache and trigger PC cleanup phase.
+# Set LOAD_TEST_FRESH=0 to reuse cached state and skip cleanup.
+export LOAD_TEST_FRESH="${LOAD_TEST_FRESH:-1}"
+if [ "$LOAD_TEST_FRESH" = "1" ] && [ -f load_test_state.json ]; then
     echo ""
     echo "▶  LOAD_TEST_FRESH=1 — clearing cached state file"
     rm -f load_test_state.json
