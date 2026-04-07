@@ -8,6 +8,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app.api.endpoints.auth import get_current_user, require_role
 from app.db.dependencies import get_cafe_db as get_db
+from app.db.dependencies import get_db as get_db_unrouted
 from app.models import ClientPC, License, SystemEvent
 from app.schemas import ClientPCCreate, ClientPCOut
 from app.utils.cache import publish_invalidation
@@ -43,8 +44,16 @@ async def get_current_device(request: Request, db: Session = Depends(get_db)):
 
 
 # PC agent registers itself (idempotent via hardware fingerprint)
+# IMPORTANT: This endpoint uses `get_db_unrouted` (the smart shim that respects
+# MULTI_DB_ENABLED) instead of `get_cafe_db`, because the cafe_id can only be
+# derived from the license_key AFTER the License lookup. Using `get_cafe_db`
+# would 400 with "cafe_id is required" before the handler ever runs.
 @router.post("/register", response_model=ClientPCOut)
-async def register_pc(pc: ClientPCCreate, request: Request, db: Session = Depends(get_db)):
+async def register_pc(
+    pc: ClientPCCreate,
+    request: Request,
+    db: Session = Depends(get_db_unrouted),
+):
     """
     MASTER SYSTEM: Production-grade idempotent registration.
     Uses hardware fingerprint to ensure a PC always maps to the same record.
