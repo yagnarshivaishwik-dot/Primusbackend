@@ -53,20 +53,38 @@ DOCKER_CONTAINER=""
 DOCKER_COMPOSE_CMD=""
 SYSTEMD_UNIT=""
 
-# Docker check
+# Docker check. Look at ALL containers (running + stopped) AND at the
+# presence of docker-compose.yml in the backend dir, since the
+# container may have been stopped by a previous run of this script.
 if command -v docker >/dev/null 2>&1; then
-    DOCKER_CONTAINER=$(sudo docker ps --format '{{.Names}}' 2>/dev/null \
-        | grep -iE 'clutchhh_backend|primus_backend|backend' \
+    # First: any container (running or stopped) that looks like the backend
+    DOCKER_CONTAINER=$(sudo docker ps -a --format '{{.Names}}' 2>/dev/null \
+        | grep -iE '^(clutchhh_backend|primus_backend)$' \
         | head -1 || true)
+
+    # Fallback: if there's a docker-compose.yml in the backend dir,
+    # assume docker even if no container exists yet (first ever run).
+    if [ -z "$DOCKER_CONTAINER" ] && [ -f "$BACKEND_DIR/docker-compose.yml" ]; then
+        # Check the compose file actually defines a backend service
+        if grep -q '^\s*backend:' "$BACKEND_DIR/docker-compose.yml" 2>/dev/null; then
+            DOCKER_CONTAINER="backend (from compose)"
+        fi
+    fi
+
     if [ -n "$DOCKER_CONTAINER" ]; then
-        say "  Found docker container: $DOCKER_CONTAINER"
+        say "  Found docker backend: $DOCKER_CONTAINER"
         # Detect compose v1 vs v2
         if sudo docker compose version >/dev/null 2>&1; then
             DOCKER_COMPOSE_CMD="sudo docker compose"
         elif command -v docker-compose >/dev/null 2>&1; then
             DOCKER_COMPOSE_CMD="sudo docker-compose"
         fi
-        say "  Compose command: $DOCKER_COMPOSE_CMD"
+        if [ -z "$DOCKER_COMPOSE_CMD" ]; then
+            warn "Docker container found but no docker compose binary detected"
+            DOCKER_CONTAINER=""
+        else
+            say "  Compose command: $DOCKER_COMPOSE_CMD"
+        fi
     fi
 fi
 
@@ -142,11 +160,11 @@ if [ -n "$DOCKER_CONTAINER" ]; then
     fi
 
     say ""
-    info "Stopping current backend container..."
-    (cd "$BACKEND_DIR" && $DOCKER_COMPOSE_CMD stop backend) || true
-    (cd "$BACKEND_DIR" && $DOCKER_COMPOSE_CMD rm -f backend) || true
+    info "Stopping current backend container (if running)..."
+    (cd "$BACKEND_DIR" && $DOCKER_COMPOSE_CMD stop backend 2>/dev/null) || true
+    (cd "$BACKEND_DIR" && $DOCKER_COMPOSE_CMD rm -f backend 2>/dev/null) || true
 
-    info "Bringing backend up with override (-f docker-compose.yml -f docker-compose.loadtest.yml)..."
+    info "Bringing backend up with capacity override..."
     (cd "$BACKEND_DIR" && $DOCKER_COMPOSE_CMD \
         -f docker-compose.yml \
         -f docker-compose.loadtest.yml \
