@@ -45,6 +45,9 @@ publish/
 logs/
 *.log
 
+# Load test state cache
+load_test_state.json
+
 # Separate Entities / Frontend Repositories
 About-us/
 primus-admin/
