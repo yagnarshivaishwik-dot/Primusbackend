@@ -392,10 +392,11 @@ async def health_check():
 
     # Check Redis (non-critical — cache only)
     try:
-        from app.utils.cache import _redis_client
+        from app.utils.cache import get_redis
 
-        if _redis_client:
-            await _redis_client.ping()
+        redis_client = await get_redis()
+        if redis_client is not None:
+            await redis_client.ping()
             checks["redis"] = "ok"
         else:
             checks["redis"] = "not_configured"
