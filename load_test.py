@@ -71,6 +71,9 @@ DURATION_SEC = int(os.environ.get("LOAD_TEST_DURATION_SEC", "60"))
 CONCURRENCY  = int(os.environ.get("LOAD_TEST_CONCURRENCY", "20"))
 NUM_PCS      = int(os.environ.get("LOAD_TEST_NUM_PCS", "40"))
 NUM_USERS    = int(os.environ.get("LOAD_TEST_NUM_USERS", "30"))
+# When set, paces total RPS across all workers to stay under the
+# server's rate limit. Use 15 if RATE_LIMIT_PER_MINUTE=1000 (default).
+TARGET_RPS   = float(os.environ.get("LOAD_TEST_TARGET_RPS", "0"))
 
 # Action weights (must sum to 1.0)
 # Realistic mix: 100 cafe users don't all login/out constantly. They
@@ -596,8 +599,32 @@ def load_phase(state: dict):
     actions = list(enabled_actions.keys())
     weights = list(enabled_actions.values())
 
+    # Token-bucket-style pacer. When TARGET_RPS > 0 we hand out at most
+    # TARGET_RPS request tokens per second across all workers, so the
+    # client never overruns the server's rate limiter.
+    pacer_lock = threading.Lock()
+    pacer_state = {"next_at": time.time()}
+    interval = (1.0 / TARGET_RPS) if TARGET_RPS > 0 else 0.0
+
+    def acquire_slot():
+        if interval <= 0:
+            return
+        with pacer_lock:
+            now = time.time()
+            wait_until = max(now, pacer_state["next_at"])
+            pacer_state["next_at"] = wait_until + interval
+        sleep_for = wait_until - time.time()
+        if sleep_for > 0:
+            time.sleep(sleep_for)
+
+    if TARGET_RPS > 0:
+        info(f"Client pacer enabled: {TARGET_RPS:.1f} req/s ceiling")
+
     def worker():
         while not stop_flag.is_set() and time.time() < stop_at:
+            acquire_slot()
+            if stop_flag.is_set() or time.time() >= stop_at:
+                break
             action = random.choices(actions, weights=weights, k=1)[0]
             try:
                 if action == "heartbeat":

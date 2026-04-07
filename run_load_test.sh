@@ -25,6 +25,9 @@ export LOAD_TEST_NUM_USERS="${LOAD_TEST_NUM_USERS:-100}"
 # is running with multiple workers (uvicorn --workers N or gunicorn).
 export LOAD_TEST_CONCURRENCY="${LOAD_TEST_CONCURRENCY:-10}"
 export LOAD_TEST_DURATION_SEC="${LOAD_TEST_DURATION_SEC:-60}"
+# Client-side pacer. Set to 15 to stay under the default backend rate
+# limit of 1000 req/min, or 0 to disable pacing entirely.
+export LOAD_TEST_TARGET_RPS="${LOAD_TEST_TARGET_RPS:-15}"
 
 # ── Setup ─────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
