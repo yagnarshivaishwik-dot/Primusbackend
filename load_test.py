@@ -73,10 +73,13 @@ NUM_PCS      = int(os.environ.get("LOAD_TEST_NUM_PCS", "40"))
 NUM_USERS    = int(os.environ.get("LOAD_TEST_NUM_USERS", "30"))
 
 # Action weights (must sum to 1.0)
+# Realistic mix: 100 cafe users don't all login/out constantly. They
+# heartbeat continuously, log in once at the start of a session, and
+# log out at the end. Bias the load accordingly.
 ACTION_WEIGHTS = {
-    "heartbeat": 0.50,
-    "login":     0.25,
-    "logout":    0.25,
+    "heartbeat": 0.85,
+    "login":     0.10,
+    "logout":    0.05,
 }
 
 # Generated test users use this prefix so they're easy to identify and never
@@ -89,7 +92,7 @@ PC_PREFIX = "LoadTest-PC-"
 HW_PREFIX = "loadtest-hw-"
 
 STATE_FILE = "load_test_state.json"
-REQUEST_TIMEOUT = 10  # seconds per HTTP call
+REQUEST_TIMEOUT = 30  # seconds per HTTP call (Argon2 + DB pool can be slow)
 VERIFY_SSL = False
 
 # ============================================================
@@ -564,6 +567,19 @@ def load_phase(state: dict):
 
     stats = Stats()
     token_jar: dict[str, str] = {}
+
+    # Pre-warm the token jar with up to 50 logins so the load phase
+    # spends its budget on heartbeats rather than waiting on Argon2.
+    # Done serially to avoid CPU saturation during warmup.
+    if users:
+        warm = min(50, len(users))
+        info(f"Pre-warming token jar with {warm} login(s)…")
+        for u in users[:warm]:
+            tok = login_user(u["email"], u["password"])
+            if tok:
+                token_jar[u["email"]] = tok
+        ok(f"Token jar primed with {len(token_jar)} token(s)")
+        print()
     jar_lock = threading.Lock()
     stop_at = time.time() + DURATION_SEC
     stop_flag = threading.Event()

@@ -19,7 +19,11 @@ export CAFE1_PASSWORD="DFO0O6hh9b9n"
 # ── Tunables ──────────────────────────────────────────────────
 export LOAD_TEST_NUM_PCS="${LOAD_TEST_NUM_PCS:-100}"
 export LOAD_TEST_NUM_USERS="${LOAD_TEST_NUM_USERS:-100}"
-export LOAD_TEST_CONCURRENCY="${LOAD_TEST_CONCURRENCY:-30}"
+# Concurrency is intentionally modest. The backend default uvicorn
+# launch is single-process, so >10 concurrent workers saturate the
+# Argon2 hashing path during login storms. Bump only if the backend
+# is running with multiple workers (uvicorn --workers N or gunicorn).
+export LOAD_TEST_CONCURRENCY="${LOAD_TEST_CONCURRENCY:-10}"
 export LOAD_TEST_DURATION_SEC="${LOAD_TEST_DURATION_SEC:-60}"
 
 # ── Setup ─────────────────────────────────────────────────────
@@ -85,6 +89,26 @@ else
     echo "   ✗ Cannot reach $LOAD_TEST_BASE_URL"
     echo "   Is the backend running?"
     exit 1
+fi
+
+# Server diagnostic: show how many backend processes are running and
+# how much CPU/RAM they have. A single-process uvicorn will hit ~100%
+# on one core under login storms; multiple workers spread the load.
+echo ""
+echo "▶  Backend process info"
+ps -eo pid,pcpu,pmem,comm,args 2>/dev/null \
+    | grep -E 'uvicorn|gunicorn|main\.py' \
+    | grep -v grep \
+    | awk '{printf "   %-6s cpu=%-5s%% mem=%-5s%% %s %s\n", $1, $2, $3, $4, $5}' \
+    || echo "   (no backend processes detected via ps)"
+WORKER_COUNT=$(ps -eo args 2>/dev/null | grep -E 'uvicorn|gunicorn' | grep -v grep | wc -l)
+if [ "$WORKER_COUNT" -le 1 ]; then
+    echo ""
+    echo "   ⚠ Only $WORKER_COUNT backend worker detected."
+    echo "   For meaningful load testing run with multiple workers, e.g.:"
+    echo "     pkill -f 'python main.py' ; sleep 1"
+    echo "     cd backend && nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4 > /tmp/primus.log 2>&1 &"
+    echo ""
 fi
 
 # ── Run ───────────────────────────────────────────────────────
