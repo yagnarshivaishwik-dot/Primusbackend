@@ -38,7 +38,20 @@ def get_cafe_db(request: Request) -> Generator[Session, None, None]:
 
     Extracts cafe_id from the request state (set by auth middleware/dependency).
     Falls back to JWT payload extraction if not set.
+
+    When MULTI_DB_ENABLED=false the system runs in single-DB mode and there
+    are no per-cafe databases to route to. In that case we transparently
+    return the global session so all the legacy endpoints that aliased
+    `get_cafe_db as get_db` continue to work without modification.
     """
+    if not MULTI_DB_ENABLED:
+        db = global_session_factory()
+        try:
+            yield db
+        finally:
+            db.close()
+        return
+
     cafe_id = _extract_cafe_id(request)
     if cafe_id is None:
         raise HTTPException(
@@ -71,9 +84,14 @@ def get_db(request: Request = None) -> Generator[Session, None, None]:
     When MULTI_DB_ENABLED=true: routes to the cafe database if a cafe_id
     is available in the request, otherwise returns the global database.
     """
+    # NOTE: do NOT re-import global_session_factory inside this function.
+    # An inline `from ... import global_session_factory` makes Python treat
+    # the name as a function-local variable for the ENTIRE function body,
+    # which causes UnboundLocalError on the multi-DB else-branch when the
+    # if-branch wasn't taken. The module-level import at the top of this
+    # file is the single source of truth.
     if not MULTI_DB_ENABLED:
         # Legacy single-DB mode
-        from app.db.global_db import global_session_factory
         db = global_session_factory()
         try:
             yield db
@@ -105,8 +123,8 @@ def get_db_with_tenant(request: Request = None) -> Generator[Session, None, None
 
     Use this instead of get_db() in financial endpoints when ENABLE_RLS=true.
     """
+    # See note in get_db: do NOT re-import global_session_factory here.
     if not MULTI_DB_ENABLED:
-        from app.db.global_db import global_session_factory
         db = global_session_factory()
         try:
             if ENABLE_RLS and request:
