@@ -10,10 +10,16 @@ from app.api.endpoints.auth import get_current_user, require_role
 from app.api.endpoints.client_pc import get_current_device
 from app.auth.context import AuthContext, get_auth_context
 from app.auth.tenant import scoped_query, enforce_cafe_ownership
-from app.db.dependencies import get_cafe_db as get_db
-from app.models import ClientPC, RemoteCommand, SystemEvent
+from app.db.dependencies import MULTI_DB_ENABLED, get_cafe_db as get_db
 from app.schemas import RemoteCommandIn, RemoteCommandOut
 from app.ws.pc import notify_pc
+
+# Cafe-scoped models in multi-DB mode (no cafe_id columns), legacy models
+# in single-DB mode. See client_pc.py for the same pattern.
+if MULTI_DB_ENABLED:
+    from app.db.models_cafe import ClientPC, RemoteCommand, SystemEvent
+else:
+    from app.models import ClientPC, RemoteCommand, SystemEvent  # type: ignore[no-redef]
 
 logger = logging.getLogger(__name__)
 
@@ -124,13 +130,17 @@ async def send_command(
         rc.id, rc.command, rc.pc_id, rc.expires_at.isoformat(),
     )
 
-    # Emit System Event for Admin UI
-    event = SystemEvent(
+    # Emit System Event for Admin UI. In multi-DB mode SystemEvent has no
+    # cafe_id column — only attach it in single-DB mode.
+    _pc_cafe = getattr(pc, "cafe_id", None)
+    event_kwargs = dict(
         type="command.created",
-        cafe_id=pc.cafe_id,
         pc_id=pc.id,
         payload={"command_id": rc.id, "command": rc.command, "params": rc.params},
     )
+    if _pc_cafe is not None:
+        event_kwargs["cafe_id"] = _pc_cafe
+    event = SystemEvent(**event_kwargs)
     db.add(event)
     db.commit()
 
@@ -144,12 +154,14 @@ async def send_command(
 
     if new_status:
         pc.status = new_status
-        status_event = SystemEvent(
+        status_event_kwargs = dict(
             type="pc.status",
-            cafe_id=pc.cafe_id,
             pc_id=pc.id,
             payload={"status": new_status},
         )
+        if _pc_cafe is not None:
+            status_event_kwargs["cafe_id"] = _pc_cafe
+        status_event = SystemEvent(**status_event_kwargs)
         db.add(status_event)
         db.commit()
 
@@ -206,12 +218,11 @@ def queue_device_event(db: Session, pc_id: int, event_type: str, payload: dict):
     db.refresh(rc)
 
     # Also emit a system event so the admin UI (SSE) knows something happened
-    event = SystemEvent(
-        type=event_type,
-        cafe_id=pc.cafe_id,
-        pc_id=pc_id,
-        payload=payload,
-    )
+    _pc_cafe = getattr(pc, "cafe_id", None)
+    event_kwargs = dict(type=event_type, pc_id=pc_id, payload=payload)
+    if _pc_cafe is not None:
+        event_kwargs["cafe_id"] = _pc_cafe
+    event = SystemEvent(**event_kwargs)
     db.add(event)
     db.commit()
     return rc
@@ -317,25 +328,25 @@ async def ack_command(
         rc.id, rc.command, pc.id, state, result,
     )
 
+    _pc_cafe = getattr(pc, "cafe_id", None)
+
     # If a shutdown/reboot command FAILED, revert PC status back to online
     if state == "FAILED" and rc.command in ("shutdown", "reboot", "restart"):
         pc.status = "online"
-        revert_event = SystemEvent(
-            type="pc.status",
-            cafe_id=pc.cafe_id,
-            pc_id=pc.id,
-            payload={"status": "online"},
-        )
-        db.add(revert_event)
+        revert_kwargs = dict(type="pc.status", pc_id=pc.id, payload={"status": "online"})
+        if _pc_cafe is not None:
+            revert_kwargs["cafe_id"] = _pc_cafe
+        db.add(SystemEvent(**revert_kwargs))
 
     # Emit System Event for Admin UI
-    event = SystemEvent(
+    event_kwargs = dict(
         type="command.ack",
-        cafe_id=pc.cafe_id,
         pc_id=pc.id,
         payload={"command_id": rc.id, "state": state, "result": result},
     )
-    db.add(event)
+    if _pc_cafe is not None:
+        event_kwargs["cafe_id"] = _pc_cafe
+    db.add(SystemEvent(**event_kwargs))
     db.commit()
 
     return {"status": "ok"}
