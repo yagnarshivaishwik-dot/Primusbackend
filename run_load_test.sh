@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================
-# Primus · Load Test Runner
+# Primus  Load Test Runner
 # =============================================================
 # Simulates 100 PCs and 100 client users hitting the backend
 # concurrently with a mix of heartbeats, logins, and logouts.
@@ -8,12 +8,12 @@
 # Run on the cloud server:
 #   bash run_load_test.sh
 #
-# What it auto-handles:
+# Auto-handled:
 #   1. git pull
-#   2. Cleanup of stale LoadTest PCs (via API or SQL fallback)
-#   3. Backend restart with relaxed rate limit + 4 workers (sudo)
-#   4. State cache invalidation
-#   5. Dependency check
+#   2. Backend restart with relaxed rate limit + 4 workers (sudo)
+#   3. State cache invalidation + stale PC cleanup
+#   4. Dependency check
+#   5. Output tee'd to /tmp/load_test_<timestamp>.log
 # =============================================================
 
 set -euo pipefail
@@ -28,14 +28,13 @@ export LOAD_TEST_NUM_PCS="${LOAD_TEST_NUM_PCS:-100}"
 export LOAD_TEST_NUM_USERS="${LOAD_TEST_NUM_USERS:-100}"
 export LOAD_TEST_CONCURRENCY="${LOAD_TEST_CONCURRENCY:-30}"
 export LOAD_TEST_DURATION_SEC="${LOAD_TEST_DURATION_SEC:-60}"
-# After auto-restart the backend has a 1M req/min cap, so the pacer
-# is no longer needed. Set TARGET_RPS=15 manually if you skip the
-# auto-restart and want to stay under the production limit.
 export LOAD_TEST_TARGET_RPS="${LOAD_TEST_TARGET_RPS:-0}"
 
-# Backend restart knobs — set AUTO_RESTART_BACKEND=0 to skip the
-# automated restart entirely (useful if the backend is managed by
-# systemd or docker and you don't want this script touching it).
+# Force the python script to never emit ANSI color codes. We want a
+# perfectly clean log that copies/pastes the same way it renders.
+export NO_COLOR=1
+
+# Backend restart knobs
 AUTO_RESTART_BACKEND="${AUTO_RESTART_BACKEND:-1}"
 BACKEND_RATE_LIMIT_PER_MINUTE="${BACKEND_RATE_LIMIT_PER_MINUTE:-1000000}"
 BACKEND_RATE_LIMIT_BURST="${BACKEND_RATE_LIMIT_BURST:-10000}"
@@ -47,189 +46,214 @@ BACKEND_PORT="${BACKEND_PORT:-8000}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 BACKEND_DIR="${BACKEND_DIR:-$SCRIPT_DIR/backend}"
+LOG_FILE="/tmp/load_test_$(date +%s).log"
 
-echo ""
-echo "══════════════════════════════════════════════════════════"
-echo "  Primus Load Test"
-echo "  Target      : $LOAD_TEST_BASE_URL"
-echo "  PCs         : $LOAD_TEST_NUM_PCS"
-echo "  Users       : $LOAD_TEST_NUM_USERS"
-echo "  Concurrency : $LOAD_TEST_CONCURRENCY"
-echo "  Duration    : ${LOAD_TEST_DURATION_SEC}s"
-echo "══════════════════════════════════════════════════════════"
+# Plain ASCII status helpers (no Unicode, no colors).
+say()  { printf '%s\n' "$*"; }
+info() { printf '[..] %s\n' "$*"; }
+ok()   { printf '[OK] %s\n' "$*"; }
+warn() { printf '[!!] %s\n' "$*"; }
+err()  { printf '[XX] %s\n' "$*"; }
 
-# Pull latest code (if running from a git checkout)
+say ""
+say "=========================================================="
+say "  Primus Load Test"
+say "  Target      : $LOAD_TEST_BASE_URL"
+say "  PCs         : $LOAD_TEST_NUM_PCS"
+say "  Users       : $LOAD_TEST_NUM_USERS"
+say "  Concurrency : $LOAD_TEST_CONCURRENCY"
+say "  Duration    : ${LOAD_TEST_DURATION_SEC}s"
+say "  Log file    : $LOG_FILE"
+say "=========================================================="
+
+# Pull latest code
 if [ -d .git ]; then
-    echo ""
-    echo "▶  Pulling latest code..."
+    say ""
+    info "Pulling latest code..."
     git pull origin main || true
 fi
 
 # ── Auto-restart the backend with relaxed rate limit ─────────
 restart_backend() {
-    echo ""
-    echo "▶  Restarting backend with relaxed rate limit + $BACKEND_WORKERS workers"
-    echo "   (RATE_LIMIT_PER_MINUTE=$BACKEND_RATE_LIMIT_PER_MINUTE,"
-    echo "    RATE_LIMIT_BURST=$BACKEND_RATE_LIMIT_BURST)"
+    say ""
+    info "Restarting backend with relaxed rate limit + $BACKEND_WORKERS workers"
+    say  "     RATE_LIMIT_PER_MINUTE=$BACKEND_RATE_LIMIT_PER_MINUTE"
+    say  "     RATE_LIMIT_BURST=$BACKEND_RATE_LIMIT_BURST"
 
-    # Test sudo non-interactively first
     if ! sudo -n true 2>/dev/null; then
-        echo ""
-        echo "   ⚠ sudo requires a password. The backend is running as root,"
-        echo "     so the script needs sudo to restart it. Either:"
-        echo "       (a) prime sudo first:   sudo -v   then re-run this script"
-        echo "       (b) skip auto-restart:  AUTO_RESTART_BACKEND=0 LOAD_TEST_TARGET_RPS=15 bash run_load_test.sh"
-        echo ""
+        warn "sudo requires a password. Run 'sudo -v' first or set AUTO_RESTART_BACKEND=0."
         return 1
     fi
 
     if [ ! -d "$BACKEND_DIR" ]; then
-        echo "   ✗ Backend directory $BACKEND_DIR not found — set BACKEND_DIR env var"
+        err "Backend directory $BACKEND_DIR not found - set BACKEND_DIR env var"
         return 1
     fi
 
-    # Kill any existing uvicorn / python main.py processes (root-owned ok)
-    sudo pkill -9 -f 'uvicorn app.main:app' 2>/dev/null || true
-    sudo pkill -9 -f 'python.*main\.py' 2>/dev/null || true
-    sleep 2
+    # Aggressive multi-pass kill: name match, port owner, repeat.
+    info "killing existing backend processes (pkill + fuser, 3 rounds)..."
+    for round in 1 2 3; do
+        sudo pkill -9 -f 'uvicorn app.main:app' 2>/dev/null || true
+        sudo pkill -9 -f 'python.*main\.py'     2>/dev/null || true
+        sudo fuser -k -9 "$BACKEND_PORT/tcp"    2>/dev/null || true
+        sleep 1
+        local survivors
+        survivors=$(pgrep -f 'uvicorn app.main:app' 2>/dev/null || true)
+        if [ -z "$survivors" ]; then
+            ok "all backend processes killed"
+            break
+        fi
+        warn "round $round: still alive: $survivors - retrying"
+    done
 
-    # Verify they're gone
-    local survivors
-    survivors=$(pgrep -f 'uvicorn app.main:app' 2>/dev/null || true)
-    if [ -n "$survivors" ]; then
-        echo "   ✗ Some uvicorn processes survived: $survivors"
+    local final_survivors
+    final_survivors=$(pgrep -f 'uvicorn app.main:app' 2>/dev/null || true)
+    if [ -n "$final_survivors" ]; then
+        say ""
+        err "Could not kill these uvicorn processes:"
+        for pid in $final_survivors; do
+            say "       pid=$pid  $(ps -o args= -p "$pid" 2>/dev/null | head -c 100)"
+        done
+        say  ""
+        say  "       These processes are likely still writing to your terminal,"
+        say  "       which would scramble the load test output. Manually kill them"
+        say  "       and re-run:"
+        say  "         sudo kill -9 $final_survivors"
+        say  ""
         return 1
     fi
 
-    # Start fresh, as root, with the new env vars
-    sudo bash -c "cd '$BACKEND_DIR' && \
+    # Start fresh, as root, with the new env vars. Critical: redirect
+    # ALL of stdout/stderr to /tmp/primus.log via setsid so the new
+    # uvicorn never inherits the current terminal.
+    sudo setsid bash -c "cd '$BACKEND_DIR' && \
         RATE_LIMIT_PER_MINUTE=$BACKEND_RATE_LIMIT_PER_MINUTE \
         RATE_LIMIT_BURST=$BACKEND_RATE_LIMIT_BURST \
         nohup uvicorn app.main:app \
             --host $BACKEND_HOST --port $BACKEND_PORT \
             --workers $BACKEND_WORKERS \
-            > /tmp/primus.log 2>&1 &"
+            </dev/null >/tmp/primus.log 2>&1 &" >/dev/null 2>&1
 
-    # Wait for it to come up (max 30s)
-    echo -n "   waiting for backend to come back"
+    info "waiting for backend to come back..."
     for i in $(seq 1 30); do
         if curl -sf --max-time 2 "$LOAD_TEST_BASE_URL/docs" -o /dev/null 2>&1; then
-            echo " ✓"
+            ok "backend is up after ${i}s"
             return 0
         fi
-        echo -n "."
         sleep 1
     done
-    echo ""
-    echo "   ✗ Backend did not come back within 30s. Check /tmp/primus.log:"
+    err "Backend did not come back within 30s. Last lines of /tmp/primus.log:"
     sudo tail -30 /tmp/primus.log 2>/dev/null || true
     return 1
 }
 
 needs_restart() {
-    # Detect whether the running backend already has the high rate limit.
-    # We read /proc/<pid>/environ for the uvicorn process and grep for
-    # the env var. If found and matching, no restart needed.
     local pid env_str
     pid=$(pgrep -f 'uvicorn app.main:app' 2>/dev/null | head -1)
     if [ -z "$pid" ]; then
-        return 0  # nothing running → needs restart
+        return 0
     fi
     env_str=$(sudo cat "/proc/$pid/environ" 2>/dev/null | tr '\0' '\n' \
               | grep '^RATE_LIMIT_PER_MINUTE=' || true)
     if [ -z "$env_str" ]; then
-        return 0  # no env var set → restart
+        return 0
     fi
     local current_limit
     current_limit="${env_str#RATE_LIMIT_PER_MINUTE=}"
     if [ "$current_limit" -lt "$BACKEND_RATE_LIMIT_PER_MINUTE" ] 2>/dev/null; then
-        return 0  # too low → restart
+        return 0
     fi
-    # Also check workers — count uvicorn worker processes (master + N workers)
     local worker_count
     worker_count=$(pgrep -f 'uvicorn app.main:app' 2>/dev/null | wc -l)
     if [ "$worker_count" -lt $((BACKEND_WORKERS + 1)) ]; then
-        return 0  # not enough workers → restart
+        return 0
     fi
-    return 1  # already configured correctly
+    return 1
 }
 
 if [ "$AUTO_RESTART_BACKEND" = "1" ]; then
-    # Prime sudo upfront so the restart later doesn't have to prompt
-    # mid-run. If the user has no sudo, this fails and we fall through
-    # to client-side pacing.
     if ! sudo -n true 2>/dev/null; then
-        echo ""
-        echo "▶  Backend restart needs sudo. Enter your password once:"
+        say ""
+        info "Backend restart needs sudo. Enter your password once:"
         if ! sudo -v 2>/dev/null; then
-            echo "   ⚠ Could not acquire sudo — will use client-side pacing instead"
-            export LOAD_TEST_TARGET_RPS=10
-            AUTO_RESTART_BACKEND=0
+            err "Could not acquire sudo. Re-run with AUTO_RESTART_BACKEND=0 LOAD_TEST_TARGET_RPS=10."
+            exit 1
         fi
     fi
 
-    if [ "$AUTO_RESTART_BACKEND" = "1" ]; then
-        if needs_restart; then
-            if ! restart_backend; then
-                echo "   ⚠ Auto-restart failed — falling back to client-side pacing"
-                export LOAD_TEST_TARGET_RPS=10
-            fi
-        else
-            echo ""
-            echo "▶  Backend already running with high rate limit and $BACKEND_WORKERS+ workers — skipping restart"
+    if needs_restart; then
+        if ! restart_backend; then
+            say ""
+            err "Backend restart failed. Aborting to avoid polluted output."
+            err "Re-run with AUTO_RESTART_BACKEND=0 LOAD_TEST_TARGET_RPS=10 to use"
+            err "client-side pacing instead, OR fix the surviving processes and retry."
+            exit 1
         fi
+    else
+        say ""
+        ok "Backend already running with high rate limit and $BACKEND_WORKERS+ workers - skipping restart"
     fi
 fi
 
-# Default to a fresh run: wipe state cache and trigger PC cleanup phase.
+# Default to a fresh run
 export LOAD_TEST_FRESH="${LOAD_TEST_FRESH:-1}"
 if [ "$LOAD_TEST_FRESH" = "1" ] && [ -f load_test_state.json ]; then
-    echo ""
-    echo "▶  LOAD_TEST_FRESH=1 — clearing cached state file"
+    say ""
+    info "LOAD_TEST_FRESH=1 - clearing cached state file"
     rm -f load_test_state.json
 fi
 
-# SQL fallback cleanup: nuke stale LoadTest PCs in every per-cafe DB.
+# SQL fallback cleanup
 if [ "${LOAD_TEST_SQL_CLEANUP:-0}" = "1" ]; then
-    echo ""
-    echo "▶  LOAD_TEST_SQL_CLEANUP=1 — running SQL cleanup"
+    say ""
+    info "LOAD_TEST_SQL_CLEANUP=1 - running SQL cleanup"
     if command -v psql >/dev/null 2>&1; then
         for db in $(sudo -u postgres psql -tAc \
             "SELECT datname FROM pg_database WHERE datname LIKE 'clutchhh_cafe_%' OR datname LIKE 'primus_cafe_%';" 2>/dev/null); do
-            echo "   → cleaning $db"
+            say "     -> cleaning $db"
             sudo -u postgres psql -d "$db" -c \
                 "DELETE FROM client_pcs WHERE name LIKE 'LoadTest-PC-%';" || true
         done
     else
-        echo "   ⚠ psql not found, skipping SQL cleanup"
+        warn "psql not found, skipping SQL cleanup"
     fi
 fi
 
-# Ensure requests is installed
-echo ""
-echo "▶  Checking dependencies..."
+# Dependencies
+say ""
+info "Checking dependencies..."
 python3 -c "import requests" 2>/dev/null || pip3 install --quiet requests
 
-# Connectivity check
-echo ""
-echo "▶  Checking backend is reachable at $LOAD_TEST_BASE_URL ..."
+# Connectivity
+say ""
+info "Checking backend is reachable at $LOAD_TEST_BASE_URL ..."
 if curl -sf --max-time 5 "$LOAD_TEST_BASE_URL/docs" -o /dev/null; then
-    echo "   ✓ Backend is up"
+    ok "backend is reachable"
 else
-    echo ""
-    echo "   ✗ Cannot reach $LOAD_TEST_BASE_URL"
+    err "Cannot reach $LOAD_TEST_BASE_URL"
     exit 1
 fi
 
 # Backend process info
-echo ""
-echo "▶  Backend process info"
+say ""
+info "Backend process info:"
 ps -eo pid,pcpu,pmem,args 2>/dev/null \
     | grep -E 'uvicorn app.main:app' \
     | grep -v grep \
-    | awk '{printf "   pid=%-6s cpu=%-5s%% mem=%-5s%%\n", $1, $2, $3}' \
-    || echo "   (no backend processes detected via ps)"
+    | awk '{printf "     pid=%-6s cpu=%-5s%% mem=%-5s%%\n", $1, $2, $3}' \
+    || say  "     (no backend processes detected via ps)"
 
 # ── Run ───────────────────────────────────────────────────────
-echo ""
-python3 load_test.py
+say ""
+say "=========================================================="
+say "  Running load test (output also saved to $LOG_FILE)"
+say "=========================================================="
+say ""
+
+# tee output to a log file. PIPESTATUS preserves python's exit code.
+python3 -u load_test.py 2>&1 | tee "$LOG_FILE"
+exit_code=${PIPESTATUS[0]}
+
+say ""
+say "Full log saved to: $LOG_FILE"
+exit "$exit_code"
