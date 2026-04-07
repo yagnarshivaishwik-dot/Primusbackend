@@ -170,14 +170,23 @@ def list_existing_pcs(admin_token: str) -> list[dict]:
 
 
 def delete_pc(admin_token: str, pc_id: int) -> bool:
-    """DELETE a single PC by id (admin role required)."""
-    resp = requests.delete(
-        f"{BASE_URL}/api/clientpc/{pc_id}",
-        headers={"Authorization": f"Bearer {admin_token}"},
-        verify=VERIFY_SSL,
-        timeout=REQUEST_TIMEOUT,
-    )
-    return resp.status_code in (200, 204)
+    """
+    DELETE a single PC by id (admin role required).
+
+    The endpoint does a manual cascade delete across system_events,
+    remote_commands, sessions and hardware_stats, so it can be slow.
+    Use a generous per-call timeout and swallow errors.
+    """
+    try:
+        resp = requests.delete(
+            f"{BASE_URL}/api/clientpc/{pc_id}",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            verify=VERIFY_SSL,
+            timeout=60,
+        )
+        return resp.status_code in (200, 204)
+    except Exception:
+        return False
 
 
 def register_user(email: str, password: str, name: str) -> tuple[bool, str]:
@@ -302,17 +311,32 @@ def setup_phase() -> dict:
         existing = list_existing_pcs(admin_token)
         loadtest_pcs = [p for p in existing if (p.get("name") or "").startswith(PC_PREFIX)]
         if loadtest_pcs:
-            info(f"Found {len(loadtest_pcs)} stale LoadTest PC(s); deleting…")
-            deleted = 0
-            failed = 0
-            for p in loadtest_pcs:
-                if delete_pc(admin_token, p["id"]):
-                    deleted += 1
-                else:
-                    failed += 1
-            ok(f"Deleted {deleted} stale PC(s)")
-            if failed:
-                warn(f"{failed} PC(s) could not be deleted (license capacity may stay full)")
+            info(f"Found {len(loadtest_pcs)} stale LoadTest PC(s); deleting in parallel…")
+
+            cleanup_done = {"deleted": 0, "failed": 0}
+            cleanup_lock = threading.Lock()
+            total_to_delete = len(loadtest_pcs)
+
+            def _del(pc_id: int):
+                ok_flag = delete_pc(admin_token, pc_id)
+                with cleanup_lock:
+                    if ok_flag:
+                        cleanup_done["deleted"] += 1
+                    else:
+                        cleanup_done["failed"] += 1
+                    done = cleanup_done["deleted"] + cleanup_done["failed"]
+                    if done % 10 == 0 or done == total_to_delete:
+                        print(f"    {GREY}…{done}/{total_to_delete} processed{RESET}")
+
+            # 10 concurrent deletes — keeps the cascade load on the server
+            # manageable while finishing 100 PCs in well under a minute.
+            with ThreadPoolExecutor(max_workers=10) as pool:
+                list(pool.map(lambda p: _del(p["id"]), loadtest_pcs))
+
+            ok(f"Deleted {cleanup_done['deleted']} stale PC(s)")
+            if cleanup_done["failed"]:
+                warn(f"{cleanup_done['failed']} PC(s) could not be deleted "
+                     f"(license capacity may stay full — bump max_pcs or retry)")
         else:
             ok("No stale LoadTest PCs found")
 
