@@ -10,7 +10,9 @@
 set -euo pipefail
 
 # ── Credentials ───────────────────────────────────────────────
-export PRIMUS_BASE_URL="http://20.55.214.91:8000"
+# Use localhost — the script runs ON the server, so the external IP
+# is unreachable from within the same machine (firewall/NAT).
+export PRIMUS_BASE_URL="http://localhost:8000"
 
 export CAFE1_EMAIL="yagnarshivaishwik@gmail.com"
 export CAFE1_PASSWORD="j#J*zdDtCcS3"
@@ -40,6 +42,19 @@ git pull origin main
 echo ""
 echo "▶  Checking dependencies..."
 python3 -c "import requests" 2>/dev/null || pip3 install --quiet requests
+
+# ── Connectivity check ────────────────────────────────────────
+echo ""
+echo "▶  Checking backend is reachable at $PRIMUS_BASE_URL ..."
+if curl -sf --max-time 5 "$PRIMUS_BASE_URL/docs" -o /dev/null; then
+    echo "   ✓ Backend is up"
+else
+    echo ""
+    echo "   ✗ Cannot reach $PRIMUS_BASE_URL"
+    echo "   Is the backend running?  Try:  cd backend && python main.py"
+    echo "   Or check:  ps aux | grep 'python\|uvicorn\|gunicorn'"
+    exit 1
+fi
 
 # ── Run tests ─────────────────────────────────────────────────
 echo ""
