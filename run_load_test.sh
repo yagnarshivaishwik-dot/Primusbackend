@@ -34,8 +34,17 @@ export LOAD_TEST_TARGET_RPS="${LOAD_TEST_TARGET_RPS:-0}"
 # perfectly clean log that copies/pastes the same way it renders.
 export NO_COLOR=1
 
-# Backend restart knobs
-AUTO_RESTART_BACKEND="${AUTO_RESTART_BACKEND:-1}"
+# Backend restart knobs.
+#
+# By default this script DOES NOT touch the backend. Run the dedicated
+# setup script ONCE first to prepare it:
+#
+#     sudo bash setup_backend_for_loadtest.sh
+#
+# Then this script just fires the load test. If you want this script
+# to manage uvicorn directly (legacy non-docker setups), set
+# AUTO_RESTART_BACKEND=1.
+AUTO_RESTART_BACKEND="${AUTO_RESTART_BACKEND:-0}"
 BACKEND_RATE_LIMIT_PER_MINUTE="${BACKEND_RATE_LIMIT_PER_MINUTE:-1000000}"
 BACKEND_RATE_LIMIT_BURST="${BACKEND_RATE_LIMIT_BURST:-10000}"
 BACKEND_WORKERS="${BACKEND_WORKERS:-4}"
