@@ -7,8 +7,9 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from app.api.endpoints.auth import get_current_user, require_role
-from app.db.dependencies import get_cafe_db as get_db
-from app.db.dependencies import get_db as get_db_unrouted
+from app.db.dependencies import MULTI_DB_ENABLED, get_cafe_db as get_db, get_global_db
+from app.db.global_db import global_session_factory
+from app.db.router import cafe_db_router
 from app.models import ClientPC, License, SystemEvent
 from app.schemas import ClientPCCreate, ClientPCOut
 from app.utils.cache import publish_invalidation
@@ -43,24 +44,25 @@ async def get_current_device(request: Request, db: Session = Depends(get_db)):
     return pc
 
 
-# PC agent registers itself (idempotent via hardware fingerprint)
-# IMPORTANT: This endpoint uses `get_db_unrouted` (the smart shim that respects
-# MULTI_DB_ENABLED) instead of `get_cafe_db`, because the cafe_id can only be
-# derived from the license_key AFTER the License lookup. Using `get_cafe_db`
-# would 400 with "cafe_id is required" before the handler ever runs.
+# PC agent registers itself (idempotent via hardware fingerprint).
+#
+# Multi-DB note:
+# This endpoint cannot use a single `Depends(get_db)` because the cafe_id is
+# only known AFTER the License lookup. License lives in the GLOBAL database;
+# ClientPC and SystemEvent live in the CAFE-SPECIFIC database (when
+# MULTI_DB_ENABLED=true). The handler opens both sessions explicitly.
 @router.post("/register", response_model=ClientPCOut)
 async def register_pc(
     pc: ClientPCCreate,
     request: Request,
-    db: Session = Depends(get_db_unrouted),
 ):
     """
     MASTER SYSTEM: Production-grade idempotent registration.
     Uses hardware fingerprint to ensure a PC always maps to the same record.
     """
-    # 1. Validate license
-    # Signed keys: verify JWT signature first (tamper-proof, no DB lookup needed for claims).
-    # Unsigned (legacy) keys: fall back to DB-only validation.
+    # ------------------------------------------------------------------
+    # Step 1: License validation (always against the GLOBAL database)
+    # ------------------------------------------------------------------
     if is_signed_key(pc.license_key):
         ok, err = verify_signed_license(pc.license_key)
         if not ok:
@@ -68,85 +70,115 @@ async def register_pc(
                 raise HTTPException(status_code=403, detail="Invalid license key format")
             raise HTTPException(status_code=403, detail=err)
 
-    license_obj = db.query(License).filter_by(key=pc.license_key).first()
-    if not license_obj or not license_obj.is_active:
-        raise HTTPException(status_code=403, detail="Invalid or inactive license")
+    global_db = global_session_factory()
+    try:
+        license_obj = global_db.query(License).filter_by(key=pc.license_key).first()
+        if not license_obj or not license_obj.is_active:
+            raise HTTPException(status_code=403, detail="Invalid or inactive license")
 
-    # For signed keys, also confirm the embedded cafe_id matches the DB record (defence-in-depth).
-    if is_signed_key(pc.license_key):
-        from app.utils.license import decode_signed_license_key
-        claims = decode_signed_license_key(pc.license_key)
-        if claims and claims.get("cafe_id") != license_obj.cafe_id:
-            raise HTTPException(status_code=403, detail="License cafe mismatch")
+        # For signed keys, also confirm the embedded cafe_id matches the DB record.
+        if is_signed_key(pc.license_key):
+            from app.utils.license import decode_signed_license_key
+            claims = decode_signed_license_key(pc.license_key)
+            if claims and claims.get("cafe_id") != license_obj.cafe_id:
+                raise HTTPException(status_code=403, detail="License cafe mismatch")
 
-    # Make expires_at timezone-aware if it's naive (for comparison with UTC)
-    expires_at = license_obj.expires_at
-    if expires_at:
-        if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=UTC)
-        if expires_at < datetime.now(UTC):
-            raise HTTPException(status_code=403, detail="License expired")
+        # Make expires_at timezone-aware if it's naive (for comparison with UTC)
+        expires_at = license_obj.expires_at
+        if expires_at:
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=UTC)
+            if expires_at < datetime.now(UTC):
+                raise HTTPException(status_code=403, detail="License expired")
 
-    # 2. Idempotent Upsert
-    pc_obj = (
-        db.query(ClientPC)
-        .filter_by(cafe_id=license_obj.cafe_id, hardware_fingerprint=pc.hardware_fingerprint)
-        .first()
-    )
+        # Snapshot fields we need outside the global session scope
+        cafe_id = license_obj.cafe_id
+        license_key = license_obj.key
+        license_max_pcs = license_obj.max_pcs
+    finally:
+        global_db.close()
 
-    if pc_obj:
-        # Update metadata
-        pc_obj.name = pc.name
-        pc_obj.ip_address = str(request.client.host)
-        pc_obj.last_seen = datetime.now(UTC)
-        pc_obj.capabilities = pc.capabilities
-        pc_obj.status = "online"
+    # ------------------------------------------------------------------
+    # Step 2: ClientPC operations on the CAFE-SPECIFIC database
+    # ------------------------------------------------------------------
+    # In multi-DB mode, route to the cafe-specific database.
+    # In single-DB mode, fall back to the global session (everything is
+    # in one database anyway).
+    if MULTI_DB_ENABLED:
+        cafe_db = cafe_db_router.get_session(cafe_id)
     else:
-        # Check PC limit
-        existing_pcs = db.query(ClientPC).filter_by(license_key=license_obj.key).count()
-        if existing_pcs >= license_obj.max_pcs:
-            raise HTTPException(status_code=403, detail="Max PC count reached for this license")
+        cafe_db = global_session_factory()
 
-        _raw_secret = secrets.token_urlsafe(32)
-        pc_obj = ClientPC(
-            license_key=license_obj.key,
-            name=pc.name,
-            hardware_fingerprint=pc.hardware_fingerprint,
-            device_secret=_raw_secret,  # Legacy cleartext; kept for HMAC compat
-            device_secret_hash=hashlib.sha256(_raw_secret.encode()).hexdigest(),
-            device_status="active",
-            ip_address=str(request.client.host),
-            status="online",
-            last_seen=datetime.now(UTC),
-            cafe_id=license_obj.cafe_id,
-            capabilities=pc.capabilities,
-            bound=True,
-            bound_at=datetime.now(UTC),
+    try:
+        # Idempotent upsert keyed on (cafe_id, hardware_fingerprint)
+        pc_obj = (
+            cafe_db.query(ClientPC)
+            .filter_by(cafe_id=cafe_id, hardware_fingerprint=pc.hardware_fingerprint)
+            .first()
         )
-        db.add(pc_obj)
 
-    db.commit()
-    db.refresh(pc_obj)
+        if pc_obj:
+            # Update metadata on existing record
+            pc_obj.name = pc.name
+            pc_obj.ip_address = str(request.client.host)
+            pc_obj.last_seen = datetime.now(UTC)
+            pc_obj.capabilities = pc.capabilities
+            pc_obj.status = "online"
+        else:
+            # Check PC limit before creating
+            existing_pcs = (
+                cafe_db.query(ClientPC).filter_by(license_key=license_key).count()
+            )
+            if existing_pcs >= license_max_pcs:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Max PC count reached for this license",
+                )
 
-    # 3. Emit event for Admin UI
-    event = SystemEvent(
-        type="pc.status",
-        cafe_id=pc_obj.cafe_id,
-        pc_id=pc_obj.id,
-        payload={"name": pc_obj.name, "status": "online", "event": "registered"},
-    )
-    db.add(event)
-    db.commit()
+            _raw_secret = secrets.token_urlsafe(32)
+            pc_obj = ClientPC(
+                license_key=license_key,
+                name=pc.name,
+                hardware_fingerprint=pc.hardware_fingerprint,
+                device_secret=_raw_secret,  # Legacy cleartext; kept for HMAC compat
+                device_secret_hash=hashlib.sha256(_raw_secret.encode()).hexdigest(),
+                device_status="active",
+                ip_address=str(request.client.host),
+                status="online",
+                last_seen=datetime.now(UTC),
+                cafe_id=cafe_id,
+                capabilities=pc.capabilities,
+                bound=True,
+                bound_at=datetime.now(UTC),
+            )
+            cafe_db.add(pc_obj)
 
-    # Return with secret (one-time only during registration)
-    return {
-        "id": pc_obj.id,
-        "name": pc_obj.name,
-        "status": pc_obj.status,
-        "cafe_id": pc_obj.cafe_id,
-        "device_secret": pc_obj.device_secret,  # CRITICAL: Returned once
-        "license_key": pc_obj.license_key,
-    }
+        cafe_db.commit()
+        cafe_db.refresh(pc_obj)
+
+        # Emit event for Admin UI
+        event = SystemEvent(
+            type="pc.status",
+            cafe_id=pc_obj.cafe_id,
+            pc_id=pc_obj.id,
+            payload={"name": pc_obj.name, "status": "online", "event": "registered"},
+        )
+        cafe_db.add(event)
+        cafe_db.commit()
+
+        # Snapshot fields for the response BEFORE closing the session
+        result = {
+            "id": pc_obj.id,
+            "name": pc_obj.name,
+            "status": pc_obj.status,
+            "cafe_id": pc_obj.cafe_id,
+            "device_secret": pc_obj.device_secret,  # CRITICAL: Returned once
+            "license_key": pc_obj.license_key,
+        }
+    finally:
+        cafe_db.close()
+
+    return result
 
 
 # PC agent sends heartbeat (keep status up to date)

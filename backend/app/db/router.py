@@ -32,11 +32,32 @@ CAFE_DB_MAX_OVERFLOW = int(os.getenv("CAFE_DB_MAX_OVERFLOW", "3"))
 USE_PGBOUNCER = os.getenv("USE_PGBOUNCER", "false").lower() == "true"
 
 
+# Cafe DB naming pattern. Override via env var to match your install's
+# database naming convention. Examples:
+#   primus_cafe_{cafe_id}    (default, legacy Primus)
+#   clutchhh_cafe_{cafe_id}  (new ClutchHH install)
+# Must contain literal "{cafe_id}" — replaced at runtime via str.format.
+CAFE_DB_NAME_PATTERN = os.getenv("CAFE_DB_NAME_PATTERN", "primus_cafe_{cafe_id}")
+
+
+def derive_cafe_db_name(cafe_id: int) -> str:
+    """Public helper: returns the database name for a given cafe_id."""
+    try:
+        return CAFE_DB_NAME_PATTERN.format(cafe_id=cafe_id)
+    except (KeyError, IndexError):
+        # Pattern is malformed; fall back to safe default
+        logger.error(
+            "Invalid CAFE_DB_NAME_PATTERN=%r; falling back to primus_cafe_{cafe_id}",
+            CAFE_DB_NAME_PATTERN,
+        )
+        return f"primus_cafe_{cafe_id}"
+
+
 def _derive_cafe_url(cafe_id: int) -> str:
     """Derive cafe database URL from global URL by replacing DB name."""
     parsed = urlparse(GLOBAL_DATABASE_URL)
     # Replace path (database name) with cafe-specific name
-    cafe_db_name = f"primus_cafe_{cafe_id}"
+    cafe_db_name = derive_cafe_db_name(cafe_id)
     new_parsed = parsed._replace(path=f"/{cafe_db_name}")
     return urlunparse(new_parsed)
 
