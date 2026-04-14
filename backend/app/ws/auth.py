@@ -2,7 +2,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Optional
 
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import PyJWTError as JWTError
 
 from app.config import ALGORITHM, JWT_SECRET
 from app.db.global_db import global_session_factory as SessionLocal

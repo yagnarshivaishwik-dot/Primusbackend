@@ -10,6 +10,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     Column,
     DateTime,
@@ -47,6 +48,7 @@ class UserGlobal(GlobalBase):
     tos_accepted = Column(Boolean, default=False)
     tos_accepted_at = Column(DateTime, nullable=True)
     two_factor_secret = Column(String, nullable=True)
+    two_factor_recovery_codes = Column(JSON, nullable=True)  # hashed one-time recovery codes
     is_email_verified = Column(Boolean, default=False)
     email_verification_sent_at = Column(DateTime, nullable=True)
     # Legacy field - kept for backward compat during migration

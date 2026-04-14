@@ -99,11 +99,12 @@ def get_auth_context(
         return ctx
 
     # Fallback: legacy token with just "sub" (email)
-    from jose import JWTError, jwt as jose_jwt
+    import jwt as pyjwt
+    from jwt.exceptions import PyJWTError as JWTError
     from app.config import JWT_SECRET, ALGORITHM
 
     try:
-        payload = jose_jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM])
+        payload = pyjwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM])
         email = payload.get("sub")
         if email is None:
             raise HTTPException(status_code=401, detail="Invalid token")

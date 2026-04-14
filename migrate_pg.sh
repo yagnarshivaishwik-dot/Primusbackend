@@ -1,18 +1,19 @@
 #!/bin/bash
 # =============================================================================
-# Primus PostgreSQL Migration: Docker → Native (Azure Data Disk)
-# Azure VM: Ubuntu 24.04 | Standard D8ls v6 | Data disk: /dev/sdc → /data
+# ClutchHH PostgreSQL Migration: Docker → Native (Azure Data Disk)
+# Azure VM: ClutchHH | Ubuntu 24.04 | Standard D8ls v6 | Data disk: /dev/nvme0n2p1 → /mnt/data
+# Use this script to bring over data from an old Primus/ClutchHH Docker deployment.
 # =============================================================================
 set -euo pipefail
 
 # ── Variables ────────────────────────────────────────────────────────────────
-CONTAINER="primus_db"
-PG_USER="primus_user"
-PG_PASS="PrimusDbSecureP4ssw0rd!"
+CONTAINER="${SOURCE_CONTAINER:-primus_db}"   # Override with: SOURCE_CONTAINER=mycontainer ./migrate_pg.sh
+PG_USER="clutchhh_user"
+PG_PASS="ClutchHHDbSecureP4ssw0rd!"
 DATA_DISK="/dev/nvme0n2p1"
 MOUNT_POINT="/mnt/data"
-DUMP_FILE="/tmp/primus_full_dump.sql"
-EXPECTED_DBS="primus_db primus_global primus_cafe_1 primus_cafe_2 primus_cafe_3"
+DUMP_FILE="/tmp/clutchhh_full_dump.sql"
+EXPECTED_DBS="clutchhh_db clutchhh_global clutchhh_cafe_1 clutchhh_cafe_2 clutchhh_cafe_3"
 
 # Auto-detect PostgreSQL version after install
 PG_VERSION=""
@@ -158,7 +159,7 @@ sleep 3
 systemctl is-active --quiet postgresql || die "PostgreSQL failed to start — run: journalctl -xe"
 ok "PostgreSQL is active and enabled on boot"
 
-# ── Step 8: Create primus_user ───────────────────────────────────────────────
+# ── Step 8: Create clutchhh_user ─────────────────────────────────────────────
 log "Step 8: Setting up database user '$PG_USER'"
 
 USER_EXISTS=$(sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='$PG_USER'" | tr -d ' ')
@@ -193,7 +194,7 @@ else
 fi
 
 log "Current database list:"
-sudo -u postgres psql -c "\l" | grep -E "Name|primus" || true
+sudo -u postgres psql -c "\l" | grep -E "Name|clutchhh" || true
 
 # ── Step 10: Docker Container Cleanup ───────────────────────────────────────
 log "Step 10: Docker container cleanup"
@@ -235,18 +236,18 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo " Migration complete! REQUIRED NEXT STEPS:"
 echo ""
-echo " 1. Edit backend/.env — replace primus_db:5432 with host.docker.internal:5432"
-echo "    DATABASE_URL=postgresql+psycopg2://primus_user:PrimusDbSecureP4ssw0rd!@host.docker.internal:5432/primus_db"
-echo "    GLOBAL_DATABASE_URL=postgresql+psycopg2://primus_user:PrimusDbSecureP4ssw0rd!@host.docker.internal:5432/primus_global"
-echo "    ADMIN_DATABASE_URL=postgresql+psycopg2://primus_user:PrimusDbSecureP4ssw0rd!@host.docker.internal:5432/primus_db"
+echo " 1. Edit backend/.env — update database URLs:"
+echo "    DATABASE_URL=postgresql+psycopg2://clutchhh_user:${PG_PASS}@host.docker.internal:5432/clutchhh_db"
+echo "    GLOBAL_DATABASE_URL=postgresql+psycopg2://clutchhh_user:${PG_PASS}@host.docker.internal:5432/clutchhh_global"
+echo "    ADMIN_DATABASE_URL=postgresql+psycopg2://clutchhh_user:${PG_PASS}@host.docker.internal:5432/clutchhh_db"
 echo ""
-echo " 2. Edit docker-compose.yml — add under primus_backend service:"
+echo " 2. Ensure docker-compose.yml has under clutchhh_backend service:"
 echo "    extra_hosts:"
 echo "      - \"host.docker.internal:host-gateway\""
 echo ""
 echo " 3. Restart backend:"
-echo "    sudo docker compose up -d --force-recreate primus_backend"
+echo "    sudo docker compose up -d --force-recreate clutchhh_backend"
 echo ""
 echo " 4. Verify backend connected:"
-echo "    sudo docker logs primus_backend --tail=20"
+echo "    sudo docker logs clutchhh_backend --tail=20"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

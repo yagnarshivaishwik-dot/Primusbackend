@@ -4,7 +4,7 @@ services:
   # Redis Cache
   redis:
     image: redis:7-alpine
-    container_name: primus_redis
+    container_name: clutchhh_redis
     ports:
       - "6379:6379"
     volumes:
@@ -16,10 +16,10 @@ services:
       timeout: 10s
       retries: 5
 
-  # Primus Backend API
+  # ClutchHH Backend API
   backend:
     build: .
-    container_name: primus_backend
+    container_name: clutchhh_backend
     env_file:
       - .env
     environment:
@@ -28,12 +28,9 @@ services:
       - SECRET_KEY=${SECRET_KEY}
       - JWT_SECRET=${JWT_SECRET}
       - APP_SECRET=${APP_SECRET}
-      # Use development for local testing with Tauri client (skips CSRF on auth endpoints)
-      # Change to production when deploying to real servers
-      - ENVIRONMENT=development
-      # Allow all CORS in development for Tauri desktop client
-      - ALLOW_ALL_CORS=true
-      - DEBUG=True
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - ALLOW_ALL_CORS=${ALLOW_ALL_CORS:-false}
+      - DEBUG=${DEBUG:-False}
       - MAIL_USERNAME=${MAIL_USERNAME}
       - MAIL_PASSWORD=${MAIL_PASSWORD}
       - MAIL_FROM=${MAIL_FROM}
@@ -59,7 +56,7 @@ services:
   # Nginx Reverse Proxy
   nginx:
     image: nginx:alpine
-    container_name: primus_nginx
+    container_name: clutchhh_nginx
     ports:
       - "80:80"
       - "443:443"
@@ -71,20 +68,112 @@ services:
       - backend
     restart: unless-stopped
 
-  # Cloudflare Tunnel (optional)
+  # Cloudflare Tunnel
   cloudflared:
     image: cloudflare/cloudflared:latest
-    container_name: primus_cloudflared
+    container_name: clutchhh_cloudflared
     restart: unless-stopped
     environment:
       - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
-    command: tunnel run
+    command: tunnel --no-autoupdate run
     depends_on:
       - nginx
 
+  # Celery Worker — Background task processing
+  celery-worker:
+    build: .
+    container_name: clutchhh_celery_worker
+    command: celery -A app.celery_app worker --loglevel=info --queues=periodic,realtime,default --concurrency=4
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - GLOBAL_DATABASE_URL=${GLOBAL_DATABASE_URL:-${DATABASE_URL}}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - SECRET_KEY=${SECRET_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - MULTI_DB_ENABLED=${MULTI_DB_ENABLED:-false}
+    volumes:
+      - ./logs:/app/logs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Celery Beat — Periodic task scheduler
+  celery-beat:
+    build: .
+    container_name: clutchhh_celery_beat
+    command: celery -A app.celery_app beat --loglevel=info
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Flower — Celery monitoring dashboard (optional)
+  flower:
+    build: .
+    container_name: clutchhh_flower
+    command: celery -A app.celery_app flower --port=5555
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/1
+    ports:
+      - "5555:5555"
+    depends_on:
+      - celery-worker
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+  # Apache Superset — Embedded Analytics
+  superset:
+    image: apache/superset:3.1.0
+    container_name: clutchhh_superset
+    environment:
+      - SUPERSET_SECRET_KEY=${SUPERSET_SECRET_KEY}
+      - SUPERSET_DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@host.docker.internal:5432/superset_meta
+      - ADMIN_USERNAME=${SUPERSET_ADMIN_USER:-admin}
+      - ADMIN_EMAIL=${SUPERSET_ADMIN_EMAIL:-admin@clutchhh.io}
+      - ADMIN_PASSWORD=${SUPERSET_ADMIN_PASS:-ChangeMe123!}
+    volumes:
+      - ./superset/superset_config.py:/app/pythonpath/superset_config.py:ro
+      - superset_home:/app/superset_home
+    ports:
+      - "8088:8088"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: >
+      /bin/sh -c "
+        superset db upgrade &&
+        superset fab create-admin
+          --username $${ADMIN_USERNAME}
+          --firstname ClutchHH --lastname Admin
+          --email $${ADMIN_EMAIL}
+          --password $${ADMIN_PASSWORD} || true &&
+        superset init &&
+        superset run -h 0.0.0.0 -p 8088 --with-threads --reload --debugger
+      "
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
 volumes:
   redis_data:
+  superset_home:
 
 networks:
   default:
-    name: primus_network
+    name: clutchhh_network

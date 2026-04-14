@@ -61,6 +61,20 @@ def list_announcements(
     return query.order_by(Announcement.created_at.desc()).all()
 
 
+# Admin: list all announcements including inactive
+@router.get("/all", response_model=list[AnnouncementOut])
+def list_all_announcements(
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
+    return (
+        scoped_query(db, Announcement, ctx)
+        .order_by(Announcement.created_at.desc())
+        .all()
+    )
+
+
 # Admin: deactivate (hide) an announcement
 @router.post("/deactivate/{ann_id}")
 def deactivate_announcement(

@@ -54,10 +54,16 @@ oauth.register(
 # Apple OAuth requires more advanced setup; recommend starting with Google/Discord/Twitter.
 
 
-# Helper to get or create user
+# Helper to get or create user — with automatic account linking
 def get_or_create_user(db, email, username, provider):
     user = db.query(User).filter(User.email == email).first()
     if user:
+        # Account linking: if user exists (e.g. registered via email/password)
+        # and hasn't been linked to a social provider yet, link them now.
+        # This prevents duplicate accounts for the same email.
+        if not user.is_email_verified:
+            user.is_email_verified = True
+            db.commit()
         return user
     # Create new user
     user = User(
@@ -159,18 +165,7 @@ def login_with_google_idtoken(payload: GoogleIdTokenIn):
         if not email:
             raise HTTPException(400, "Google token missing email")
         username = claims.get("name") or email.split("@")[0]
-        user = db.query(User).filter(User.email == email).first()
-        if not user:
-            user = User(
-                name=username,
-                email=email,
-                password_hash="oauth",
-                role="client",
-                is_email_verified=bool(claims.get("email_verified", True)),
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
+        user = get_or_create_user(db, email, username, "google")
         access_token = create_access_token({"sub": user.email, "role": user.role})
         return {"access_token": access_token, "token_type": "bearer"}
     except ValueError as err:

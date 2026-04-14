@@ -1,18 +1,21 @@
 #!/bin/bash
 # =============================================================================
-# Primus Observability + Secrets Stack Setup
+# ClutchHH Observability + Secrets Stack Setup
 # Prometheus · Grafana · Node Exporter · PostgreSQL Exporter · HashiCorp Vault
-# Azure VM: Ubuntu 24.04 | Data disk: /mnt/data
+# Azure VM: ClutchHH | Ubuntu 24.04 | Standard D8ls v6 | Data disk: /mnt/data
 # =============================================================================
 set -euo pipefail
 
 # ── Variables (edit these) ───────────────────────────────────────────────────
-GRAFANA_ADMIN_PASS="${GRAFANA_ADMIN_PASS:-PrimusGrafana@2026}"
-PG_USER="primus_user"
-PG_PASS="PrimusDbSecureP4ssw0rd!"
+APP_NAME="ClutchHH"
+GRAFANA_ADMIN_PASS="${GRAFANA_ADMIN_PASS:-ClutchHHGrafana@2026}"
+PG_USER="clutchhh_user"
+PG_PASS="ClutchHHDbSecureP4ssw0rd!"
 PG_HOST="localhost"
 PG_PORT="5432"
+DBS_TO_CREATE="clutchhh_db clutchhh_global superset_meta"
 
+DATA_DISK="${DATA_DISK:-/dev/nvme0n2p1}"   # NVMe controller on Standard D8ls v6
 DATA_DIR="/mnt/data"
 PROMETHEUS_DATA="${DATA_DIR}/prometheus"
 GRAFANA_DATA="${DATA_DIR}/grafana"
@@ -40,10 +43,6 @@ section "Step 1: Pre-checks"
 [[ $EUID -eq 0 ]] || die "Run as root: sudo ./setup_observability.sh"
 ok "Running as root"
 
-[[ -d "$DATA_DIR" ]] || die "$DATA_DIR does not exist. Is the data disk mounted?"
-touch "$DATA_DIR/.write_test" && rm "$DATA_DIR/.write_test" || die "$DATA_DIR is not writable"
-ok "Data disk $DATA_DIR is accessible"
-
 check_port() {
     local port=$1 name=$2
     if ss -tlnp | grep -q ":${port} "; then
@@ -56,17 +55,147 @@ check_port "$PROMETHEUS_PORT" "Prometheus"
 check_port "$GRAFANA_PORT"    "Grafana"
 check_port "$VAULT_PORT"      "Vault"
 
-# ── Create data directories ──────────────────────────────────────────────────
-log "Creating data directories on $DATA_DIR"
+apt-get update -qq
+apt-get install -y curl wget tar jq ufw apt-transport-https software-properties-common gnupg rsync 2>/dev/null
+ok "Base packages installed"
+
+# ── Step 2: Data Disk + PostgreSQL ───────────────────────────────────────────
+section "Step 2: Data Disk + PostgreSQL"
+
+setup_data_disk() {
+    if mountpoint -q "$DATA_DIR"; then
+        warn "$DATA_DIR is already mounted — skipping disk prep"
+        return
+    fi
+
+    # Detect disk — prefer the partition path, fall back to raw device
+    if [[ ! -b "$DATA_DISK" ]]; then
+        RAW_DISK="${DATA_DISK%p[0-9]*}"   # strip trailing p1/p2 etc.
+        if [[ -b "$RAW_DISK" ]]; then
+            warn "$DATA_DISK not found; using raw device $RAW_DISK"
+            DATA_DISK="$RAW_DISK"
+        else
+            die "Data disk not found at $DATA_DISK or $RAW_DISK — check Azure portal → Disks"
+        fi
+    fi
+    ok "Data disk $DATA_DISK detected"
+
+    FS_TYPE=$(blkid -o value -s TYPE "$DATA_DISK" 2>/dev/null || true)
+    if [[ -z "$FS_TYPE" ]]; then
+        log "Formatting $DATA_DISK as ext4..."
+        mkfs.ext4 -F -E nodiscard "$DATA_DISK"
+        ok "Formatted $DATA_DISK as ext4"
+    else
+        ok "Disk already formatted as $FS_TYPE — skipping format"
+    fi
+
+    mkdir -p "$DATA_DIR"
+    mount "$DATA_DISK" "$DATA_DIR"
+    ok "Mounted $DATA_DISK → $DATA_DIR"
+
+    DISK_UUID=$(blkid -s UUID -o value "$DATA_DISK")
+    FSTAB_ENTRY="UUID=$DISK_UUID  $DATA_DIR  ext4  defaults,nofail  0  2"
+    if ! grep -q "$DISK_UUID" /etc/fstab; then
+        echo "$FSTAB_ENTRY" >> /etc/fstab
+        ok "Added fstab entry (UUID=$DISK_UUID)"
+    else
+        ok "fstab entry already exists — skipping"
+    fi
+}
+
+setup_data_disk
+
+log "Creating monitoring data directories on $DATA_DIR"
 mkdir -p "$PROMETHEUS_DATA" "$GRAFANA_DATA" "$VAULT_DATA"
 ok "Directories created: prometheus, grafana, vault"
 
-apt-get update -qq
-apt-get install -y curl wget tar jq ufw apt-transport-https software-properties-common gnupg 2>/dev/null
-ok "Base packages installed"
+install_postgres() {
+    if command -v psql &>/dev/null && pg_lsclusters &>/dev/null 2>&1; then
+        warn "PostgreSQL already installed — skipping apt install"
+    else
+        apt-get install -y postgresql postgresql-contrib
+        ok "PostgreSQL installed"
+    fi
 
-# ── Step 2: Node Exporter ────────────────────────────────────────────────────
-section "Step 2: Node Exporter (system metrics)"
+    PG_VERSION=$(pg_lsclusters | awk 'NR==2{print $1}')
+    PG_CONF="/etc/postgresql/${PG_VERSION}/main/postgresql.conf"
+    PG_HBA="/etc/postgresql/${PG_VERSION}/main/pg_hba.conf"
+    PG_DATA_DEFAULT="/var/lib/postgresql/${PG_VERSION}/main"
+    PG_DATA_TARGET="${DATA_DIR}/postgresql/${PG_VERSION}/main"
+    ok "Detected PostgreSQL version: $PG_VERSION"
+    ok "Config: $PG_CONF"
+
+    CURRENT_DATA_DIR=$(grep -E "^data_directory" "$PG_CONF" 2>/dev/null | awk -F"'" '{print $2}' || echo "$PG_DATA_DEFAULT")
+
+    if [[ "$CURRENT_DATA_DIR" == "$PG_DATA_TARGET" ]]; then
+        warn "data_directory already points to $PG_DATA_TARGET — skipping move"
+    else
+        systemctl stop postgresql || true
+        ok "PostgreSQL service stopped"
+
+        mkdir -p "$(dirname "$PG_DATA_TARGET")"
+
+        if [[ -d "$PG_DATA_DEFAULT" ]] && [[ ! -d "$PG_DATA_TARGET" ]]; then
+            rsync -a "$PG_DATA_DEFAULT/" "$PG_DATA_TARGET/"
+            ok "Data directory copied to $PG_DATA_TARGET"
+        else
+            warn "Source already moved or target exists — skipping rsync"
+        fi
+
+        chown -R postgres:postgres "${DATA_DIR}/postgresql"
+        chmod 700 "$PG_DATA_TARGET"
+        ok "Permissions set (postgres:postgres, 700)"
+
+        sed -i "s|^#*data_directory.*|data_directory = '$PG_DATA_TARGET'|" "$PG_CONF"
+        ok "postgresql.conf → data_directory = $PG_DATA_TARGET"
+    fi
+
+    # Listen on all interfaces so Docker containers can reach host PostgreSQL
+    sed -i "s|^#*listen_addresses.*|listen_addresses = '*'|" "$PG_CONF"
+    ok "listen_addresses = '*'"
+
+    # Allow connections from Docker bridge subnet (172.16.0.0/12)
+    HBA_LINE="host    all             all             172.16.0.0/12           scram-sha-256"
+    if ! grep -qF "172.16.0.0/12" "$PG_HBA"; then
+        echo "$HBA_LINE" >> "$PG_HBA"
+        ok "Added Docker bridge subnet rule to pg_hba.conf"
+    else
+        ok "Docker bridge subnet rule already in pg_hba.conf"
+    fi
+
+    systemctl start postgresql
+    systemctl enable postgresql
+    sleep 3
+    systemctl is-active --quiet postgresql || die "PostgreSQL failed to start — run: journalctl -xe"
+    ok "PostgreSQL is running on port $PG_PORT"
+
+    # Create DB user
+    USER_EXISTS=$(sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='$PG_USER'" | tr -d ' ')
+    if [[ "$USER_EXISTS" == "1" ]]; then
+        ok "User '$PG_USER' already exists"
+    else
+        sudo -u postgres psql -c "CREATE USER $PG_USER WITH LOGIN SUPERUSER PASSWORD '$PG_PASS';"
+        ok "Created user '$PG_USER'"
+    fi
+    sudo -u postgres psql -c "ALTER USER $PG_USER WITH PASSWORD '$PG_PASS';"
+    ok "Password confirmed for '$PG_USER'"
+
+    # Create databases
+    for DB in $DBS_TO_CREATE; do
+        DB_EXISTS=$(sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='$DB'" | tr -d ' ')
+        if [[ "$DB_EXISTS" == "1" ]]; then
+            ok "Database '$DB' already exists"
+        else
+            sudo -u postgres psql -c "CREATE DATABASE $DB OWNER $PG_USER;"
+            ok "Created database '$DB'"
+        fi
+    done
+}
+
+install_postgres
+
+# ── Step 3: Node Exporter ────────────────────────────────────────────────────
+section "Step 3: Node Exporter (system metrics)"
 
 install_node_exporter() {
     if command -v node_exporter &>/dev/null; then
@@ -111,8 +240,8 @@ EOF
 
 install_node_exporter
 
-# ── Step 3: PostgreSQL Exporter ──────────────────────────────────────────────
-section "Step 3: PostgreSQL Exporter"
+# ── Step 4: PostgreSQL Exporter ──────────────────────────────────────────────
+section "Step 4: PostgreSQL Exporter"
 
 install_pg_exporter() {
     if command -v postgres_exporter &>/dev/null; then
@@ -164,8 +293,8 @@ EOF
 
 install_pg_exporter
 
-# ── Step 4: Prometheus ───────────────────────────────────────────────────────
-section "Step 4: Prometheus"
+# ── Step 5: Prometheus ───────────────────────────────────────────────────────
+section "Step 5: Prometheus"
 
 install_prometheus() {
     if command -v prometheus &>/dev/null; then
@@ -209,7 +338,7 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:${NODE_EXPORTER_PORT}']
 
-  - job_name: 'primus_backend'
+  - job_name: 'clutchhh_backend'
     static_configs:
       - targets: ['localhost:8000']
     metrics_path: '/metrics'
@@ -253,8 +382,8 @@ EOF
 
 install_prometheus
 
-# ── Step 5: Grafana ──────────────────────────────────────────────────────────
-section "Step 5: Grafana"
+# ── Step 6: Grafana ──────────────────────────────────────────────────────────
+section "Step 6: Grafana"
 
 install_grafana() {
     if systemctl is-active --quiet grafana-server 2>/dev/null; then
@@ -305,7 +434,7 @@ apiVersion: 1
 providers:
   - name: 'default'
     orgId: 1
-    folder: 'Primus'
+    folder: 'ClutchHH'
     type: file
     disableDeletion: false
     options:
@@ -338,8 +467,8 @@ EOF
 
 install_grafana
 
-# ── Step 6: HashiCorp Vault ──────────────────────────────────────────────────
-section "Step 6: HashiCorp Vault"
+# ── Step 7: HashiCorp Vault ──────────────────────────────────────────────────
+section "Step 7: HashiCorp Vault"
 
 install_vault() {
     if command -v vault &>/dev/null; then
@@ -382,7 +511,6 @@ EOF
     chown vault:vault /etc/vault/config.hcl
     chmod 640 /etc/vault/config.hcl
 
-    # Set VAULT_SKIP_VERIFY environment for vault user
     cat > /etc/default/vault <<EOF
 VAULT_ADDR=http://127.0.0.1:${VAULT_PORT}
 EOF
@@ -422,8 +550,8 @@ EOF
 
 install_vault
 
-# ── Step 7: Vault Initialization ─────────────────────────────────────────────
-section "Step 7: Vault Initialization"
+# ── Step 8: Vault Initialization ─────────────────────────────────────────────
+section "Step 8: Vault Initialization"
 
 VAULT_ADDR="http://127.0.0.1:${VAULT_PORT}"
 export VAULT_ADDR
@@ -493,20 +621,26 @@ KEYS
     vault secrets enable -path=secret kv-v2 2>/dev/null || true
     ok "KV secrets engine enabled at secret/"
 
-    # Store Primus DB credentials as first secret
-    vault kv put secret/primus/database \
-        url="postgresql+psycopg2://${PG_USER}:${PG_PASS}@${PG_HOST}:${PG_PORT}/primus_db" \
+    # Store ClutchHH DB credentials
+    vault kv put secret/clutchhh/database \
+        url="postgresql+psycopg2://${PG_USER}:${PG_PASS}@${PG_HOST}:${PG_PORT}/clutchhh_db" \
         user="$PG_USER" \
         password="$PG_PASS" \
-        global_url="postgresql+psycopg2://${PG_USER}:${PG_PASS}@${PG_HOST}:${PG_PORT}/primus_global" \
+        global_url="postgresql+psycopg2://${PG_USER}:${PG_PASS}@${PG_HOST}:${PG_PORT}/clutchhh_global" \
         > /dev/null
-    ok "Primus database credentials stored in Vault at secret/primus/database"
+    ok "ClutchHH database credentials stored in Vault at secret/clutchhh/database"
+
+    # Store master encryption key
+    vault kv put secret/clutchhh/master-key \
+        key="$(openssl rand -hex 32)" \
+        > /dev/null
+    ok "Master encryption key stored at secret/clutchhh/master-key"
 }
 
 init_vault
 
-# ── Step 8: Firewall ─────────────────────────────────────────────────────────
-section "Step 8: Firewall Configuration"
+# ── Step 9: Firewall ─────────────────────────────────────────────────────────
+section "Step 9: Firewall Configuration"
 
 configure_firewall() {
     if ! command -v ufw &>/dev/null; then
@@ -515,6 +649,10 @@ configure_firewall() {
     fi
 
     warn "Opening ports 3000 (Grafana), 9090 (Prometheus), 8200 (Vault) — restrict in production!"
+    ufw allow 22/tcp   comment "SSH"
+    ufw allow 80/tcp   comment "HTTP"
+    ufw allow 443/tcp  comment "HTTPS"
+    ufw allow 8000/tcp comment "ClutchHH Backend"
     ufw allow 3000/tcp comment "Grafana"
     ufw allow 9090/tcp comment "Prometheus"
     ufw allow 8200/tcp comment "Vault"
@@ -542,29 +680,38 @@ verify_service() {
     fi
 }
 
-verify_service node_exporter    "$NODE_EXPORTER_PORT"
-verify_service postgres_exporter "$PG_EXPORTER_PORT"
-verify_service prometheus        "$PROMETHEUS_PORT"
-verify_service grafana-server    "$GRAFANA_PORT"
-verify_service vault             "$VAULT_PORT"
+verify_service postgresql          "$PG_PORT"
+verify_service node_exporter       "$NODE_EXPORTER_PORT"
+verify_service postgres_exporter   "$PG_EXPORTER_PORT"
+verify_service prometheus          "$PROMETHEUS_PORT"
+verify_service grafana-server      "$GRAFANA_PORT"
+verify_service vault               "$VAULT_PORT"
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 PUBLIC_IP=$(curl -s ifconfig.me 2>/dev/null || echo "<your-public-ip>")
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo " 🎉 Observability stack is ready!"
+echo " ClutchHH Observability stack is ready!"
 echo ""
 echo "  Grafana     → http://${PUBLIC_IP}:3000  (admin / ${GRAFANA_ADMIN_PASS})"
 echo "  Prometheus  → http://${PUBLIC_IP}:9090"
 echo "  Vault UI    → http://${PUBLIC_IP}:8200/ui"
+echo "  Backend API → http://${PUBLIC_IP}:8000  (after Docker stack starts)"
 echo ""
-echo " Data stored on Azure disk:"
+echo " Data stored on Azure data disk:"
+echo "  PostgreSQL  → ${DATA_DIR}/postgresql/<version>/main"
 echo "  Prometheus  → $PROMETHEUS_DATA"
 echo "  Grafana     → $GRAFANA_DATA"
 echo "  Vault       → $VAULT_DATA"
 echo ""
-echo " ⚠  Security reminders:"
+echo " NEXT STEPS:"
+echo "  1. Copy the Vault Root Token above → paste into backend/.env as VAULT_TOKEN"
+echo "  2. cp backend/.env.template backend/.env  && edit backend/.env"
+echo "  3. cd backend && sudo docker compose up -d"
+echo "  4. sudo docker exec clutchhh_backend alembic upgrade head"
+echo ""
+echo " Security reminders:"
 echo "  1. Change Grafana password immediately after first login"
 echo "  2. Enable TLS on Vault before going to production"
 echo "  3. Delete /root/.vault_init_keys after saving keys offline"

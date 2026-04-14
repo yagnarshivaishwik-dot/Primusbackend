@@ -1,3 +1,5 @@
+import os
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.endpoints.auth import get_current_user, require_role
@@ -6,23 +8,43 @@ from app.utils.vault import get_db_credentials
 
 router = APIRouter()
 
+# Guard: These endpoints expose sensitive crypto operations.
+# In production they are disabled entirely unless explicitly opted in.
+_ENABLE_SECURITY_DEBUG = os.getenv("ENABLE_SECURITY_DEBUG_ENDPOINTS", "false").lower() == "true"
+_IS_PRODUCTION = os.getenv("ENVIRONMENT", "").lower() == "production"
+
+
+def _require_debug_endpoints():
+    """Block access to security debug endpoints in production unless explicitly enabled."""
+    if _IS_PRODUCTION and not _ENABLE_SECURITY_DEBUG:
+        raise HTTPException(
+            status_code=404,
+            detail="Not found",
+        )
+
 
 @router.get("/vault/db-creds")
-def vault_db_creds(current_user=Depends(require_role("admin"))):
+def vault_db_creds(
+    _guard=Depends(_require_debug_endpoints),
+    current_user=Depends(require_role("superadmin")),
+):
     """
     Return current DB credentials as stored in Vault.
-
-    This is intended for verification of Vault integration and rotation only and
-    should be further locked down or removed in production.
+    Restricted to superadmin only. Disabled in production by default.
     """
     creds = get_db_credentials()
     return {"source": "vault", "username": creds["username"], "password": creds["password"]}
 
 
 @router.post("/encrypt")
-def encrypt_demo(value: str, current_user=Depends(get_current_user)):
+def encrypt_demo(
+    value: str,
+    _guard=Depends(_require_debug_endpoints),
+    current_user=Depends(require_role("superadmin")),
+):
     """
-    Demonstrate application-level envelope encryption using the shared KEK from Vault.
+    Demonstrate application-level envelope encryption.
+    Restricted to superadmin only. Disabled in production by default.
     """
     if not value:
         raise HTTPException(status_code=400, detail="Value is required")
@@ -31,9 +53,14 @@ def encrypt_demo(value: str, current_user=Depends(get_current_user)):
 
 
 @router.post("/decrypt")
-def decrypt_demo(blob: str, current_user=Depends(get_current_user)):
+def decrypt_demo(
+    blob: str,
+    _guard=Depends(_require_debug_endpoints),
+    current_user=Depends(require_role("superadmin")),
+):
     """
     Demonstrate decryption of values encrypted by /encrypt.
+    Restricted to superadmin only. Disabled in production by default.
     """
     if not blob:
         raise HTTPException(status_code=400, detail="Encrypted blob is required")

@@ -18,7 +18,8 @@ DB are still looked up by exact string match and remain valid.
 from datetime import UTC, datetime
 from typing import Any
 
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import PyJWTError as JWTError
 
 from app.config import ALGORITHM, JWT_SECRET
 

@@ -21,6 +21,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -63,6 +64,10 @@ class CafeUser(CafeBase):
 class WalletTransaction(CafeBase):
     """All wallet movements: topup, deduct, refund."""
     __tablename__ = "wallet_transactions"
+    __table_args__ = (
+        Index("ix_wallet_txn_type_timestamp", "type", "timestamp"),
+        Index("ix_wallet_txn_user_timestamp", "user_id", "timestamp"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
@@ -89,6 +94,11 @@ class CoinTransaction(CafeBase):
 class Session(CafeBase):
     """PC usage session with billing."""
     __tablename__ = "sessions"
+    __table_args__ = (
+        Index("ix_session_start_time", "start_time"),
+        Index("ix_session_user_start", "user_id", "start_time"),
+        Index("ix_session_paid_start", "paid", "start_time"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     pc_id = Column(Integer, ForeignKey("client_pcs.id"), nullable=True)
@@ -179,6 +189,10 @@ class UserGroup(CafeBase):
 class Order(CafeBase):
     """Product orders from the cafe shop."""
     __tablename__ = "orders"
+    __table_args__ = (
+        Index("ix_order_created", "created_at"),
+        Index("ix_order_user_created", "user_id", "created_at"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
@@ -222,6 +236,10 @@ class ProductCategory(CafeBase):
 class PaymentIntent(CafeBase):
     """Payment intent tracking for UPI and other async payments."""
     __tablename__ = "payment_intents"
+    __table_args__ = (
+        Index("ix_payment_status_created", "status", "created_at"),
+        Index("ix_payment_provider_status", "provider", "status"),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
@@ -631,6 +649,10 @@ class Webhook(CafeBase):
 class Booking(CafeBase):
     """PC reservations."""
     __tablename__ = "bookings"
+    __table_args__ = (
+        Index("ix_booking_pc_times", "pc_id", "start_time", "end_time"),
+        Index("ix_booking_status", "status"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -665,3 +687,22 @@ class Setting(CafeBase):
     updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow)
     is_public = Column(Boolean, default=False)
+
+
+class Campaign(CafeBase):
+    """Marketing campaigns for promotions and announcements."""
+    __tablename__ = "campaigns"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    type = Column(String, default="discount")  # discount, announcement, promotion
+    content = Column(Text, nullable=True)
+    image_url = Column(String, nullable=True)
+    discount_percent = Column(Float, default=0.0)
+    target_audience = Column(String, default="all")  # all, members, guests
+    start_date = Column(DateTime, nullable=True)
+    end_date = Column(DateTime, nullable=True)
+    active = Column(Boolean, default=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)

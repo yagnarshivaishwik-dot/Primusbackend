@@ -9,7 +9,8 @@ from argon2 import PasswordHasher
 from argon2 import exceptions as argon2_exceptions
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import PyJWTError as JWTError
 from passlib.hash import bcrypt
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
@@ -720,6 +721,16 @@ def verify_email():
 class TwoFactorSetupOut(BaseModel):
     secret: str
     otpauth_url: str
+    recovery_codes: list[str]
+
+
+def _generate_recovery_codes(n: int = 10) -> tuple[list[str], list[str]]:
+    """Generate n recovery codes. Returns (plain_codes, hashed_codes)."""
+    from passlib.hash import bcrypt as bcrypt_hash
+
+    plain = [secrets.token_hex(4) for _ in range(n)]
+    hashed = [bcrypt_hash.hash(code) for code in plain]
+    return plain, hashed
 
 
 @router.post("/2fa/enable", response_model=TwoFactorSetupOut)
@@ -727,24 +738,28 @@ def enable_2fa(current_user=Depends(get_current_user), db: Session = Depends(get
     """
     Enable TOTP-based 2FA for the current user.
 
-    Returns a secret and otpauth URL which can be scanned by an authenticator app.
+    Returns a secret, otpauth URL, and 10 one-time recovery codes.
+    Recovery codes are shown ONCE and stored as bcrypt hashes.
     """
     if not ENABLE_TOTP_2FA:
         raise HTTPException(status_code=410, detail="2FA is disabled.")
     if current_user.two_factor_secret:
-        # Already enabled; re-use existing secret
         secret = current_user.two_factor_secret
     else:
         secret = pyotp.random_base32()
         current_user.two_factor_secret = secret
-        db.add(current_user)
-        db.commit()
+
+    # Generate fresh recovery codes every time 2FA is enabled/re-enabled
+    plain_codes, hashed_codes = _generate_recovery_codes(10)
+    current_user.two_factor_recovery_codes = hashed_codes
+    db.add(current_user)
+    db.commit()
 
     uri = pyotp.TOTP(secret).provisioning_uri(
         name=current_user.email,
         issuer_name="Primus",
     )
-    return TwoFactorSetupOut(secret=secret, otpauth_url=uri)
+    return TwoFactorSetupOut(secret=secret, otpauth_url=uri, recovery_codes=plain_codes)
 
 
 @router.post("/2fa/disable")
@@ -755,9 +770,50 @@ def disable_2fa(current_user=Depends(get_current_user), db: Session = Depends(ge
     if not ENABLE_TOTP_2FA:
         raise HTTPException(status_code=410, detail="2FA is disabled.")
     current_user.two_factor_secret = None
+    current_user.two_factor_recovery_codes = None
     db.add(current_user)
     db.commit()
     return {"ok": True}
+
+
+class RecoveryCodeIn(BaseModel):
+    email: str
+    recovery_code: str
+
+
+@router.post("/2fa/recover")
+def recover_2fa(payload: RecoveryCodeIn, db: Session = Depends(get_db)):
+    """
+    Authenticate using a one-time recovery code when TOTP device is unavailable.
+
+    Each recovery code can only be used once. After use it is removed from the list.
+    """
+    if not ENABLE_TOTP_2FA:
+        raise HTTPException(status_code=410, detail="2FA is disabled.")
+
+    from app.models import User
+    from passlib.hash import bcrypt as bcrypt_hash
+
+    user = db.query(User).filter(User.email == payload.email).first()
+    if not user or not user.two_factor_secret:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    codes = user.two_factor_recovery_codes or []
+    for i, hashed in enumerate(codes):
+        if bcrypt_hash.verify(payload.recovery_code, hashed):
+            # Consume the recovery code (remove from list)
+            codes.pop(i)
+            user.two_factor_recovery_codes = codes
+            from sqlalchemy.orm.attributes import flag_modified
+
+            flag_modified(user, "two_factor_recovery_codes")
+            db.commit()
+
+            # Issue access token
+            token = create_access_token({"sub": user.email, "role": user.role})
+            return {"access_token": token, "token_type": "bearer", "recovery_codes_remaining": len(codes)}
+
+    raise HTTPException(status_code=401, detail="Invalid recovery code")
 
 
 # (moved get_current_user/require_role above)

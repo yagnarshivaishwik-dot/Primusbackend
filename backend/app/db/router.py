@@ -13,7 +13,7 @@ import threading
 from collections import OrderedDict
 from urllib.parse import urlparse, urlunparse
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -22,16 +22,42 @@ from app.config import DATABASE_URL
 logger = logging.getLogger(__name__)
 
 GLOBAL_DATABASE_URL = os.getenv("GLOBAL_DATABASE_URL", DATABASE_URL)
-CAFE_DB_ENGINE_CACHE_SIZE = int(os.getenv("CAFE_DB_ENGINE_CACHE_SIZE", "100"))
-CAFE_DB_POOL_SIZE = int(os.getenv("CAFE_DB_POOL_SIZE", "3"))
-CAFE_DB_MAX_OVERFLOW = int(os.getenv("CAFE_DB_MAX_OVERFLOW", "5"))
+# Reduced defaults to prevent PostgreSQL connection exhaustion
+# Old: 100 × (3+5) = 800 connections  →  New: 50 × (2+3) = 250 connections
+CAFE_DB_ENGINE_CACHE_SIZE = int(os.getenv("CAFE_DB_ENGINE_CACHE_SIZE", "50"))
+CAFE_DB_POOL_SIZE = int(os.getenv("CAFE_DB_POOL_SIZE", "2"))
+CAFE_DB_MAX_OVERFLOW = int(os.getenv("CAFE_DB_MAX_OVERFLOW", "3"))
+
+# When using PgBouncer, use NullPool (PgBouncer manages connections)
+USE_PGBOUNCER = os.getenv("USE_PGBOUNCER", "false").lower() == "true"
+
+
+# Cafe DB naming pattern. Override via env var to match your install's
+# database naming convention. Examples:
+#   primus_cafe_{cafe_id}    (default, legacy Primus)
+#   clutchhh_cafe_{cafe_id}  (new ClutchHH install)
+# Must contain literal "{cafe_id}" — replaced at runtime via str.format.
+CAFE_DB_NAME_PATTERN = os.getenv("CAFE_DB_NAME_PATTERN", "primus_cafe_{cafe_id}")
+
+
+def derive_cafe_db_name(cafe_id: int) -> str:
+    """Public helper: returns the database name for a given cafe_id."""
+    try:
+        return CAFE_DB_NAME_PATTERN.format(cafe_id=cafe_id)
+    except (KeyError, IndexError):
+        # Pattern is malformed; fall back to safe default
+        logger.error(
+            "Invalid CAFE_DB_NAME_PATTERN=%r; falling back to primus_cafe_{cafe_id}",
+            CAFE_DB_NAME_PATTERN,
+        )
+        return f"primus_cafe_{cafe_id}"
 
 
 def _derive_cafe_url(cafe_id: int) -> str:
     """Derive cafe database URL from global URL by replacing DB name."""
     parsed = urlparse(GLOBAL_DATABASE_URL)
     # Replace path (database name) with cafe-specific name
-    cafe_db_name = f"primus_cafe_{cafe_id}"
+    cafe_db_name = derive_cafe_db_name(cafe_id)
     new_parsed = parsed._replace(path=f"/{cafe_db_name}")
     return urlunparse(new_parsed)
 
@@ -79,13 +105,24 @@ class CafeDBRouter:
 
             # Create new engine
             url = _derive_cafe_url(cafe_id)
-            engine = create_engine(
-                url,
-                pool_pre_ping=True,
-                pool_size=self._pool_size,
-                max_overflow=self._max_overflow,
-                future=True,
-            )
+            if USE_PGBOUNCER:
+                from sqlalchemy.pool import NullPool
+
+                engine = create_engine(
+                    url,
+                    poolclass=NullPool,
+                    pool_pre_ping=True,
+                    future=True,
+                )
+            else:
+                engine = create_engine(
+                    url,
+                    pool_pre_ping=True,
+                    pool_size=self._pool_size,
+                    max_overflow=self._max_overflow,
+                    pool_recycle=1800,  # Recycle connections every 30 minutes
+                    future=True,
+                )
             self._engines[cafe_id] = engine
             self._session_factories[cafe_id] = sessionmaker(
                 autocommit=False, autoflush=False, bind=engine,

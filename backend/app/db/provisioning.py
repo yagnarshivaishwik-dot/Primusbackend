@@ -11,7 +11,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
 from app.db.cafe_db import CafeBase
-from app.db.router import _derive_cafe_url, cafe_db_router
+from app.db.router import _derive_cafe_url, cafe_db_router, derive_cafe_db_name
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ def provision_cafe_database(cafe_id: int, owner_global_user_id: int = None) -> b
     Returns:
         True if successful, False on error
     """
-    db_name = f"primus_cafe_{cafe_id}"
+    db_name = derive_cafe_db_name(cafe_id)
     cafe_url = _derive_cafe_url(cafe_id)
 
     try:
@@ -127,7 +127,7 @@ def drop_cafe_database(cafe_id: int) -> bool:
     Only for development/testing. Never call in production without
     explicit admin confirmation.
     """
-    db_name = f"primus_cafe_{cafe_id}"
+    db_name = derive_cafe_db_name(cafe_id)
     from app.db.global_db import GLOBAL_DATABASE_URL
 
     # Remove from router first

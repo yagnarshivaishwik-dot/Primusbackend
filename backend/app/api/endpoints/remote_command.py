@@ -10,37 +10,87 @@ from app.api.endpoints.auth import get_current_user, require_role
 from app.api.endpoints.client_pc import get_current_device
 from app.auth.context import AuthContext, get_auth_context
 from app.auth.tenant import scoped_query, enforce_cafe_ownership
-from app.db.dependencies import get_cafe_db as get_db
-from app.models import ClientPC, RemoteCommand, SystemEvent
+from app.db.dependencies import MULTI_DB_ENABLED, get_cafe_db as get_db
 from app.schemas import RemoteCommandIn, RemoteCommandOut
 from app.ws.pc import notify_pc
+
+# Cafe-scoped models in multi-DB mode (no cafe_id columns), legacy models
+# in single-DB mode. See client_pc.py for the same pattern.
+if MULTI_DB_ENABLED:
+    from app.db.models_cafe import ClientPC, RemoteCommand, SystemEvent
+else:
+    from app.models import ClientPC, RemoteCommand, SystemEvent  # type: ignore[no-redef]
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# ── Command allowlist with per-command param schemas ──────────────────
+# Each command maps to a dict of allowed param keys and their types.
+# None means the command accepts no params.
+ALLOWED_COMMANDS: dict[str, dict | None] = {
+    "lock": None,
+    "unlock": None,
+    "message": {"text": str},
+    "shutdown": None,
+    "reboot": None,
+    "screenshot": None,
+    "login": {"user_id": int},
+    "logout": None,
+    "restart": None,
+}
+
+# Valid states a client may report in /ack
+VALID_ACK_STATES = {"RUNNING", "SUCCEEDED", "FAILED"}
+
+# Internal event types that may bypass the user-facing command allowlist
+# (used by queue_device_event for system-generated events)
+ALLOWED_DEVICE_EVENT_TYPES = {
+    *ALLOWED_COMMANDS.keys(),
+    "session.started",
+    "session.ended",
+    "pc.status",
+    "command.created",
+    "command.ack",
+}
+
 
 def _validate_command_params(command: str, params: str | None) -> None:
     """
-    Validate that command parameters are within reasonable limits.
+    Validate command name against allowlist and params against per-command schema.
     """
+    if command not in ALLOWED_COMMANDS:
+        raise HTTPException(status_code=400, detail=f"Unsupported command: {command}")
+
     if params and len(params) > 1024:
         raise HTTPException(status_code=400, detail="Command parameters too large")
 
-    # Only allow specific commands for now
-    allowed_commands = {
-        "lock",
-        "unlock",
-        "message",
-        "shutdown",
-        "reboot",
-        "screenshot",
-        "login",
-        "logout",
-        "restart",
-    }
-    if command not in allowed_commands:
-        raise HTTPException(status_code=400, detail=f"Unsupported command: {command}")
+    schema = ALLOWED_COMMANDS[command]
+    if schema is not None and params:
+        try:
+            parsed = json.loads(params) if isinstance(params, str) else params
+            if not isinstance(parsed, dict):
+                raise HTTPException(status_code=400, detail="Params must be a JSON object")
+            for key in parsed:
+                if key not in schema:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Invalid param key '{key}' for command '{command}'",
+                    )
+        except (json.JSONDecodeError, TypeError):
+            raise HTTPException(status_code=400, detail="Invalid params JSON format")
+    elif schema is None and params:
+        # Command accepts no params but caller sent some — warn but allow
+        # (keeps backward compat for clients that send empty-ish params)
+        try:
+            parsed = json.loads(params) if isinstance(params, str) else params
+            if parsed and parsed != {}:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Command '{command}' does not accept parameters",
+                )
+        except (json.JSONDecodeError, TypeError):
+            pass
 
 
 # Admin sends a command to a PC
@@ -80,13 +130,17 @@ async def send_command(
         rc.id, rc.command, rc.pc_id, rc.expires_at.isoformat(),
     )
 
-    # Emit System Event for Admin UI
-    event = SystemEvent(
+    # Emit System Event for Admin UI. In multi-DB mode SystemEvent has no
+    # cafe_id column — only attach it in single-DB mode.
+    _pc_cafe = getattr(pc, "cafe_id", None)
+    event_kwargs = dict(
         type="command.created",
-        cafe_id=pc.cafe_id,
         pc_id=pc.id,
         payload={"command_id": rc.id, "command": rc.command, "params": rc.params},
     )
+    if _pc_cafe is not None:
+        event_kwargs["cafe_id"] = _pc_cafe
+    event = SystemEvent(**event_kwargs)
     db.add(event)
     db.commit()
 
@@ -100,12 +154,14 @@ async def send_command(
 
     if new_status:
         pc.status = new_status
-        status_event = SystemEvent(
+        status_event_kwargs = dict(
             type="pc.status",
-            cafe_id=pc.cafe_id,
             pc_id=pc.id,
             payload={"status": new_status},
         )
+        if _pc_cafe is not None:
+            status_event_kwargs["cafe_id"] = _pc_cafe
+        status_event = SystemEvent(**status_event_kwargs)
         db.add(status_event)
         db.commit()
 
@@ -140,6 +196,10 @@ def queue_device_event(db: Session, pc_id: int, event_type: str, payload: dict):
     MASTER SYSTEM: Queue an event for a device to pick up via Long Polling.
     This replaces WebSocket notification for better reliability.
     """
+    if event_type not in ALLOWED_DEVICE_EVENT_TYPES:
+        logger.warning("Blocked unrecognised device event type: %s for PC %d", event_type, pc_id)
+        return
+
     pc = db.query(ClientPC).filter_by(id=pc_id).first()
     if not pc:
         return
@@ -158,12 +218,11 @@ def queue_device_event(db: Session, pc_id: int, event_type: str, payload: dict):
     db.refresh(rc)
 
     # Also emit a system event so the admin UI (SSE) knows something happened
-    event = SystemEvent(
-        type=event_type,
-        cafe_id=pc.cafe_id,
-        pc_id=pc_id,
-        payload=payload,
-    )
+    _pc_cafe = getattr(pc, "cafe_id", None)
+    event_kwargs = dict(type=event_type, pc_id=pc_id, payload=payload)
+    if _pc_cafe is not None:
+        event_kwargs["cafe_id"] = _pc_cafe
+    event = SystemEvent(**event_kwargs)
     db.add(event)
     db.commit()
     return rc
@@ -246,6 +305,14 @@ async def ack_command(
     state = payload.get("state")  # RUNNING, SUCCEEDED, FAILED
     result = payload.get("result")
 
+    if not cmd_id:
+        raise HTTPException(status_code=400, detail="command_id is required")
+    if state not in VALID_ACK_STATES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid state '{state}'. Must be one of: {', '.join(sorted(VALID_ACK_STATES))}",
+        )
+
     rc = db.query(RemoteCommand).filter_by(id=cmd_id, pc_id=pc.id).first()
     if not rc:
         raise HTTPException(status_code=404, detail="Command not found for this device")
@@ -261,25 +328,25 @@ async def ack_command(
         rc.id, rc.command, pc.id, state, result,
     )
 
+    _pc_cafe = getattr(pc, "cafe_id", None)
+
     # If a shutdown/reboot command FAILED, revert PC status back to online
     if state == "FAILED" and rc.command in ("shutdown", "reboot", "restart"):
         pc.status = "online"
-        revert_event = SystemEvent(
-            type="pc.status",
-            cafe_id=pc.cafe_id,
-            pc_id=pc.id,
-            payload={"status": "online"},
-        )
-        db.add(revert_event)
+        revert_kwargs = dict(type="pc.status", pc_id=pc.id, payload={"status": "online"})
+        if _pc_cafe is not None:
+            revert_kwargs["cafe_id"] = _pc_cafe
+        db.add(SystemEvent(**revert_kwargs))
 
     # Emit System Event for Admin UI
-    event = SystemEvent(
+    event_kwargs = dict(
         type="command.ack",
-        cafe_id=pc.cafe_id,
         pc_id=pc.id,
         payload={"command_id": rc.id, "state": state, "result": result},
     )
-    db.add(event)
+    if _pc_cafe is not None:
+        event_kwargs["cafe_id"] = _pc_cafe
+    db.add(SystemEvent(**event_kwargs))
     db.commit()
 
     return {"status": "ok"}

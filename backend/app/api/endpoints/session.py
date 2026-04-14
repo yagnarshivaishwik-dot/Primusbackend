@@ -9,11 +9,14 @@ from app.api.endpoints.auth import get_current_user, require_role
 from app.api.endpoints.billing import calculate_billing
 from app.auth.context import AuthContext, get_auth_context
 from app.auth.tenant import scoped_query, enforce_cafe_ownership
-from app.db.dependencies import get_cafe_db as get_db
-from app.models import ClientPC
-from app.models import Session as PCSession
+from app.db.dependencies import MULTI_DB_ENABLED, get_cafe_db as get_db
 from app.schemas import SessionOut, SessionStart
 from app.utils.cache import get_or_set, publish_invalidation
+
+if MULTI_DB_ENABLED:
+    from app.db.models_cafe import Session as PCSession, ClientPC  # type: ignore[assignment]
+else:
+    from app.models import Session as PCSession, ClientPC  # type: ignore[assignment]
 
 router = APIRouter()
 

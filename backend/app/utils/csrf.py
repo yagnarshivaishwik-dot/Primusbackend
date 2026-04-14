@@ -127,6 +127,15 @@ def should_skip_csrf_check(request: Request) -> bool:
             "/api/social/google/",
         ]
     )
+
+    # Public cafe onboarding — no session/cookie auth, called cross-origin
+    # from the marketing site. Protected by email uniqueness + rate limiting.
+    skip_paths.extend(
+        [
+            "/api/cafe/onboard",
+            "/api/cafe/onboard/",
+        ]
+    )
     if request.url.path in skip_paths:
         return True
 

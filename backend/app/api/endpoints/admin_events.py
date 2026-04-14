@@ -2,7 +2,8 @@ import asyncio
 import json
 
 from fastapi import APIRouter, Depends, Request
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import PyJWTError as JWTError
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
@@ -40,7 +41,8 @@ async def event_stream(
     """
     # 1. Validate Auth via global DB (SSE doesn't support headers, check query param)
     user = await get_user_from_token(token, db)
-    if not user or user.role != "admin":
+    _admin_roles = {"admin", "cafeadmin", "owner", "superadmin", "staff"}
+    if not user or user.role not in _admin_roles:
         return EventSourceResponse(iter([{"event": "error", "data": "unauthorized"}]))
 
     cafe_id = user.cafe_id

@@ -29,13 +29,27 @@ def create_event(
 
 @router.get("/", response_model=list[EventOut])
 def list_events(
+    include_all: bool = False,
     ctx: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ):
-    now = datetime.now(UTC)
+    query = scoped_query(db, Event, ctx)
+    if not include_all:
+        now = datetime.now(UTC)
+        query = query.filter(Event.active.is_(True), Event.start_time <= now, Event.end_time >= now)
+    return query.order_by(Event.start_time.desc()).all()
+
+
+@router.get("/all", response_model=list[EventOut])
+def list_all_events(
+    current_user=Depends(require_role("admin")),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
+    """Admin endpoint: returns all events (active, inactive, past, future)."""
     return (
         scoped_query(db, Event, ctx)
-        .filter(Event.active.is_(True), Event.start_time <= now, Event.end_time >= now)
+        .order_by(Event.start_time.desc())
         .all()
     )
 

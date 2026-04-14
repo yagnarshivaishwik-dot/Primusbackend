@@ -4,7 +4,8 @@ import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
 
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import PyJWTError as JWTError
 from sqlalchemy.orm import Session
 
 from app.config import (

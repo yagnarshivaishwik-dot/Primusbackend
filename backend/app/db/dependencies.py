@@ -9,6 +9,7 @@ Provides three dependencies:
 
 import logging
 import os
+import time
 from collections.abc import Generator
 from typing import Optional
 
@@ -21,6 +22,39 @@ from app.db.router import cafe_db_router
 logger = logging.getLogger(__name__)
 
 MULTI_DB_ENABLED = os.getenv("MULTI_DB_ENABLED", "false").lower() == "true"
+
+# In-memory cache: license_key -> (cafe_id, expires_at_epoch)
+# Used to avoid hitting the global DB on every device-authenticated request
+# (heartbeat / command pull / command ack / etc).
+_license_cafe_cache: dict[str, tuple[int, float]] = {}
+_LICENSE_CAFE_CACHE_TTL = 300.0  # 5 minutes
+
+
+def _resolve_cafe_id_from_license(license_key: str) -> Optional[int]:
+    """Look up cafe_id for a license_key in the global DB, with TTL caching."""
+    now = time.time()
+    cached = _license_cafe_cache.get(license_key)
+    if cached and cached[1] > now:
+        return cached[0]
+
+    try:
+        # Local imports to avoid circular import at module load time
+        from app.models import License
+
+        db = global_session_factory()
+        try:
+            lic = db.query(License).filter_by(key=license_key).first()
+            if lic and lic.cafe_id is not None:
+                _license_cafe_cache[license_key] = (
+                    int(lic.cafe_id),
+                    now + _LICENSE_CAFE_CACHE_TTL,
+                )
+                return int(lic.cafe_id)
+        finally:
+            db.close()
+    except Exception:
+        logger.exception("Failed to resolve cafe_id from license_key")
+    return None
 
 
 def get_global_db() -> Generator[Session, None, None]:
@@ -38,7 +72,20 @@ def get_cafe_db(request: Request) -> Generator[Session, None, None]:
 
     Extracts cafe_id from the request state (set by auth middleware/dependency).
     Falls back to JWT payload extraction if not set.
+
+    When MULTI_DB_ENABLED=false the system runs in single-DB mode and there
+    are no per-cafe databases to route to. In that case we transparently
+    return the global session so all the legacy endpoints that aliased
+    `get_cafe_db as get_db` continue to work without modification.
     """
+    if not MULTI_DB_ENABLED:
+        db = global_session_factory()
+        try:
+            yield db
+        finally:
+            db.close()
+        return
+
     cafe_id = _extract_cafe_id(request)
     if cafe_id is None:
         raise HTTPException(
@@ -71,9 +118,14 @@ def get_db(request: Request = None) -> Generator[Session, None, None]:
     When MULTI_DB_ENABLED=true: routes to the cafe database if a cafe_id
     is available in the request, otherwise returns the global database.
     """
+    # NOTE: do NOT re-import global_session_factory inside this function.
+    # An inline `from ... import global_session_factory` makes Python treat
+    # the name as a function-local variable for the ENTIRE function body,
+    # which causes UnboundLocalError on the multi-DB else-branch when the
+    # if-branch wasn't taken. The module-level import at the top of this
+    # file is the single source of truth.
     if not MULTI_DB_ENABLED:
         # Legacy single-DB mode
-        from app.db.global_db import global_session_factory
         db = global_session_factory()
         try:
             yield db
@@ -105,8 +157,8 @@ def get_db_with_tenant(request: Request = None) -> Generator[Session, None, None
 
     Use this instead of get_db() in financial endpoints when ENABLE_RLS=true.
     """
+    # See note in get_db: do NOT re-import global_session_factory here.
     if not MULTI_DB_ENABLED:
-        from app.db.global_db import global_session_factory
         db = global_session_factory()
         try:
             if ENABLE_RLS and request:
@@ -151,24 +203,89 @@ def _extract_cafe_id(request: Optional[Request]) -> Optional[int]:
     Extract cafe_id from the request.
 
     Checks (in order):
-    1. request.state.cafe_id (set by auth dependency)
-    2. JWT payload cafe_id claim
+    1. request.state.cafe_id (set by get_auth_context dependency)
+    2. JWT access token in cookie or Authorization header (verified)
     3. X-Cafe-Id header (for internal services only)
+
+    The JWT path is critical because not every endpoint depends on
+    get_auth_context — many legacy endpoints only use get_current_user
+    which doesn't populate request.state. Without this fallback, those
+    endpoints would 400 with "cafe_id is required" in multi-DB mode.
     """
     if request is None:
         return None
 
-    # Check request state (set by get_auth_context)
+    # 1. Check request state (set by get_auth_context)
     cafe_id = getattr(request.state, "cafe_id", None)
     if cafe_id is not None:
-        return int(cafe_id)
+        try:
+            return int(cafe_id)
+        except (ValueError, TypeError):
+            pass
 
-    # Check header (internal services)
+    # 2. Try to decode the access token directly (verified) and read its
+    #    cafe_id claim. Cache the result on request.state so we don't
+    #    decode the same JWT multiple times in one request.
+    token = _extract_token_from_request(request)
+    if token:
+        try:
+            from app.auth.tokens import decode_access_token
+
+            claims = decode_access_token(token)
+            if claims:
+                jwt_cafe = claims.get("cafe_id")
+                if jwt_cafe is not None:
+                    try:
+                        cafe_int = int(jwt_cafe)
+                        # Cache for downstream consumers
+                        try:
+                            request.state.cafe_id = cafe_int
+                        except Exception:
+                            pass
+                        return cafe_int
+                    except (ValueError, TypeError):
+                        pass
+        except Exception:
+            # Don't crash request routing on token parse errors —
+            # the actual auth dependency will reject the request.
+            pass
+
+    # 3. Check header (internal services / cross-cafe admin tools)
     header_val = request.headers.get("X-Cafe-Id")
     if header_val is not None:
         try:
             return int(header_val)
         except (ValueError, TypeError):
             pass
+
+    # 4. Device-authenticated requests (heartbeat / command pull) don't have
+    #    a JWT but do send X-License-Key. Resolve cafe_id from the License
+    #    table in the global DB (with TTL caching to keep this fast).
+    license_key_header = request.headers.get("X-License-Key")
+    if license_key_header:
+        cafe_id_from_license = _resolve_cafe_id_from_license(license_key_header)
+        if cafe_id_from_license is not None:
+            try:
+                request.state.cafe_id = cafe_id_from_license
+            except Exception:
+                pass
+            return cafe_id_from_license
+
+    return None
+
+
+def _extract_token_from_request(request: Request) -> Optional[str]:
+    """Get the JWT access token from cookie or Authorization header."""
+    # 1. httpOnly cookie (preferred — set by login endpoint)
+    cookie_token = request.cookies.get("access_token")
+    if cookie_token:
+        if cookie_token.startswith("Bearer "):
+            return cookie_token.split(" ", 1)[1]
+        return cookie_token
+
+    # 2. Authorization: Bearer <token>
+    auth_header = request.headers.get("authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        return auth_header.split(" ", 1)[1]
 
     return None
