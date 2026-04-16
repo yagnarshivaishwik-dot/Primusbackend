@@ -41,8 +41,13 @@ export CAFE5_PASSWORD='N$^z59az*6^S'
 # ── Tunables (per cafe) ───────────────────────────────────────
 export LOAD_TEST_NUM_PCS_PER_CAFE="${LOAD_TEST_NUM_PCS_PER_CAFE:-100}"
 export LOAD_TEST_NUM_USERS_PER_CAFE="${LOAD_TEST_NUM_USERS_PER_CAFE:-100}"
-export LOAD_TEST_CONCURRENCY="${LOAD_TEST_CONCURRENCY:-30}"
-export LOAD_TEST_DURATION_SEC="${LOAD_TEST_DURATION_SEC:-60}"
+# 200 workers + connection pool sized to match = high RPS ceiling.
+# Bump higher (e.g. 400) if your client box has the cores and the
+# server can take it.
+export LOAD_TEST_CONCURRENCY="${LOAD_TEST_CONCURRENCY:-200}"
+# 10 minutes of sustained load.
+export LOAD_TEST_DURATION_SEC="${LOAD_TEST_DURATION_SEC:-600}"
+# 0 = no client-side pacing (let the server set the ceiling)
 export LOAD_TEST_TARGET_RPS="${LOAD_TEST_TARGET_RPS:-0}"
 # Fresh state every run by default — triggers per-cafe stale-PC API
 # cleanup via /api/clientpc/{id} DELETE for each admin's cafe.

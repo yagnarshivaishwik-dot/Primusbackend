@@ -107,14 +107,14 @@ if "LOAD_TEST_NUM_USERS" in os.environ and "LOAD_TEST_NUM_USERS_PER_CAFE" not in
 TARGET_RPS   = float(os.environ.get("LOAD_TEST_TARGET_RPS", "0"))
 SETUP_INTERVAL = (1.0 / TARGET_RPS) if TARGET_RPS > 0 else 0.0
 
-# Action weights (must sum to 1.0)
-# Realistic mix: 100 cafe users don't all login/out constantly. They
-# heartbeat continuously, log in once at the start of a session, and
-# log out at the end. Bias the load accordingly.
+# Action weights (must sum to 1.0). Default mix is heavily weighted
+# toward heartbeats because logins serialize through Argon2 (CPU-bound
+# server side) and would cap the achievable RPS. Override via env vars
+# if you want more login pressure.
 ACTION_WEIGHTS = {
-    "heartbeat": 0.85,
-    "login":     0.10,
-    "logout":    0.05,
+    "heartbeat": float(os.environ.get("LOAD_TEST_W_HEARTBEAT", "0.95")),
+    "login":     float(os.environ.get("LOAD_TEST_W_LOGIN",     "0.03")),
+    "logout":    float(os.environ.get("LOAD_TEST_W_LOGOUT",    "0.02")),
 }
 
 # Generated test users use this prefix so they're easy to identify and never
@@ -193,12 +193,27 @@ def fail(msg: str):
 # Helpers
 # ============================================================
 
+# Global requests Session with a large connection pool. Default urllib3
+# pool is 10 connections per host, which becomes the hard ceiling on
+# RPS once concurrency goes past that. We size the pool to fit the
+# worker count plus a comfortable margin.
+_session = requests.Session()
+_pool_size = max(int(os.environ.get("LOAD_TEST_CONCURRENCY", "30")) * 2, 100)
+_adapter = requests.adapters.HTTPAdapter(
+    pool_connections=_pool_size,
+    pool_maxsize=_pool_size,
+    max_retries=0,
+)
+_session.mount("http://",  _adapter)
+_session.mount("https://", _adapter)
+
+
 def _post(path: str, **kw) -> requests.Response:
-    return requests.post(f"{BASE_URL}{path}", verify=VERIFY_SSL, timeout=REQUEST_TIMEOUT, **kw)
+    return _session.post(f"{BASE_URL}{path}", verify=VERIFY_SSL, timeout=REQUEST_TIMEOUT, **kw)
 
 
 def _get(path: str, **kw) -> requests.Response:
-    return requests.get(f"{BASE_URL}{path}", verify=VERIFY_SSL, timeout=REQUEST_TIMEOUT, **kw)
+    return _session.get(f"{BASE_URL}{path}", verify=VERIFY_SSL, timeout=REQUEST_TIMEOUT, **kw)
 
 
 def admin_login(email: str, password: str) -> str:
@@ -241,7 +256,7 @@ def delete_pc(admin_token: str, pc_id: int) -> tuple[bool, str]:
     Use a generous per-call timeout. Returns (ok, error_detail).
     """
     try:
-        resp = requests.delete(
+        resp = _session.delete(
             f"{BASE_URL}/api/clientpc/{pc_id}",
             headers={"Authorization": f"Bearer {admin_token}"},
             verify=VERIFY_SSL,

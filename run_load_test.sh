@@ -39,8 +39,8 @@ export CAFE5_PASSWORD='N$^z59az*6^S'
 # ── Tunables (per cafe) ───────────────────────────────────────
 export LOAD_TEST_NUM_PCS_PER_CAFE="${LOAD_TEST_NUM_PCS_PER_CAFE:-100}"
 export LOAD_TEST_NUM_USERS_PER_CAFE="${LOAD_TEST_NUM_USERS_PER_CAFE:-100}"
-export LOAD_TEST_CONCURRENCY="${LOAD_TEST_CONCURRENCY:-30}"
-export LOAD_TEST_DURATION_SEC="${LOAD_TEST_DURATION_SEC:-60}"
+export LOAD_TEST_CONCURRENCY="${LOAD_TEST_CONCURRENCY:-200}"
+export LOAD_TEST_DURATION_SEC="${LOAD_TEST_DURATION_SEC:-600}"
 export LOAD_TEST_TARGET_RPS="${LOAD_TEST_TARGET_RPS:-0}"
 
 # Force the python script to never emit ANSI color codes. We want a
