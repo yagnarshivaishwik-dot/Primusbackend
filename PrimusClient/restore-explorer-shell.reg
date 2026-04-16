@@ -1,0 +1,13 @@
+Windows Registry Editor Version 5.00
+
+; ========================================
+; Restore Windows Explorer Shell
+; ========================================
+; 
+; This registry file restores Windows Explorer as the default shell
+; Run as Administrator and restart the computer after applying
+;
+; ========================================
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon]
+"Shell"="explorer.exe"

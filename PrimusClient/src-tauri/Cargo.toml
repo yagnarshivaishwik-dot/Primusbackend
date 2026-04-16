@@ -1,0 +1,38 @@
+[package]
+name = "primus-client"
+version = "1.0.0"
+description = "Primus Gaming Cafe Desktop Client"
+authors = ["Primus Technologies"]
+license = "Proprietary"
+repository = ""
+default-run = "primus-client"
+edition = "2021"
+rust-version = "1.60"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+tauri-build = { version = "1.5.0", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+tauri = { version = "1.5.4", features = [ "dialog-all", "path-all", "window-minimize", "window-hide", "http-all", "window-unmaximize", "window-maximize", "window-show", "window-start-dragging", "fs-read-file", "fs-exists", "window-unminimize", "protocol-asset", "os-all", "fs-write-file", "window-close", "notification-all" ] }
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.11", features = ["json"] }
+uuid = { version = "1.0", features = ["v4"] }
+hostname = "0.3"
+winapi = { version = "0.3", features = ["winuser", "processthreadsapi", "tlhelp32", "handleapi", "psapi"] }
+rfd = "0.14"
+chrono = { version = "0.4", features = ["serde"] }
+sha2 = "0.10"
+hmac = "0.12"
+sysinfo = "0.29"
+lazy_static = "1.4"
+dirs = "5.0"
+
+[features]
+# this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.
+# If you use cargo directly instead of tauri's cli you can use this feature flag to switch between tauri's `dev` and `build` modes.
+# DO NOT REMOVE!!
+custom-protocol = [ "tauri/custom-protocol" ]
