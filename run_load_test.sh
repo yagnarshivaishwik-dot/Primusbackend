@@ -24,8 +24,8 @@ export LOAD_TEST_BASE_URL="${LOAD_TEST_BASE_URL:-http://localhost:8000}"
 export CAFE1_EMAIL="${CAFE1_EMAIL:-shravyareddy767@gmail.com}"
 export CAFE1_PASSWORD="${CAFE1_PASSWORD:-r8F8x^hoiiTj}"
 
-export CAFE2_EMAIL="${CAFE2_EMAIL:-yagnarshivaishwik@gmail.com}"
-export CAFE2_PASSWORD="${CAFE2_PASSWORD:-j#J*zdDtCcS3}"
+export CAFE2_EMAIL="${CAFE2_EMAIL:-vaishwik.bojja@sticsoftsolutions.com}"
+export CAFE2_PASSWORD='eSB&z&pkNbMU'
 
 export CAFE3_EMAIL="${CAFE3_EMAIL:-vyomatechnologies7@gmail.com}"
 export CAFE3_PASSWORD='9WKxNQp3$E8Q'
