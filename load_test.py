@@ -68,14 +68,37 @@ except ImportError:
 # Config
 # ============================================================
 
-BASE_URL    = os.environ.get("LOAD_TEST_BASE_URL", "http://localhost:8000")
-ADMIN_EMAIL = os.environ.get("CAFE1_EMAIL", "")
-ADMIN_PASS  = os.environ.get("CAFE1_PASSWORD", "")
+BASE_URL = os.environ.get("LOAD_TEST_BASE_URL", "http://localhost:8000")
 
-DURATION_SEC = int(os.environ.get("LOAD_TEST_DURATION_SEC", "60"))
-CONCURRENCY  = int(os.environ.get("LOAD_TEST_CONCURRENCY", "20"))
-NUM_PCS      = int(os.environ.get("LOAD_TEST_NUM_PCS", "40"))
-NUM_USERS    = int(os.environ.get("LOAD_TEST_NUM_USERS", "30"))
+# Discover all configured cafes from env vars CAFE1_EMAIL/CAFE1_PASSWORD
+# through CAFE9_EMAIL/CAFE9_PASSWORD. Skips any slot with empty creds.
+def _discover_cafes() -> list[dict]:
+    out = []
+    for i in range(1, 10):
+        email = os.environ.get(f"CAFE{i}_EMAIL", "").strip()
+        pw    = os.environ.get(f"CAFE{i}_PASSWORD", "").strip()
+        if email and pw:
+            out.append({
+                "label":    f"cafe{i}",
+                "email":    email,
+                "password": pw,
+            })
+    return out
+
+CAFES = _discover_cafes()
+
+DURATION_SEC        = int(os.environ.get("LOAD_TEST_DURATION_SEC", "60"))
+CONCURRENCY         = int(os.environ.get("LOAD_TEST_CONCURRENCY", "20"))
+# Per-cafe counts. Total PCs = NUM_PCS_PER_CAFE * len(CAFES).
+NUM_PCS_PER_CAFE    = int(os.environ.get("LOAD_TEST_NUM_PCS_PER_CAFE", "100"))
+NUM_USERS_PER_CAFE  = int(os.environ.get("LOAD_TEST_NUM_USERS_PER_CAFE", "100"))
+
+# Legacy single-value knobs still honored if set explicitly. They become
+# per-cafe overrides when NUM_*_PER_CAFE is at the default.
+if "LOAD_TEST_NUM_PCS" in os.environ and "LOAD_TEST_NUM_PCS_PER_CAFE" not in os.environ:
+    NUM_PCS_PER_CAFE = int(os.environ["LOAD_TEST_NUM_PCS"])
+if "LOAD_TEST_NUM_USERS" in os.environ and "LOAD_TEST_NUM_USERS_PER_CAFE" not in os.environ:
+    NUM_USERS_PER_CAFE = int(os.environ["LOAD_TEST_NUM_USERS"])
 # When set, paces total RPS across all workers to stay under the
 # server's rate limit. Use 10 if RATE_LIMIT_PER_MINUTE=1000 (default).
 # When > 0, the setup phase also paces itself with sleep(1/TARGET_RPS)
@@ -178,11 +201,11 @@ def _get(path: str, **kw) -> requests.Response:
     return requests.get(f"{BASE_URL}{path}", verify=VERIFY_SSL, timeout=REQUEST_TIMEOUT, **kw)
 
 
-def admin_login() -> str:
-    """Login as Cafe 1 admin, return access_token."""
-    resp = _post("/api/auth/login", data={"username": ADMIN_EMAIL, "password": ADMIN_PASS})
+def admin_login(email: str, password: str) -> str:
+    """Login as a cafe admin, return access_token."""
+    resp = _post("/api/auth/login", data={"username": email, "password": password})
     if resp.status_code != 200:
-        raise RuntimeError(f"Admin login failed: HTTP {resp.status_code} — {resp.text[:200]}")
+        raise RuntimeError(f"Admin login failed for {email}: HTTP {resp.status_code} — {resp.text[:200]}")
     return resp.json()["access_token"]
 
 
@@ -326,99 +349,85 @@ def save_state(state: dict):
         json.dump(state, f, indent=2)
 
 
-def setup_phase() -> dict:
-    """
-    Idempotent setup. Reuses cached state from STATE_FILE if available so
-    re-runs are fast and don't spam the server with re-registrations.
-    """
-    section("Setup · Login & Discover License")
+def _cleanup_stale_pcs(admin_token: str, label: str) -> None:
+    """Delete any stale LoadTest-PC-* records visible to this cafe admin."""
+    existing = list_existing_pcs(admin_token)
+    loadtest_pcs = [p for p in existing if (p.get("name") or "").startswith(PC_PREFIX)]
+    if not loadtest_pcs:
+        ok(f"[{label}] No stale LoadTest PCs found")
+        return
 
-    if not ADMIN_EMAIL or not ADMIN_PASS:
-        fail("CAFE1_EMAIL / CAFE1_PASSWORD env vars are required for setup.")
-        sys.exit(1)
+    info(f"[{label}] Found {len(loadtest_pcs)} stale LoadTest PC(s); deleting…")
+    cleanup_done = {"deleted": 0, "failed": 0, "first_err": ""}
+    cleanup_lock = threading.Lock()
+    total_to_delete = len(loadtest_pcs)
 
-    state = load_state()
-    if state.get("base_url") != BASE_URL:
-        # Different target — discard cached state
-        state = {}
+    def _del(pc_id: int):
+        ok_flag, err = delete_pc(admin_token, pc_id)
+        with cleanup_lock:
+            if ok_flag:
+                cleanup_done["deleted"] += 1
+            else:
+                cleanup_done["failed"] += 1
+                if not cleanup_done["first_err"]:
+                    cleanup_done["first_err"] = err
+
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        list(pool.map(lambda p: _del(p["id"]), loadtest_pcs))
+
+    ok(f"[{label}] Deleted {cleanup_done['deleted']} stale PC(s)")
+    if cleanup_done["failed"]:
+        warn(f"[{label}] {cleanup_done['failed']} PC(s) could not be deleted")
+        if cleanup_done["first_err"]:
+            warn(f"[{label}] First delete error: {cleanup_done['first_err']}")
+
+
+def _setup_one_cafe(cafe: dict, cached: dict, fresh_run: bool) -> dict:
+    """Setup one cafe: login, get license, cleanup, register PCs + users.
+
+    Returns a dict with keys: label, license_key, pcs, users.
+    Mutates `cached` to reuse what's already there.
+    """
+    label = cafe["label"]
+    section(f"Setup · {label} · {cafe['email']}")
 
     # ── Admin token ─────────────────────────────────────────
-    admin_token = admin_login()
-    ok(f"Admin logged in ({ADMIN_EMAIL})")
+    admin_token = admin_login(cafe["email"], cafe["password"])
+    ok(f"Admin logged in")
 
-    # ── Cleanup of stale loadtest PCs (only on a fresh run) ─
-    fresh_run = os.environ.get("LOAD_TEST_FRESH", "0") == "1"
+    # ── Stale PC cleanup ─────────────────────────────────────
     if fresh_run:
-        section("Setup · Cleanup stale LoadTest PCs")
-        existing = list_existing_pcs(admin_token)
-        loadtest_pcs = [p for p in existing if (p.get("name") or "").startswith(PC_PREFIX)]
-        if loadtest_pcs:
-            info(f"Found {len(loadtest_pcs)} stale LoadTest PC(s); deleting in parallel…")
-
-            cleanup_done = {"deleted": 0, "failed": 0, "first_err": ""}
-            cleanup_lock = threading.Lock()
-            total_to_delete = len(loadtest_pcs)
-
-            def _del(pc_id: int):
-                ok_flag, err = delete_pc(admin_token, pc_id)
-                with cleanup_lock:
-                    if ok_flag:
-                        cleanup_done["deleted"] += 1
-                    else:
-                        cleanup_done["failed"] += 1
-                        if not cleanup_done["first_err"]:
-                            cleanup_done["first_err"] = err
-                    done = cleanup_done["deleted"] + cleanup_done["failed"]
-                    if done % 10 == 0 or done == total_to_delete:
-                        print(f"    ... {done}/{total_to_delete} processed")
-
-            # 10 concurrent deletes — keeps the cascade load on the server
-            # manageable while finishing 100 PCs in well under a minute.
-            with ThreadPoolExecutor(max_workers=10) as pool:
-                list(pool.map(lambda p: _del(p["id"]), loadtest_pcs))
-
-            ok(f"Deleted {cleanup_done['deleted']} stale PC(s)")
-            if cleanup_done["failed"]:
-                warn(f"{cleanup_done['failed']} PC(s) could not be deleted")
-                if cleanup_done["first_err"]:
-                    warn(f"First delete error: {cleanup_done['first_err']}")
-                warn("Tip: bump max_pcs on the license, or delete via SQL:")
-                warn("  DELETE FROM client_pcs WHERE name LIKE 'LoadTest-PC-%';")
-        else:
-            ok("No stale LoadTest PCs found")
+        _cleanup_stale_pcs(admin_token, label)
 
     # ── License key ─────────────────────────────────────────
-    license_key = state.get("license_key")
+    license_key = cached.get("license_key")
     if not license_key:
         license_key = fetch_license_key(admin_token)
-        state["license_key"] = license_key
-    ok(f"License key acquired: {license_key[:12]}…")
+    ok(f"License key: {license_key[:12]}…")
 
-    # ── Users ───────────────────────────────────────────────
-    section(f"Setup · Register {NUM_USERS} client users")
-    users = state.get("users", [])
-    if len(users) < NUM_USERS:
+    # ── Users (per cafe) ────────────────────────────────────
+    users = cached.get("users", [])
+    if len(users) < NUM_USERS_PER_CAFE:
         new_count = 0
-        first_reg_err: str = ""
-        for i in range(len(users), NUM_USERS):
-            email = f"{USER_PREFIX}{i:03d}@{USER_DOMAIN}"
-            ok_reg, err = register_user(email, USER_PASSWORD, f"LoadTest User {i:03d}")
+        first_reg_err = ""
+        for i in range(len(users), NUM_USERS_PER_CAFE):
+            email = f"{USER_PREFIX}{label}_{i:03d}@{USER_DOMAIN}"
+            ok_reg, err = register_user(email, USER_PASSWORD,
+                                        f"LoadTest {label} {i:03d}")
             if not ok_reg and not first_reg_err:
                 first_reg_err = err
-            users.append({"email": email, "password": USER_PASSWORD})
+            users.append({"email": email, "password": USER_PASSWORD, "cafe": label})
             new_count += 1
             if SETUP_INTERVAL > 0:
                 time.sleep(SETUP_INTERVAL)
-        state["users"] = users
         ok(f"Registered {new_count} new user(s); total {len(users)}")
         if first_reg_err:
             warn(f"First registration error: {first_reg_err}")
 
-    # Verify users can actually log in (registration is silent on duplicates).
-    section("Setup · Verify users can log in")
+    # Verify users can log in
     verified: list[dict] = []
     failed_count = 0
-    first_login_err: str = ""
+    first_login_err = ""
     for u in users:
         ok_login, err = verify_user_login(u["email"], u["password"])
         if ok_login:
@@ -435,21 +444,17 @@ def setup_phase() -> dict:
         warn(f"{failed_count} of {len(users)} users failed login probe")
         if first_login_err:
             warn(f"First failure: {first_login_err}")
-        if not verified:
-            fail("No users could log in — load phase will skip login/logout actions")
-    state["users"] = verified
     users = verified
 
-    # ── PCs ─────────────────────────────────────────────────
-    section(f"Setup · Register {NUM_PCS} PCs")
-    pcs = state.get("pcs", [])
-    if len(pcs) < NUM_PCS:
+    # ── PCs (per cafe) ──────────────────────────────────────
+    pcs = cached.get("pcs", [])
+    if len(pcs) < NUM_PCS_PER_CAFE:
         new_count = 0
-        first_pc_err: str = ""
+        first_pc_err = ""
         fail_count = 0
-        for i in range(len(pcs), NUM_PCS):
-            name = f"{PC_PREFIX}{i:03d}"
-            hw_fp = f"{HW_PREFIX}{i:03d}-{secrets.token_hex(4)}"
+        for i in range(len(pcs), NUM_PCS_PER_CAFE):
+            name = f"{PC_PREFIX}{label}-{i:03d}"
+            hw_fp = f"{HW_PREFIX}{label}-{i:03d}-{secrets.token_hex(4)}"
             pc, err = register_pc(license_key, name, hw_fp)
             if pc and pc.get("device_secret"):
                 pcs.append({
@@ -458,6 +463,7 @@ def setup_phase() -> dict:
                     "hardware_fingerprint": hw_fp,
                     "device_secret": pc["device_secret"],
                     "license_key": license_key,
+                    "cafe": label,
                 })
                 new_count += 1
             else:
@@ -466,7 +472,6 @@ def setup_phase() -> dict:
                     first_pc_err = err
             if SETUP_INTERVAL > 0:
                 time.sleep(SETUP_INTERVAL)
-        state["pcs"] = pcs
         ok(f"Registered {new_count} new PC(s); total {len(pcs)}")
         if fail_count:
             warn(f"{fail_count} PC(s) failed to register")
@@ -475,9 +480,49 @@ def setup_phase() -> dict:
             warn("Tip: bump max_pcs on the license to allow more registrations")
     else:
         ok(f"{len(pcs)} PCs already cached, skipping registration")
-        # Backfill license_key for state files written by older script versions
         for p in pcs:
             p.setdefault("license_key", license_key)
+            p.setdefault("cafe", label)
+
+    return {
+        "label":       label,
+        "license_key": license_key,
+        "pcs":         pcs,
+        "users":       users,
+    }
+
+
+def setup_phase() -> dict:
+    """
+    Idempotent multi-cafe setup. Iterates each configured cafe, logs in
+    its admin, fetches its license, and registers per-cafe PCs and users.
+    Reuses cached state from STATE_FILE so re-runs are fast.
+    """
+    if not CAFES:
+        fail("No cafes configured. Set CAFE1_EMAIL/CAFE1_PASSWORD (and "
+             "optionally CAFE2_*, CAFE3_*, ...) env vars.")
+        sys.exit(1)
+
+    section(f"Setup · {len(CAFES)} cafe(s) · "
+            f"{NUM_PCS_PER_CAFE} PCs/cafe · {NUM_USERS_PER_CAFE} users/cafe")
+    info(f"Total: {len(CAFES) * NUM_PCS_PER_CAFE} PCs, "
+         f"{len(CAFES) * NUM_USERS_PER_CAFE} users")
+
+    state = load_state()
+    if state.get("base_url") != BASE_URL:
+        # Different target — discard cached state
+        state = {"cafes": {}}
+    state.setdefault("cafes", {})
+
+    fresh_run = os.environ.get("LOAD_TEST_FRESH", "0") == "1"
+
+    for cafe in CAFES:
+        cached = state["cafes"].get(cafe["label"], {})
+        try:
+            state["cafes"][cafe["label"]] = _setup_one_cafe(cafe, cached, fresh_run)
+        except RuntimeError as e:
+            fail(f"[{cafe['label']}] Setup failed: {e}")
+            # Continue with other cafes; we'll just have less load.
 
     state["base_url"] = BASE_URL
     save_state(state)
@@ -494,12 +539,14 @@ class Stats:
     success: int = 0
     failure: int = 0
     by_endpoint: dict = field(default_factory=dict)
+    by_cafe:     dict = field(default_factory=dict)
     latencies_ms: list = field(default_factory=list)
     status_codes: dict = field(default_factory=dict)
     errors: list = field(default_factory=list)
     lock: threading.Lock = field(default_factory=threading.Lock)
 
-    def record(self, endpoint: str, latency_ms: float, status: int, ok_flag: bool, err: str = ""):
+    def record(self, endpoint: str, latency_ms: float, status: int,
+               ok_flag: bool, err: str = "", cafe: str = "?"):
         with self.lock:
             self.total += 1
             if ok_flag:
@@ -507,7 +554,7 @@ class Stats:
             else:
                 self.failure += 1
                 if err and len(self.errors) < 20:
-                    self.errors.append(f"{endpoint}: {err}")
+                    self.errors.append(f"[{cafe}] {endpoint}: {err}")
             self.latencies_ms.append(latency_ms)
             self.status_codes[status] = self.status_codes.get(status, 0) + 1
             ep = self.by_endpoint.setdefault(
@@ -520,10 +567,21 @@ class Stats:
             else:
                 ep["fail"] += 1
             ep["lat_ms"].append(latency_ms)
+            cf = self.by_cafe.setdefault(
+                cafe,
+                {"total": 0, "success": 0, "fail": 0, "lat_ms": []},
+            )
+            cf["total"] += 1
+            if ok_flag:
+                cf["success"] += 1
+            else:
+                cf["fail"] += 1
+            cf["lat_ms"].append(latency_ms)
 
 
 def _do_heartbeat(pc: dict, stats: Stats):
     headers, body = sign_heartbeat(pc["device_secret"], pc["license_key"])
+    cafe = pc.get("cafe", "?")
     t0 = time.perf_counter()
     err = ""
     status = 0
@@ -537,10 +595,11 @@ def _do_heartbeat(pc: dict, stats: Stats):
     except Exception as e:
         err = f"exception: {type(e).__name__}: {e}"
     latency = (time.perf_counter() - t0) * 1000
-    stats.record("heartbeat", latency, status, ok_flag, err)
+    stats.record("heartbeat", latency, status, ok_flag, err, cafe=cafe)
 
 
 def _do_login(user: dict, stats: Stats, token_jar: dict, jar_lock: threading.Lock):
+    cafe = user.get("cafe", "?")
     t0 = time.perf_counter()
     err = ""
     status = 0
@@ -553,13 +612,13 @@ def _do_login(user: dict, stats: Stats, token_jar: dict, jar_lock: threading.Loc
             tok = resp.json().get("access_token")
             if tok:
                 with jar_lock:
-                    token_jar[user["email"]] = tok
+                    token_jar[user["email"]] = (tok, cafe)
         else:
             err = resp.text[:120]
     except Exception as e:
         err = f"exception: {type(e).__name__}: {e}"
     latency = (time.perf_counter() - t0) * 1000
-    stats.record("login", latency, status, ok_flag, err)
+    stats.record("login", latency, status, ok_flag, err, cafe=cafe)
 
 
 def _do_logout(stats: Stats, token_jar: dict, jar_lock: threading.Lock):
@@ -567,7 +626,7 @@ def _do_logout(stats: Stats, token_jar: dict, jar_lock: threading.Lock):
         if not token_jar:
             return
         email = random.choice(list(token_jar.keys()))
-        token = token_jar.pop(email)
+        token, cafe = token_jar.pop(email)
 
     t0 = time.perf_counter()
     err = ""
@@ -582,12 +641,17 @@ def _do_logout(stats: Stats, token_jar: dict, jar_lock: threading.Lock):
     except Exception as e:
         err = f"exception: {type(e).__name__}: {e}"
     latency = (time.perf_counter() - t0) * 1000
-    stats.record("logout", latency, status, ok_flag, err)
+    stats.record("logout", latency, status, ok_flag, err, cafe=cafe)
 
 
 def load_phase(state: dict):
-    pcs = state["pcs"]
-    users = state["users"]
+    # Flatten per-cafe pools into single PC and user lists. Each entry
+    # already carries its "cafe" tag so per-cafe stats are easy.
+    pcs: list = []
+    users: list = []
+    for cafe_label, cafe_state in state.get("cafes", {}).items():
+        pcs.extend(cafe_state.get("pcs", []))
+        users.extend(cafe_state.get("users", []))
 
     if not pcs and not users:
         fail("Setup produced neither PCs nor users — aborting load phase.")
@@ -598,7 +662,8 @@ def load_phase(state: dict):
         warn("No verified users — login/logout actions will be skipped")
 
     section(
-        f"Load Phase · {NUM_PCS} PCs, {NUM_USERS} users, "
+        f"Load Phase · {len(pcs)} PCs, {len(users)} users "
+        f"({len(state.get('cafes', {}))} cafes), "
         f"{CONCURRENCY} workers, {DURATION_SEC}s"
     )
     info(
@@ -611,16 +676,18 @@ def load_phase(state: dict):
     stats = Stats()
     token_jar: dict[str, str] = {}
 
-    # Pre-warm the token jar with up to 50 logins so the load phase
-    # spends its budget on heartbeats rather than waiting on Argon2.
-    # Done serially to avoid CPU saturation during warmup.
+    # Pre-warm the token jar with up to 50 logins (sampled across cafes)
+    # so the load phase spends its budget on heartbeats rather than
+    # waiting on Argon2. Done serially to avoid CPU saturation.
     if users:
+        # Sample evenly across cafes for the warmup
         warm = min(50, len(users))
+        sample = random.sample(users, warm) if len(users) > warm else users
         info(f"Pre-warming token jar with {warm} login(s)…")
-        for u in users[:warm]:
+        for u in sample:
             tok = login_user(u["email"], u["password"])
             if tok:
-                token_jar[u["email"]] = tok
+                token_jar[u["email"]] = (tok, u.get("cafe", "?"))
             if SETUP_INTERVAL > 0:
                 time.sleep(SETUP_INTERVAL)
         ok(f"Token jar primed with {len(token_jar)} token(s)")
@@ -777,6 +844,22 @@ def report(stats: Stats, elapsed: float):
             f"{avg_ms:>9.1f}  {p95_ms:>9.1f}"
         )
 
+    if stats.by_cafe and len(stats.by_cafe) > 1:
+        print()
+        print(f"  {BOLD}Per-cafe{RESET}")
+        print(f"    {'cafe':<12}  {'total':>7}  {'ok':>7}  {'fail':>6}  "
+              f"{'avg(ms)':>9}  {'p95(ms)':>9}")
+        print(f"    {'-'*12}  {'-'*7}  {'-'*7}  {'-'*6}  {'-'*9}  {'-'*9}")
+        for cf, d in sorted(stats.by_cafe.items()):
+            avg_ms = statistics.mean(d["lat_ms"]) if d["lat_ms"] else 0
+            p95_ms = _percentile(d["lat_ms"], 0.95) if d["lat_ms"] else 0
+            print(
+                f"    {cf:<12}  {d['total']:>7}  "
+                f"{GREEN}{d['success']:>7}{RESET}  "
+                f"{(RED if d['fail'] else '')}{d['fail']:>6}{RESET}  "
+                f"{avg_ms:>9.1f}  {p95_ms:>9.1f}"
+            )
+
     if stats.errors:
         print()
         print(f"  {BOLD}Sample errors (first 20){RESET}")
@@ -814,10 +897,12 @@ def report(stats: Stats, elapsed: float):
 # ============================================================
 
 def main():
+    total_pcs   = len(CAFES) * NUM_PCS_PER_CAFE
+    total_users = len(CAFES) * NUM_USERS_PER_CAFE
     print(f"\n{BOLD}Primus Load Test{RESET}")
     print(f"Target: {CYAN}{BASE_URL}{RESET}")
-    print(f"Plan:   {NUM_PCS} PCs · {NUM_USERS} users · "
-          f"{CONCURRENCY} workers · {DURATION_SEC}s\n")
+    print(f"Plan:   {len(CAFES)} cafes · {total_pcs} PCs · "
+          f"{total_users} users · {CONCURRENCY} workers · {DURATION_SEC}s\n")
 
     state = setup_phase()
     stats, elapsed = load_phase(state)

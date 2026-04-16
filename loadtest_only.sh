@@ -20,17 +20,33 @@
 
 set -euo pipefail
 
-# ── Credentials ───────────────────────────────────────────────
-export LOAD_TEST_BASE_URL="${LOAD_TEST_BASE_URL:-http://localhost:8000}"
-export CAFE1_EMAIL="${CAFE1_EMAIL:-vaishwik14366@gmail.com}"
-export CAFE1_PASSWORD="${CAFE1_PASSWORD:-DFO0O6hh9b9n}"
+# ── Credentials (5 cafes) ─────────────────────────────────────
+export LOAD_TEST_BASE_URL="${LOAD_TEST_BASE_URL:-http://20.55.214.91:8000}"
 
-# ── Tunables ──────────────────────────────────────────────────
-export LOAD_TEST_NUM_PCS="${LOAD_TEST_NUM_PCS:-100}"
-export LOAD_TEST_NUM_USERS="${LOAD_TEST_NUM_USERS:-100}"
+export CAFE1_EMAIL="${CAFE1_EMAIL:-shravyareddy767@gmail.com}"
+export CAFE1_PASSWORD="${CAFE1_PASSWORD:-r8F8x^hoiiTj}"
+
+export CAFE2_EMAIL="${CAFE2_EMAIL:-yagnarshivaishwik@gmail.com}"
+export CAFE2_PASSWORD="${CAFE2_PASSWORD:-j#J*zdDtCcS3}"
+
+export CAFE3_EMAIL="${CAFE3_EMAIL:-vyomatechnologies7@gmail.com}"
+export CAFE3_PASSWORD='9WKxNQp3$E8Q'
+
+export CAFE4_EMAIL="${CAFE4_EMAIL:-ybojja@gmail.com}"
+export CAFE4_PASSWORD='Y#kS$8&sLGwW'
+
+export CAFE5_EMAIL="${CAFE5_EMAIL:-bhargavyyp.ae@gmail.com}"
+export CAFE5_PASSWORD='N$^z59az*6^S'
+
+# ── Tunables (per cafe) ───────────────────────────────────────
+export LOAD_TEST_NUM_PCS_PER_CAFE="${LOAD_TEST_NUM_PCS_PER_CAFE:-100}"
+export LOAD_TEST_NUM_USERS_PER_CAFE="${LOAD_TEST_NUM_USERS_PER_CAFE:-100}"
 export LOAD_TEST_CONCURRENCY="${LOAD_TEST_CONCURRENCY:-30}"
 export LOAD_TEST_DURATION_SEC="${LOAD_TEST_DURATION_SEC:-60}"
 export LOAD_TEST_TARGET_RPS="${LOAD_TEST_TARGET_RPS:-0}"
+# Fresh state every run by default — triggers per-cafe stale-PC API
+# cleanup via /api/clientpc/{id} DELETE for each admin's cafe.
+export LOAD_TEST_FRESH="${LOAD_TEST_FRESH:-1}"
 export NO_COLOR=1
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -45,13 +61,14 @@ err()  { printf '[XX] %s\n' "$*"; }
 say ""
 say "=========================================================="
 say "  Primus Load Test (no backend management)"
-say "  Target      : $LOAD_TEST_BASE_URL"
-say "  PCs         : $LOAD_TEST_NUM_PCS"
-say "  Users       : $LOAD_TEST_NUM_USERS"
-say "  Concurrency : $LOAD_TEST_CONCURRENCY"
-say "  Duration    : ${LOAD_TEST_DURATION_SEC}s"
-say "  Target RPS  : $LOAD_TEST_TARGET_RPS (0 = unlimited)"
-say "  Log file    : $LOG_FILE"
+say "  Target          : $LOAD_TEST_BASE_URL"
+say "  Cafes           : 5"
+say "  PCs   per cafe  : $LOAD_TEST_NUM_PCS_PER_CAFE"
+say "  Users per cafe  : $LOAD_TEST_NUM_USERS_PER_CAFE"
+say "  Concurrency     : $LOAD_TEST_CONCURRENCY"
+say "  Duration        : ${LOAD_TEST_DURATION_SEC}s"
+say "  Target RPS      : $LOAD_TEST_TARGET_RPS (0 = unlimited)"
+say "  Log file        : $LOG_FILE"
 say "=========================================================="
 
 # Pull latest
