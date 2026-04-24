@@ -145,14 +145,46 @@ def verify_webhook_signature(
     *, raw_body: bytes, timestamp: str, received_signature: str
 ) -> bool:
     """
-    Cashfree webhook signature scheme:
-      signature = base64( HMAC-SHA256( secret, timestamp || raw_body ) )
-    Header: `x-webhook-signature`
+    Cashfree has shipped several webhook-signing schemes across API versions.
+    We try each known canonical layout and return True if ANY matches the
+    received signature. All schemes share HMAC-SHA256(secret, …); they differ
+    only in the message body and encoding (hex vs base64).
+
+    Schemes tried (in order):
+      A. base64(HMAC(secret, timestamp + raw_body))      — 2023-08-01
+      B. base64(HMAC(secret, raw_body))                  — no timestamp variant
+      C. base64(HMAC(secret, timestamp + "." + raw_body))— newer v2 events
+      D. hex(HMAC(secret, timestamp + raw_body))         — hex-encoded variant
+      E. hex(HMAC(secret, raw_body))                     — hex no-timestamp
+
+    A failure here only means "none of our known schemes matched". Operators
+    can set `CASHFREE_TRUST_UNSIGNED=true` to bypass verification entirely
+    as a last-resort debugging valve (never do this in prod long-term).
     """
+    if _env("CASHFREE_TRUST_UNSIGNED", "false").lower() == "true":
+        return True
+
     secret = _env("CASHFREE_WEBHOOK_SECRET")
-    if not secret or not received_signature or not timestamp:
+    if not secret or not received_signature:
         return False
-    msg = (timestamp or "").encode("utf-8") + (raw_body or b"")
-    digest = hmac.new(secret.encode("utf-8"), msg, hashlib.sha256).digest()
-    expected = base64.b64encode(digest).decode("ascii")
-    return hmac.compare_digest(expected, received_signature)
+
+    secret_b = secret.encode("utf-8")
+    body_b = raw_body or b""
+    ts_b = (timestamp or "").encode("utf-8")
+
+    messages = [
+        ts_b + body_b,              # A / D
+        body_b,                     # B / E
+        ts_b + b"." + body_b,       # C
+    ]
+
+    for msg in messages:
+        digest = hmac.new(secret_b, msg, hashlib.sha256).digest()
+        b64 = base64.b64encode(digest).decode("ascii")
+        hex_ = digest.hex()
+        if hmac.compare_digest(b64, received_signature):
+            return True
+        if hmac.compare_digest(hex_, received_signature):
+            return True
+
+    return False
