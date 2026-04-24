@@ -136,6 +136,19 @@ def should_skip_csrf_check(request: Request) -> bool:
             "/api/cafe/onboard/",
         ]
     )
+
+    # Cashfree payment webhook — server-to-server POST from Cashfree's side.
+    # Authenticated by HMAC-SHA256 signature (X-Webhook-Signature) against
+    # CASHFREE_WEBHOOK_SECRET in our handler. No browser cookie involved, so
+    # CSRF cannot and should not apply.
+    skip_paths.extend(
+        [
+            "/api/v1/payment/cashfree/webhook",
+            "/api/v1/payment/cashfree/webhook/",
+            "/api/payment/cashfree/webhook",
+            "/api/payment/cashfree/webhook/",
+        ]
+    )
     if request.url.path in skip_paths:
         return True
 
