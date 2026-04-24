@@ -27,16 +27,28 @@ from typing import Any
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
-from sqlalchemy import update
-from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import get_current_user
 from app.auth.context import AuthContext, get_auth_context
-from app.db.dependencies import get_cafe_db as get_db
+from app.db.dependencies import MULTI_DB_ENABLED
+from app.db.global_db import global_session_factory
+from app.db.router import cafe_db_router
 from app.models import Offer, User, UserOffer, WalletTransaction
 from app.services import cashfree_service as cf
 from app.ws.auth import build_event
 from app.ws import pc as ws_pc, admin as ws_admin
+
+
+def _session_for_cafe(cafe_id: int | None):
+    """Pick the right SQLAlchemy session for a given cafe.
+
+    In multi-DB mode each cafe has its own DB, so webhooks that land without
+    a JWT must resolve the DB explicitly from ``order_tags.cafe_id``. In
+    single-DB mode (default), both factories return the same session.
+    """
+    if MULTI_DB_ENABLED and cafe_id is not None:
+        return cafe_db_router.get_session(cafe_id)
+    return global_session_factory()
 
 router = APIRouter()
 
@@ -134,7 +146,7 @@ async def get_order_status(
 
 
 @router.post("/webhook", status_code=status.HTTP_200_OK)
-async def webhook(request: Request, db: Session = Depends(get_db)):
+async def webhook(request: Request):
     """
     Cashfree push notification.
     Verifies HMAC signature (header `x-webhook-signature`, `x-webhook-timestamp`)
@@ -186,72 +198,80 @@ async def webhook(request: Request, db: Session = Depends(get_db)):
     if not user_id:
         raise HTTPException(status_code=400, detail="Missing user_id tag on order")
 
-    # Idempotency: a ledger row tagged with this order_id means we already
-    # processed this webhook. WalletTransaction is used purely as the ledger;
-    # the actual time is credited to UserOffer below, not to wallet_balance.
-    existing = (
-        db.query(WalletTransaction)
-        .filter(WalletTransaction.description.like(f"%cashfree:{order_id}%"))
-        .first()
-    )
-    if existing is not None:
-        return {"ok": True, "idempotent": True}
-
-    # Resolve minutes to credit. Rule: if the order was tagged with a pack_id,
-    # look up the Offer and use its `hours_minutes` (integer minutes). If not,
-    # treat the amount as direct minutes (fallback for ad-hoc top-ups where
-    # the kiosk wants a "₹1 = 1 minute" style flow). Never touch wallet_balance.
-    offer: Offer | None = None
-    minutes_to_add = 0
+    # Webhooks have NO JWT — so the standard `get_cafe_db` dependency can't
+    # resolve cafe_id. We take it from the order_tags we set at create-order
+    # time, then open the right session manually (cafe DB in multi-DB mode,
+    # global DB in single-DB mode). Always closes in the finally below.
+    db = _session_for_cafe(cafe_id)
     try:
-        pack_id_int = int(pack_id_s) if pack_id_s else None
-    except (TypeError, ValueError):
-        pack_id_int = None
-
-    if pack_id_int is not None:
-        offer = (
-            db.query(Offer)
-            .filter(Offer.id == pack_id_int, Offer.active.is_(True))
+        # Idempotency: a ledger row tagged with this order_id means we already
+        # processed this webhook. WalletTransaction is used purely as the ledger;
+        # the actual time is credited to UserOffer below, not to wallet_balance.
+        existing = (
+            db.query(WalletTransaction)
+            .filter(WalletTransaction.description.like(f"%cashfree:{order_id}%"))
             .first()
         )
-        if offer and offer.hours_minutes:
-            minutes_to_add = int(offer.hours_minutes)
+        if existing is not None:
+            return {"ok": True, "idempotent": True}
 
-    if minutes_to_add <= 0:
-        # Sensible fallback: one minute per rupee paid. Admins can edit the
-        # Offer rows via the admin panel; this path only fires if no pack_id
-        # was attached or the pack was deleted between order + webhook.
-        minutes_to_add = max(1, int(round(order_amount)))
+        # Resolve minutes to credit. Rule: if the order was tagged with a pack_id,
+        # look up the Offer and use its `hours_minutes` (integer minutes). If not,
+        # treat the amount as direct minutes (fallback for ad-hoc top-ups where
+        # the kiosk wants a "₹1 = 1 minute" style flow). Never touch wallet_balance.
+        offer: Offer | None = None
+        minutes_to_add = 0
+        try:
+            pack_id_int = int(pack_id_s) if pack_id_s else None
+        except (TypeError, ValueError):
+            pack_id_int = None
 
-    # Ensure user actually exists (cheap sanity check before inserting).
-    user = db.query(User).filter(User.id == user_id).first()
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        if pack_id_int is not None:
+            offer = (
+                db.query(Offer)
+                .filter(Offer.id == pack_id_int, Offer.active.is_(True))
+                .first()
+            )
+            if offer and offer.hours_minutes:
+                minutes_to_add = int(offer.hours_minutes)
 
-    # Credit TIME — UserOffer is the canonical store of remaining minutes.
-    db.add(
-        UserOffer(
-            user_id=user_id,
-            offer_id=offer.id if offer else None,
-            purchased_at=datetime.now(UTC),
-            minutes_remaining=minutes_to_add,
+        if minutes_to_add <= 0:
+            # Sensible fallback: one minute per rupee paid. Admins can edit the
+            # Offer rows via the admin panel; this path only fires if no pack_id
+            # was attached or the pack was deleted between order + webhook.
+            minutes_to_add = max(1, int(round(order_amount)))
+
+        # Ensure user actually exists (cheap sanity check before inserting).
+        user = db.query(User).filter(User.id == user_id).first()
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Credit TIME — UserOffer is the canonical store of remaining minutes.
+        db.add(
+            UserOffer(
+                user_id=user_id,
+                offer_id=offer.id if offer else None,
+                purchased_at=datetime.now(UTC),
+                minutes_remaining=minutes_to_add,
+            )
         )
-    )
 
-    # WalletTransaction acts as the audit ledger for the money side even
-    # though we don't increment wallet_balance. Keeps reconciliation with
-    # Cashfree's settlement reports trivial.
-    db.add(
-        WalletTransaction(
-            user_id=user_id,
-            cafe_id=cafe_id,
-            amount=order_amount,
-            timestamp=datetime.now(UTC),
-            type="pack_purchase",
-            description=f"cashfree:{order_id}:pack:{pack_id_int or 'none'}:mins:{minutes_to_add}",
+        # WalletTransaction acts as the audit ledger for the money side even
+        # though we don't increment wallet_balance. Keeps reconciliation with
+        # Cashfree's settlement reports trivial.
+        db.add(
+            WalletTransaction(
+                user_id=user_id,
+                cafe_id=cafe_id,
+                amount=order_amount,
+                timestamp=datetime.now(UTC),
+                type="pack_purchase",
+                description=f"cashfree:{order_id}:pack:{pack_id_int or 'none'}:mins:{minutes_to_add}",
+            )
         )
-    )
-    db.commit()
+        db.commit()
+    finally:
+        db.close()
 
     # Notify the kiosk + admin dashboards. `time_updated` tells the kiosk to
     # re-fetch billing/estimate-timeleft (authoritative) — we don't hard-code

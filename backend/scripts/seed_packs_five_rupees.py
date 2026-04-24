@@ -22,7 +22,7 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from app.db.database import SessionLocal  # noqa: E402
+from app.db.global_db import global_session_factory as SessionLocal  # noqa: E402
 from app.models import Offer  # noqa: E402
 
 log = logging.getLogger("seed_packs_five_rupees")
