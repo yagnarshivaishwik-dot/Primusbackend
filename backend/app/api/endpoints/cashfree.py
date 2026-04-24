@@ -147,6 +147,8 @@ async def get_order_status(
 
 @router.post("/webhook", status_code=status.HTTP_200_OK)
 async def webhook(request: Request):
+    import logging as _log_for_webhook  # local import, keeps module top tidy
+    _log = _log_for_webhook.getLogger("cashfree.webhook")
     """
     Cashfree push notification.
     Verifies HMAC signature (header `x-webhook-signature`, `x-webhook-timestamp`)
@@ -154,12 +156,42 @@ async def webhook(request: Request):
     Idempotent: a repeat webhook for the same order does nothing.
     """
     raw = await request.body()
-    timestamp = request.headers.get("x-webhook-timestamp", "")
-    signature = request.headers.get("x-webhook-signature", "")
+    # Cashfree has shipped 3+ header conventions over the years. Accept all
+    # variants so a dashboard upgrade doesn't silently break us.
+    timestamp = (
+        request.headers.get("x-webhook-timestamp")
+        or request.headers.get("x-cashfree-timestamp")
+        or request.headers.get("x-cf-timestamp")
+        or ""
+    )
+    signature = (
+        request.headers.get("x-webhook-signature")
+        or request.headers.get("x-cashfree-signature")
+        or request.headers.get("x-cf-signature")
+        or ""
+    )
+
+    # Log header + body shape (not secrets) so operators can diagnose any
+    # signature/scheme mismatch from backend logs alone.
+    _log.info(
+        "cashfree webhook hit: len(raw)=%d, headers_present={ts:%s, sig:%s}, ua=%r",
+        len(raw),
+        bool(timestamp),
+        bool(signature),
+        request.headers.get("user-agent"),
+    )
+    if not signature or not timestamp:
+        _log.warning("cashfree webhook: missing signature/timestamp headers; returning 401")
+        raise HTTPException(status_code=401, detail="Missing webhook signature headers")
 
     if not cf.verify_webhook_signature(
         raw_body=raw, timestamp=timestamp, received_signature=signature
     ):
+        _log.warning(
+            "cashfree webhook: signature mismatch (ts=%s, sig_prefix=%s...); check CASHFREE_WEBHOOK_SECRET",
+            timestamp,
+            (signature or "")[:8],
+        )
         raise HTTPException(status_code=401, detail="Invalid webhook signature")
 
     try:
