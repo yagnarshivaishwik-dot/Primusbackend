@@ -30,9 +30,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import update
 from sqlalchemy.orm import Session
 
+from app.api.endpoints.auth import get_current_user
 from app.auth.context import AuthContext, get_auth_context
-from app.auth.jwt_auth import get_current_user
-from app.db.session import get_db
+from app.db.dependencies import get_cafe_db as get_db
 from app.models import Offer, User, UserOffer, WalletTransaction
 from app.services import cashfree_service as cf
 from app.ws.auth import build_event
