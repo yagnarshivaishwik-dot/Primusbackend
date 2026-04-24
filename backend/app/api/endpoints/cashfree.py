@@ -62,8 +62,18 @@ class CreateOrderIn(BaseModel):
 
 class CreateOrderOut(BaseModel):
     order_id: str
+    # payment_session_id is the canonical token the Cashfree JS SDK uses to
+    # render the in-app checkout (including the UPI-QR pane). Kiosk calls
+    # cashfree.checkout({paymentSessionId}) with this.
+    payment_session_id: str
+    # Optional server-generated QR data (legacy path; Cashfree no longer
+    # returns a usable QR from /orders/sessions for most accounts). Kept
+    # for forwards-compat if Cashfree re-enables it.
     qr_data_uri: str | None = None
     upi_link: str | None = None
+    # Tells the client which SDK environment to initialise ("production" or
+    # "sandbox") so the drop-in hits the right API.
+    environment: str = "production"
     amount: float
     currency: str = "INR"
     status: str
@@ -103,22 +113,22 @@ async def create_order(
     if not session_id:
         raise HTTPException(status_code=502, detail="Cashfree returned no payment_session_id")
 
-    qr_data_uri: str | None = None
-    upi_link: str | None = None
-    try:
-        qr = await cf.initiate_upi_qr(payment_session_id=session_id)
-        payload = (qr.get("data") or {}).get("payload") or {}
-        qr_data_uri = payload.get("qrcode") or payload.get("qr_code")
-        upi_link = payload.get("upi_link") or payload.get("upi_intent")
-    except httpx.HTTPStatusError:
-        # QR initiation sometimes requires the JS SDK path; surface the
-        # upi_link if present and let the client render QR from it.
-        pass
+    # Cashfree's /orders/sessions endpoint only returns a usable QR when
+    # called from their JS SDK (the server-side call exists but returns an
+    # SDK-side challenge, not a QR image). We therefore don't try it here —
+    # the kiosk receives payment_session_id and invokes cashfree.checkout()
+    # which handles UPI-QR, card, netbanking, wallet rendering inline.
+    import os as _os
+
+    environment = (
+        _os.getenv("CASHFREE_ENV", "production").strip().lower()
+        or "production"
+    )
 
     return CreateOrderOut(
         order_id=order_id,
-        qr_data_uri=qr_data_uri,
-        upi_link=upi_link,
+        payment_session_id=session_id,
+        environment=environment,
         amount=body.amount,
         status=order.get("order_status", "ACTIVE"),
     )
