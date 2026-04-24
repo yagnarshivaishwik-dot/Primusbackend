@@ -6,15 +6,24 @@ can then tune them from the admin website. Idempotent — safe to re-run.
 Creates a sensible default pack set if none exist yet.
 
 Run from the backend container:
-    docker compose exec backend python -m app.scripts.seed_packs_five_rupees
+    docker compose exec backend python /app/scripts/seed_packs_five_rupees.py
 """
 
 from __future__ import annotations
 
 import logging
+import os
+import sys
 
-from app.db.session import SessionLocal
-from app.models import Offer
+# The scripts/ folder lives alongside the `app/` package (at /app/scripts
+# inside the container), so /app isn't on sys.path unless the caller set
+# PYTHONPATH. Prepend it ourselves so this script runs bare.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+from app.db.database import SessionLocal  # noqa: E402
+from app.models import Offer  # noqa: E402
 
 log = logging.getLogger("seed_packs_five_rupees")
 logging.basicConfig(level=logging.INFO, format="%(message)s")
