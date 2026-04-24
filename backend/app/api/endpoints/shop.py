@@ -28,9 +28,21 @@ router = APIRouter()
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _get_cafe_db(ctx: AuthContext) -> Session:
-    """Open per-cafe DB session from ctx. Raises 400 if cafe_id unresolvable."""
-    if not ctx.cafe_id:
-        raise HTTPException(status_code=400, detail="cafe_id could not be resolved from token")
+    """
+    Open the right DB session for a shop operation.
+
+    - In single-DB mode (MULTI_DB_ENABLED=false, the default deployment):
+      return the global session. All offers / transactions live in one DB.
+    - In multi-DB mode with a cafe in ctx: open that cafe's DB.
+    - In multi-DB mode without a cafe (e.g. newly-registered client user
+      that isn't yet assigned to a cafe): fall back to the global DB so
+      the shop at least renders instead of surfacing 400 to the kiosk.
+    """
+    from app.db.dependencies import MULTI_DB_ENABLED
+    from app.db.global_db import global_session_factory
+
+    if not MULTI_DB_ENABLED or not ctx.cafe_id:
+        return global_session_factory()
     return cafe_db_router.get_session(ctx.cafe_id)
 
 
