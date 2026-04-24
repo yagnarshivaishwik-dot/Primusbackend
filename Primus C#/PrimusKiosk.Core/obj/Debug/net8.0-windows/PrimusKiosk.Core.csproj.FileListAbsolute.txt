@@ -1,0 +1,26 @@
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.Core\obj\Debug\net8.0-windows\PrimusKiosk.Core.csproj.AssemblyReference.cache
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.Core\obj\Debug\net8.0-windows\PrimusKiosk.Core.GeneratedMSBuildEditorConfig.editorconfig
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.Core\obj\Debug\net8.0-windows\PrimusKiosk.Core.AssemblyInfoInputs.cache
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.Core\obj\Debug\net8.0-windows\PrimusKiosk.Core.AssemblyInfo.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.Core\obj\Debug\net8.0-windows\PrimusKiosk.Core.csproj.CoreCompileInputs.cache
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.Core\obj\Debug\net8.0-windows\PrimusKiosk.Core.sourcelink.json
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.Core\bin\Debug\net8.0-windows\PrimusKiosk.Core.deps.json
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.Core\bin\Debug\net8.0-windows\PrimusKiosk.Core.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.Core\bin\Debug\net8.0-windows\PrimusKiosk.Core.pdb
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.Core\obj\Debug\net8.0-windows\PrimusKiosk.Core.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.Core\obj\Debug\net8.0-windows\refint\PrimusKiosk.Core.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.Core\obj\Debug\net8.0-windows\PrimusKiosk.Core.pdb
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.Core\obj\Debug\net8.0-windows\ref\PrimusKiosk.Core.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.Core\bin\Debug\net8.0-windows\PrimusKiosk.Core.deps.json
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.Core\bin\Debug\net8.0-windows\PrimusKiosk.Core.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.Core\bin\Debug\net8.0-windows\PrimusKiosk.Core.pdb
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.Core\obj\Debug\net8.0-windows\PrimusKiosk.Core.csproj.AssemblyReference.cache
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.Core\obj\Debug\net8.0-windows\PrimusKiosk.Core.GeneratedMSBuildEditorConfig.editorconfig
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.Core\obj\Debug\net8.0-windows\PrimusKiosk.Core.AssemblyInfoInputs.cache
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.Core\obj\Debug\net8.0-windows\PrimusKiosk.Core.AssemblyInfo.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.Core\obj\Debug\net8.0-windows\PrimusKiosk.Core.csproj.CoreCompileInputs.cache
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.Core\obj\Debug\net8.0-windows\PrimusKiosk.Core.sourcelink.json
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.Core\obj\Debug\net8.0-windows\PrimusKiosk.Core.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.Core\obj\Debug\net8.0-windows\refint\PrimusKiosk.Core.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.Core\obj\Debug\net8.0-windows\PrimusKiosk.Core.pdb
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.Core\obj\Debug\net8.0-windows\ref\PrimusKiosk.Core.dll

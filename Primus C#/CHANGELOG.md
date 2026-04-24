@@ -1,0 +1,51 @@
+# Primus Client — Changelog
+
+All notable changes to the Primus Client (Windows native app + installer) are
+recorded here. The version in `version.txt` is incremented automatically on
+every `build-installer.ps1` run. Pass `-Message "..."` to attach release notes
+to the new entry; the default note is `"Automated rebuild."`.
+
+Format: `YYYY-MM-DD — vX.Y.Z — notes`. Most recent version on top.
+
+## v1.0.5 — 2026-04-24
+
+- cashfree credit-time flow + 5 min starter + ticking timer
+
+## v1.0.4 — 2026-04-16
+
+- Fix CORS: add --disable-web-security to WebView2 + add primus.local to backend origins
+
+## v1.0.3 — 2026-04-16
+
+- WebView2 host + JS bridge (Tauri-compat shim) + auto-version staging pipeline
+
+## v1.0.2 — 2026-04-16
+
+- Verify UTF-8 changelog writes + entry separators
+
+## v1.0.1 — 2026-04-16
+
+- Switched to WebView2 host + auto-versioning pipeline.
+- `build-installer.ps1` now auto-bumps patch semver and prepends a CHANGELOG entry.
+- `PrimusKiosk.App.csproj` + `installer/primus-client.iss` accept `-p:Version` and
+  `/DAppVersion` overrides so exe + installer filename + Add/Remove Programs all
+  reflect the current version.
+
+## v1.0.0 — 2026-04-15
+
+- Initial native Windows release.
+- WPF .NET 8 host with embedded WebView2 rendering the existing `/PrimusClient`
+  React UI verbatim.
+- Full Inno Setup installer (`PrimusInstaller-1.0.0.exe`) — `Program Files\Primus\`,
+  Desktop + Start Menu shortcuts, Add/Remove Programs, silent install,
+  auto-start, kiosk shell-replacement tasks.
+- Persistent runtime state under `%ProgramData%\Primus\` (DPAPI-wrapped device
+  credentials + JWT tokens, SQLite offline queue, Serilog 7-day rolling logs,
+  crash dumps, overrides).
+- Wired to the Azure `clutchhh_backend` stack via Cloudflare Tunnel
+  `https://api.primustech.in` / `wss://api.primustech.in/ws/pc/{pc_id}`.
+- Remote command handlers: lock, unlock, shutdown, reboot, restart, logout,
+  message, screenshot, login, launch_app, kill_process.
+- 30 s heartbeat with CPU / RAM / GPU / temperature / idle / session
+  telemetry. Time-limit enforcement auto-locks the station on expiry.
+- Single-file self-contained `PrimusClient.exe` (~76 MB compressed).

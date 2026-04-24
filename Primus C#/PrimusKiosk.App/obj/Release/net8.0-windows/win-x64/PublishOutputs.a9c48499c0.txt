@@ -1,0 +1,43 @@
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\appsettings.json
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\appsettings.Production.json
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\appsettings.Development.json
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\Banner1-BM6a_yJw.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\image 11-C6heVW1J.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\image 12-BMtNpTw-.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\image 13-vDEInXbS.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\image 14-t4RX3KnN.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\image 15-CXrDezdI.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\image 17-CymmTb58.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\image 19-68M3nvN2.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\image 20-DHD-xdhT.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\image 21-DpDld070.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\image 22-Cu3qPF7z.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\image 9-CJ7jPuG1.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\image18-DRiWeO8Z.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\index-Bki1zprv.css
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\index-BWwVxlEY.js
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\LoginBg-CwKmY6gY.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\PPNeueYork-CondensedExtrabold-6iznU9Q9.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\PPNeueYork-CondensedExtraboldItalic-DhEw9AfJ.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\PPNeueYork-CondensedLight-C30cHVIQ.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\PPNeueYork-CondensedLightItalic-DO5mspBs.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\PPNeueYork-CondensedMedium-B9ZMk5gX.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\PPNeueYork-CondensedMediumItalic-DRAgHd7g.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\PPNeueYork-NarrowExtrabold-CRb3T4gJ.otf
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\PPNeueYork-NarrowExtraboldItalic-D49oeW-q.otf
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\PPNeueYork-NarrowLight-Dwh6n4jZ.otf
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\PPNeueYork-NarrowLightItalic-DhvJK3gC.otf
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\PPNeueYork-NarrowMedium-D7rUMzXQ.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\PPNeueYork-NarrowMediumItalic-t2QUW0lM.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\PPNeueYork-NormalExtrabold-3IodUifM.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\PPNeueYork-NormalExtraboldItalic-ClMpAVT_.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\PPNeueYork-NormalLight-Bq0bv5Gz.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\PPNeueYork-NormalLightItalic-C7RijjHJ.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\PPNeueYork-NormalMedium-0fbpUxsD.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\PPNeueYork-NormalMediumItalic-FBCam5NQ.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\assets\Tile1-Cxm7E-kt.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\web\index.html
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\Microsoft.Web.WebView2.Core.xml
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\Microsoft.Web.WebView2.Wpf.xml
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\Microsoft.Web.WebView2.WinForms.xml
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\app\PrimusClient.exe

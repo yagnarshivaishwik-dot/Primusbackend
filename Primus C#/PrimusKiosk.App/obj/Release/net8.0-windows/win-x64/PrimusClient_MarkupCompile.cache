@@ -1,0 +1,20 @@
+﻿PrimusClient
+1.0.5.0
+
+winexe
+C#
+.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Release\net8.0-windows\win-x64\
+PrimusKiosk.App
+none
+false
+TRACE;RELEASE;NET;NET8_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR_GREATER;NET7_0_OR_GREATER;NET8_0_OR_GREATER;NETCOREAPP3_0_OR_GREATER;NETCOREAPP3_1_OR_GREATER;WINDOWS7_0_OR_GREATER
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\App.xaml
+135796454
+1-1066355616
+29989565881
+250476594201
+MainWindow.xaml;Resources\Brushes.xaml;Resources\Controls.xaml;Resources\Icons.xaml;Resources\Typography.xaml;Views\ChatPanel.xaml;Views\LoadingView.xaml;Views\LockOverlay.xaml;Views\LoginView.xaml;Views\SessionView.xaml;Views\SetupView.xaml;Views\ToastHost.xaml;WebHost\WebHostWindow.xaml;
+
+False
+

@@ -1,0 +1,14 @@
+Windows Registry Editor Version 5.00
+
+; ============================================================================
+; Primus Kiosk — Windows shell replacement (RESTORE)
+; ============================================================================
+;
+; Restores Windows Explorer as the default user shell. Apply this before
+; uninstalling the kiosk, or when an admin needs permanent desktop access.
+;
+; Run as Administrator, then reboot.
+; ============================================================================
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon]
+"Shell"="explorer.exe"

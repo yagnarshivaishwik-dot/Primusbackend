@@ -1,0 +1,31 @@
+<Window x:Class="PrimusKiosk.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:PrimusKiosk.App.ViewModels"
+        xmlns:views="clr-namespace:PrimusKiosk.App.Views"
+        mc:Ignorable="d"
+        WindowStyle="None"
+        WindowState="Maximized"
+        ResizeMode="NoResize"
+        Title="Primus Kiosk"
+        Background="#000000"
+        d:DataContext="{d:DesignInstance vm:ShellViewModel}">
+  <Grid>
+    <Grid.Background>
+      <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="{Binding Source={StaticResource Slate950}, Path=Color}" Offset="0" />
+        <GradientStop Color="{Binding Source={StaticResource Slate900}, Path=Color}" Offset="1" />
+      </LinearGradientBrush>
+    </Grid.Background>
+
+    <ContentControl Content="{Binding CurrentViewModel}" />
+
+    <views:ToastHost DataContext="{Binding ToastHost}" />
+
+    <views:LockOverlay
+      DataContext="{Binding LockOverlay}"
+      Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibility}}"/>
+  </Grid>
+</Window>

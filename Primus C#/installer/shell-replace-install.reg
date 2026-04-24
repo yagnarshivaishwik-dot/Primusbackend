@@ -1,0 +1,24 @@
+Windows Registry Editor Version 5.00
+
+; ============================================================================
+; Primus Kiosk — Windows shell replacement (INSTALL)
+; ============================================================================
+;
+; Replaces the Windows user shell (explorer.exe) with PrimusClient.exe so the
+; kiosk launches at login instead of the desktop. This is the only way to
+; fully suppress the taskbar, Start menu, Win-key shortcuts, and File
+; Explorer on a dedicated kiosk PC.
+;
+; IMPORTANT:
+;   1. Replace the path below with the actual install location of
+;      PrimusClient.exe. The default is Program Files. Use DOUBLE backslashes.
+;   2. Run as Administrator: right-click → "Merge" or run
+;      `reg import shell-replace-install.reg` in an elevated prompt.
+;   3. Reboot (or sign out + sign back in) for the change to take effect.
+;   4. Keep shell-replace-restore.reg handy in case you need to revert.
+;
+; Applies machine-wide: affects every user profile on this kiosk PC.
+; ============================================================================
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon]
+"Shell"="C:\\Program Files\\Primus\\PrimusClient.exe"

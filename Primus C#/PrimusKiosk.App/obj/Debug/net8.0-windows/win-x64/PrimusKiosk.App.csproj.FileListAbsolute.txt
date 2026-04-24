@@ -1,0 +1,1152 @@
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusKiosk.App.csproj.AssemblyReference.cache
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Resources\Brushes.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Resources\Controls.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Resources\Icons.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Resources\Typography.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\MainWindow.g.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\LoadingView.g.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\LockOverlay.g.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\LoginView.g.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\SessionView.g.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\SetupView.g.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\App.g.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\GeneratedInternalTypeHelper.g.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusKiosk_MarkupCompile.cache
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusKiosk_MarkupCompile.lref
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\appsettings.json
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\appsettings.Development.json
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PrimusKiosk.exe
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PrimusKiosk.deps.json
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PrimusKiosk.runtimeconfig.json
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PrimusKiosk.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PrimusKiosk.pdb
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\CommunityToolkit.Mvvm.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Data.Sqlite.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Configuration.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Configuration.Abstractions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Configuration.Binder.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Configuration.CommandLine.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Configuration.EnvironmentVariables.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Configuration.FileExtensions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Configuration.Json.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Configuration.UserSecrets.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.DependencyInjection.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.DependencyInjection.Abstractions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Diagnostics.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Diagnostics.Abstractions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.FileProviders.Abstractions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.FileProviders.Physical.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.FileSystemGlobbing.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Hosting.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Hosting.Abstractions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Http.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Http.Polly.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Logging.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Logging.Abstractions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Logging.Configuration.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Logging.Console.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Logging.Debug.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Logging.EventLog.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Logging.EventSource.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Options.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Options.ConfigurationExtensions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Primitives.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Polly.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Polly.Core.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Polly.Extensions.Http.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Serilog.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Serilog.Enrichers.Environment.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Serilog.Enrichers.Process.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Serilog.Enrichers.Thread.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Serilog.Extensions.Hosting.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Serilog.Extensions.Logging.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Serilog.Sinks.Async.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Serilog.Sinks.Console.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Serilog.Sinks.File.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\SQLitePCLRaw.batteries_v2.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\SQLitePCLRaw.core.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\SQLitePCLRaw.provider.e_sqlite3.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Management.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\e_sqlite3.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.CSharp.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.VisualBasic.Core.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Win32.Primitives.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Win32.Registry.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.AppContext.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Buffers.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Collections.Concurrent.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Collections.Immutable.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Collections.NonGeneric.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Collections.Specialized.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Collections.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.ComponentModel.Annotations.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.ComponentModel.DataAnnotations.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.ComponentModel.EventBasedAsync.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.ComponentModel.Primitives.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.ComponentModel.TypeConverter.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.ComponentModel.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Configuration.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Console.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Core.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Data.Common.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Data.DataSetExtensions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Data.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.Contracts.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.Debug.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.DiagnosticSource.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.FileVersionInfo.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.Process.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.StackTrace.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.TextWriterTraceListener.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.Tools.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.TraceSource.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.Tracing.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Drawing.Primitives.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Dynamic.Runtime.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Formats.Asn1.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Formats.Tar.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Globalization.Calendars.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Globalization.Extensions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Globalization.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.Compression.Brotli.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.Compression.FileSystem.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.Compression.ZipFile.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.Compression.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.FileSystem.AccessControl.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.FileSystem.DriveInfo.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.FileSystem.Primitives.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.FileSystem.Watcher.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.FileSystem.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.IsolatedStorage.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.MemoryMappedFiles.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.Pipes.AccessControl.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.Pipes.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.UnmanagedMemoryStream.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Linq.Expressions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Linq.Parallel.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Linq.Queryable.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Linq.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Memory.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.Http.Json.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.Http.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.HttpListener.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.Mail.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.NameResolution.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.NetworkInformation.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.Ping.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.Primitives.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.Quic.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.Requests.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.Security.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.ServicePoint.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.Sockets.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.WebClient.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.WebHeaderCollection.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.WebProxy.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.WebSockets.Client.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.WebSockets.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Numerics.Vectors.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Numerics.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.ObjectModel.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Private.CoreLib.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Private.DataContractSerialization.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Private.Uri.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Private.Xml.Linq.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Private.Xml.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Reflection.DispatchProxy.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Reflection.Emit.ILGeneration.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Reflection.Emit.Lightweight.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Reflection.Emit.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Reflection.Extensions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Reflection.Metadata.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Reflection.Primitives.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Reflection.TypeExtensions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Reflection.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Resources.Reader.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Resources.ResourceManager.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Resources.Writer.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.CompilerServices.Unsafe.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.CompilerServices.VisualC.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.Extensions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.Handles.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.InteropServices.JavaScript.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.InteropServices.RuntimeInformation.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.InteropServices.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.Intrinsics.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.Loader.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.Numerics.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.Serialization.Formatters.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.Serialization.Json.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.Serialization.Primitives.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.Serialization.Xml.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.Serialization.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.AccessControl.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Claims.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Cryptography.Algorithms.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Cryptography.Cng.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Cryptography.Csp.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Cryptography.Encoding.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Cryptography.OpenSsl.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Cryptography.Primitives.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Cryptography.X509Certificates.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Cryptography.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Principal.Windows.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Principal.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.SecureString.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.ServiceModel.Web.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.ServiceProcess.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Text.Encoding.CodePages.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Text.Encoding.Extensions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Text.Encoding.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Text.Encodings.Web.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Text.Json.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Text.RegularExpressions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Threading.Channels.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Threading.Overlapped.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Threading.Tasks.Dataflow.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Threading.Tasks.Extensions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Threading.Tasks.Parallel.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Threading.Tasks.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Threading.Thread.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Threading.ThreadPool.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Threading.Timer.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Threading.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Transactions.Local.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Transactions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.ValueTuple.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Web.HttpUtility.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Web.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Windows.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Xml.Linq.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Xml.ReaderWriter.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Xml.Serialization.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Xml.XDocument.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Xml.XPath.XDocument.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Xml.XPath.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Xml.XmlDocument.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Xml.XmlSerializer.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Xml.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\mscorlib.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\netstandard.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Accessibility.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\DirectWriteForwarder.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.VisualBasic.Forms.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.VisualBasic.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Win32.Registry.AccessControl.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Win32.SystemEvents.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationCore.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework-SystemCore.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework-SystemData.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework-SystemDrawing.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework-SystemXml.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework-SystemXmlLinq.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework.Aero.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework.Aero2.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework.AeroLite.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework.Classic.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework.Luna.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework.Royale.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationUI.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ReachFramework.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.CodeDom.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Configuration.ConfigurationManager.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Design.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.EventLog.Messages.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.EventLog.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.PerformanceCounter.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.DirectoryServices.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Drawing.Common.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Drawing.Design.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Drawing.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.Packaging.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Printing.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Resources.Extensions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Cryptography.Pkcs.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Cryptography.ProtectedData.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Cryptography.Xml.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Permissions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Threading.AccessControl.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Windows.Controls.Ribbon.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Windows.Extensions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Windows.Forms.Design.Editors.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Windows.Forms.Design.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Windows.Forms.Primitives.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Windows.Forms.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Windows.Input.Manipulations.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Windows.Presentation.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Xaml.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\UIAutomationClient.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\UIAutomationClientSideProviders.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\UIAutomationProvider.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\UIAutomationTypes.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\WindowsBase.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\WindowsFormsIntegration.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.DiaSymReader.Native.amd64.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.Compression.Native.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\clretwrc.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\clrgc.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\clrjit.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\coreclr.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\createdump.exe
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\hostfxr.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\hostpolicy.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\mscordaccore.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\mscordaccore_amd64_amd64_8.0.2225.52707.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\mscordbi.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\mscorrc.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\msquic.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\D3DCompiler_47_cor3.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PenImc_cor3.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationNative_cor3.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\vcruntime140_cor3.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\wpfgfx_cor3.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PrimusKiosk.Core.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PrimusKiosk.Core.pdb
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\App.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\MainWindow.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\LoadingView.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\LockOverlay.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\LoginView.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\SessionView.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\SetupView.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusKiosk.g.resources
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusKiosk.App.GeneratedMSBuildEditorConfig.editorconfig
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusKiosk.App.AssemblyInfoInputs.cache
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusKiosk.App.AssemblyInfo.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusKiosk.App.csproj.CoreCompileInputs.cache
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusKiosk.App.sourcelink.json
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusKi.2A57DDA3.Up2Date
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusKiosk.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\refint\PrimusKiosk.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusKiosk.pdb
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusKiosk.App.genruntimeconfig.cache
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\ref\PrimusKiosk.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusKiosk.App.csproj.AssemblyReference.cache
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Resources\Brushes.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Resources\Controls.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Resources\Icons.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Resources\Typography.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\MainWindow.g.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\ChatPanel.g.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\LoadingView.g.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\LockOverlay.g.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\LoginView.g.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\SessionView.g.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\SetupView.g.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\ToastHost.g.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\App.g.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\GeneratedInternalTypeHelper.g.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusClient_MarkupCompile.cache
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusClient_MarkupCompile.lref
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\WebHost\WebHostWindow.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\WebHost\WebHostWindow.g.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusClient_Content.g.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\appsettings.json
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\appsettings.Development.json
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\runtimes\win-x64\native\WebView2Loader.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\appsettings.Production.json
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PrimusClient.exe
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PrimusClient.deps.json
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PrimusClient.runtimeconfig.json
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PrimusClient.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PrimusClient.pdb
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\CommunityToolkit.Mvvm.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Data.Sqlite.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Configuration.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Configuration.Abstractions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Configuration.Binder.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Configuration.CommandLine.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Configuration.EnvironmentVariables.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Configuration.FileExtensions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Configuration.Json.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Configuration.UserSecrets.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.DependencyInjection.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.DependencyInjection.Abstractions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Diagnostics.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Diagnostics.Abstractions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.FileProviders.Abstractions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.FileProviders.Physical.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.FileSystemGlobbing.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Hosting.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Hosting.Abstractions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Http.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Http.Polly.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Logging.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Logging.Abstractions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Logging.Configuration.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Logging.Console.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Logging.Debug.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Logging.EventLog.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Logging.EventSource.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Options.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Options.ConfigurationExtensions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Extensions.Primitives.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Polly.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Polly.Core.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Polly.Extensions.Http.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Serilog.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Serilog.Enrichers.Environment.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Serilog.Enrichers.Process.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Serilog.Enrichers.Thread.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Serilog.Extensions.Hosting.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Serilog.Extensions.Logging.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Serilog.Sinks.Async.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Serilog.Sinks.Console.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Serilog.Sinks.File.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\SQLitePCLRaw.batteries_v2.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\SQLitePCLRaw.core.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\SQLitePCLRaw.provider.e_sqlite3.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Management.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\WebView2Loader.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\e_sqlite3.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.CSharp.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.VisualBasic.Core.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Win32.Primitives.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Win32.Registry.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.AppContext.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Buffers.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Collections.Concurrent.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Collections.Immutable.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Collections.NonGeneric.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Collections.Specialized.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Collections.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.ComponentModel.Annotations.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.ComponentModel.DataAnnotations.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.ComponentModel.EventBasedAsync.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.ComponentModel.Primitives.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.ComponentModel.TypeConverter.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.ComponentModel.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Configuration.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Console.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Core.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Data.Common.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Data.DataSetExtensions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Data.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.Contracts.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.Debug.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.DiagnosticSource.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.FileVersionInfo.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.Process.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.StackTrace.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.TextWriterTraceListener.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.Tools.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.TraceSource.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.Tracing.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Drawing.Primitives.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Dynamic.Runtime.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Formats.Asn1.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Formats.Tar.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Globalization.Calendars.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Globalization.Extensions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Globalization.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.Compression.Brotli.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.Compression.FileSystem.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.Compression.ZipFile.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.Compression.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.FileSystem.AccessControl.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.FileSystem.DriveInfo.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.FileSystem.Primitives.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.FileSystem.Watcher.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.FileSystem.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.IsolatedStorage.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.MemoryMappedFiles.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.Pipes.AccessControl.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.Pipes.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.UnmanagedMemoryStream.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Linq.Expressions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Linq.Parallel.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Linq.Queryable.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Linq.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Memory.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.Http.Json.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.Http.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.HttpListener.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.Mail.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.NameResolution.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.NetworkInformation.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.Ping.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.Primitives.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.Quic.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.Requests.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.Security.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.ServicePoint.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.Sockets.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.WebClient.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.WebHeaderCollection.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.WebProxy.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.WebSockets.Client.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.WebSockets.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Net.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Numerics.Vectors.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Numerics.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.ObjectModel.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Private.CoreLib.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Private.DataContractSerialization.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Private.Uri.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Private.Xml.Linq.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Private.Xml.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Reflection.DispatchProxy.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Reflection.Emit.ILGeneration.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Reflection.Emit.Lightweight.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Reflection.Emit.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Reflection.Extensions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Reflection.Metadata.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Reflection.Primitives.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Reflection.TypeExtensions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Reflection.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Resources.Reader.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Resources.ResourceManager.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Resources.Writer.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.CompilerServices.Unsafe.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.CompilerServices.VisualC.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.Extensions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.Handles.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.InteropServices.JavaScript.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.InteropServices.RuntimeInformation.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.InteropServices.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.Intrinsics.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.Loader.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.Numerics.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.Serialization.Formatters.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.Serialization.Json.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.Serialization.Primitives.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.Serialization.Xml.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.Serialization.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Runtime.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.AccessControl.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Claims.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Cryptography.Algorithms.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Cryptography.Cng.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Cryptography.Csp.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Cryptography.Encoding.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Cryptography.OpenSsl.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Cryptography.Primitives.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Cryptography.X509Certificates.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Cryptography.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Principal.Windows.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Principal.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.SecureString.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.ServiceModel.Web.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.ServiceProcess.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Text.Encoding.CodePages.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Text.Encoding.Extensions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Text.Encoding.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Text.Encodings.Web.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Text.Json.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Text.RegularExpressions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Threading.Channels.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Threading.Overlapped.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Threading.Tasks.Dataflow.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Threading.Tasks.Extensions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Threading.Tasks.Parallel.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Threading.Tasks.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Threading.Thread.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Threading.ThreadPool.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Threading.Timer.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Threading.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Transactions.Local.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Transactions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.ValueTuple.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Web.HttpUtility.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Web.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Windows.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Xml.Linq.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Xml.ReaderWriter.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Xml.Serialization.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Xml.XDocument.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Xml.XPath.XDocument.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Xml.XPath.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Xml.XmlDocument.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Xml.XmlSerializer.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Xml.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\mscorlib.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\netstandard.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Accessibility.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\DirectWriteForwarder.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.VisualBasic.Forms.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.VisualBasic.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Win32.Registry.AccessControl.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Win32.SystemEvents.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationCore.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework-SystemCore.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework-SystemData.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework-SystemDrawing.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework-SystemXml.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework-SystemXmlLinq.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework.Aero.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework.Aero2.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework.AeroLite.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework.Classic.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework.Luna.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework.Royale.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationFramework.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationUI.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ReachFramework.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.CodeDom.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Configuration.ConfigurationManager.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Design.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.EventLog.Messages.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.EventLog.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Diagnostics.PerformanceCounter.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.DirectoryServices.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Drawing.Common.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Drawing.Design.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Drawing.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.Packaging.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Printing.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Resources.Extensions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Cryptography.Pkcs.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Cryptography.ProtectedData.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Cryptography.Xml.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Security.Permissions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Threading.AccessControl.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Windows.Controls.Ribbon.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Windows.Extensions.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Windows.Forms.Design.Editors.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Windows.Forms.Design.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Windows.Forms.Primitives.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Windows.Forms.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Windows.Input.Manipulations.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Windows.Presentation.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.Xaml.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\UIAutomationClient.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\UIAutomationClientSideProviders.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\UIAutomationProvider.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\UIAutomationTypes.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\WindowsBase.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\WindowsFormsIntegration.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.DiaSymReader.Native.amd64.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\System.IO.Compression.Native.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\clretwrc.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\clrgc.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\clrjit.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\coreclr.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\createdump.exe
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\hostfxr.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\hostpolicy.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\mscordaccore.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\mscordaccore_amd64_amd64_8.0.2225.52707.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\mscordbi.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\mscorrc.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\msquic.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\D3DCompiler_47_cor3.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PenImc_cor3.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PresentationNative_cor3.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\vcruntime140_cor3.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\wpfgfx_cor3.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\cs\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\de\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\es\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\fr\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\it\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ja\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ko\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pl\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\pt-BR\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\ru\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\tr\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hans\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\Microsoft.VisualBasic.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\PresentationCore.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\PresentationFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\PresentationUI.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\ReachFramework.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\System.Windows.Controls.Ribbon.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\System.Windows.Forms.Design.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\System.Windows.Forms.Primitives.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\System.Windows.Forms.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\System.Windows.Input.Manipulations.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\System.Xaml.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\UIAutomationClient.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\UIAutomationClientSideProviders.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\UIAutomationProvider.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\UIAutomationTypes.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\WindowsBase.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\zh-Hant\WindowsFormsIntegration.resources.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Web.WebView2.Core.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Web.WebView2.WinForms.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Web.WebView2.Wpf.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PrimusKiosk.Core.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\PrimusKiosk.Core.pdb
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Web.WebView2.Core.xml
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Web.WebView2.Wpf.xml
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\Microsoft.Web.WebView2.WinForms.xml
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\App.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\MainWindow.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\ChatPanel.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\LoadingView.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\LockOverlay.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\LoginView.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\SessionView.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\SetupView.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\Views\ToastHost.baml
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusClient.g.resources
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusKiosk.App.GeneratedMSBuildEditorConfig.editorconfig
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusKiosk.App.AssemblyInfoInputs.cache
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusKiosk.App.AssemblyInfo.cs
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusKiosk.App.csproj.CoreCompileInputs.cache
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusKiosk.App.sourcelink.json
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusKi.2A57DDA3.Up2Date
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusClient.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\refint\PrimusClient.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusClient.pdb
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\PrimusKiosk.App.genruntimeconfig.cache
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\obj\Debug\net8.0-windows\win-x64\ref\PrimusClient.dll
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\Banner1-BM6a_yJw.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\image 11-C6heVW1J.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\image 12-BMtNpTw-.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\image 13-vDEInXbS.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\image 14-t4RX3KnN.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\image 15-CXrDezdI.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\image 17-CymmTb58.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\image 19-68M3nvN2.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\image 20-DHD-xdhT.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\image 21-DpDld070.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\image 22-Cu3qPF7z.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\image 9-CJ7jPuG1.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\image18-DRiWeO8Z.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\LoginBg-CwKmY6gY.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\PPNeueYork-CondensedExtrabold-6iznU9Q9.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\PPNeueYork-CondensedExtraboldItalic-DhEw9AfJ.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\PPNeueYork-CondensedLight-C30cHVIQ.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\PPNeueYork-CondensedLightItalic-DO5mspBs.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\PPNeueYork-CondensedMedium-B9ZMk5gX.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\PPNeueYork-CondensedMediumItalic-DRAgHd7g.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\PPNeueYork-NarrowExtrabold-CRb3T4gJ.otf
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\PPNeueYork-NarrowExtraboldItalic-D49oeW-q.otf
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\PPNeueYork-NarrowLight-Dwh6n4jZ.otf
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\PPNeueYork-NarrowLightItalic-DhvJK3gC.otf
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\PPNeueYork-NarrowMedium-D7rUMzXQ.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\PPNeueYork-NarrowMediumItalic-t2QUW0lM.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\PPNeueYork-NormalExtrabold-3IodUifM.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\PPNeueYork-NormalExtraboldItalic-ClMpAVT_.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\PPNeueYork-NormalLight-Bq0bv5Gz.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\PPNeueYork-NormalLightItalic-C7RijjHJ.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\PPNeueYork-NormalMedium-0fbpUxsD.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\PPNeueYork-NormalMediumItalic-FBCam5NQ.woff
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\Tile1-Cxm7E-kt.svg
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\index.html
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\index-Bki1zprv.css
+K:\STIC-SOFT\PRIMUS\Primusbackend\Primus C#\PrimusKiosk.App\bin\Debug\net8.0-windows\win-x64\web\assets\index-BWwVxlEY.js

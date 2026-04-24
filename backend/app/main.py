@@ -23,6 +23,7 @@ from app.api.endpoints import (
     campaign,
     booking,
     cafe,
+    cashfree,
     chat,
     client_pc,
     coupon,
@@ -194,6 +195,16 @@ origins = [
     "http://localhost:1420",  # Tauri app dev
     "http://127.0.0.1:1420",  # Tauri app dev (IP)
     "tauri://localhost",  # Tauri app production
+    # --- Primus Windows kiosk (WebView2 virtual host) ---
+    # The native Windows client (PrimusClient.exe / WebView2) serves the React
+    # build at https://primus.local/ via SetVirtualHostNameToFolderMapping.
+    # Axios requests from that origin to api.primustech.in need CORS clearance.
+    "https://primus.local",
+    # --- Primus mobile app ---
+    "https://app.primustech.in",  # Mobile companion web host (OAuth landing)
+    "primus://",  # Mobile deep-link scheme (Android intent / iOS Universal Links)
+    "capacitor://localhost",  # Reserved for any WebView-based flows
+    "ionic://localhost",  # Reserved for any WebView-based flows
 ]
 
 # FOR DEVELOPMENT ONLY: allow all origins when ALLOW_ALL_CORS=true
@@ -330,6 +341,12 @@ app.include_router(device_admin.router, prefix="/api/device", tags=["device"])
 
 # Financial subsystem routes
 app.include_router(upi.router)  # prefix already set in router (/api/upi)
+app.include_router(
+    cashfree.router, prefix="/api/v1/payment/cashfree", tags=["payment-cashfree"]
+)
+app.include_router(
+    cashfree.router, prefix="/api/payment/cashfree", tags=["payment-cashfree-legacy"]
+)
 app.include_router(subscription.router)  # prefix already set (/api/subscription)
 app.include_router(subscription.invoices_router)  # prefix already set (/api/invoices)
 app.include_router(reports.router)  # prefix already set (/api/reports)

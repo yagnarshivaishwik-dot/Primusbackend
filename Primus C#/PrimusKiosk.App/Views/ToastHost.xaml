@@ -1,0 +1,43 @@
+<UserControl x:Class="PrimusKiosk.App.Views.ToastHost"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:PrimusKiosk.App.ViewModels"
+             mc:Ignorable="d"
+             IsHitTestVisible="False"
+             d:DataContext="{d:DesignInstance vm:ToastHostViewModel}">
+  <ItemsControl ItemsSource="{Binding Toasts}"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Margin="0,24,24,0">
+    <ItemsControl.ItemsPanel>
+      <ItemsPanelTemplate>
+        <StackPanel />
+      </ItemsPanelTemplate>
+    </ItemsControl.ItemsPanel>
+
+    <ItemsControl.ItemTemplate>
+      <DataTemplate>
+        <Border Width="320"
+                Margin="0,6,0,6"
+                CornerRadius="12"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderSoftBrush}"
+                BorderThickness="1"
+                Padding="14">
+          <Border.Effect>
+            <DropShadowEffect Color="Black" BlurRadius="18" Opacity="0.4" ShadowDepth="3" />
+          </Border.Effect>
+          <StackPanel>
+            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding Body}"
+                       Style="{StaticResource MutedText}"
+                       TextWrapping="Wrap"
+                       Margin="0,4,0,0" />
+          </StackPanel>
+        </Border>
+      </DataTemplate>
+    </ItemsControl.ItemTemplate>
+  </ItemsControl>
+</UserControl>

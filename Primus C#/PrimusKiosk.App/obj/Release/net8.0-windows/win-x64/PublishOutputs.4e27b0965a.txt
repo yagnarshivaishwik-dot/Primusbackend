@@ -1,0 +1,4 @@
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\publish\appsettings.json
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\publish\appsettings.Production.json
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\publish\appsettings.Development.json
+K:\STIC-SOFT\PRIMUS\Primusbackend\.claude\worktrees\nervous-goldwasser\client\publish\PrimusClient.exe

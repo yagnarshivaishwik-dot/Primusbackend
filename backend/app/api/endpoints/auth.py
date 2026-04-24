@@ -628,14 +628,17 @@ def register_user(
     db.commit()
     db.refresh(user)
 
-    # Grant 1-hour welcome bonus as free time (UserOffer)
+    # Grant 5-minute starter credit as a UserOffer so the user can reach the
+    # shop and buy a pack. Column is `minutes_remaining` (integer minutes) —
+    # previously this was written as `hours_remaining=1.0`, which silently
+    # failed because that column doesn't exist on the model.
     try:
         from app.models import UserOffer
         welcome_offer = UserOffer(
             user_id=user.id,
-            offer_id=None,  # No specific offer, just bonus time
+            offer_id=None,
             purchased_at=datetime.utcnow(),
-            hours_remaining=1.0,  # 1 hour free
+            minutes_remaining=5,
         )
         db.add(welcome_offer)
         db.commit()
