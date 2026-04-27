@@ -57,14 +57,16 @@ step_apt_deps() {
     mariadb-server mariadb-client \
     libmariadb-dev libssl-dev libgd-dev \
     libexpat1-dev libxml2-dev zlib1g-dev \
-    libdbi-perl libdbd-mysql-perl \
+    libdbi-perl libdbd-mariadb-perl libdbd-mysql-perl \
     graphviz patchutils \
     msmtp msmtp-mta mailutils \
     certbot python3-certbot-apache \
     curl ca-certificates openssl
 
-  # Make sure apache2 is enabled and running so later reload/restart works
-  systemctl enable --now apache2
+  # Apache may fail to start during apt's post-install on cloud images.
+  # Reset any failure marker so the later restart in step_apache works.
+  systemctl reset-failed apache2 >/dev/null 2>&1 || true
+  systemctl enable apache2 >/dev/null 2>&1 || true
 }
 
 # ── 2. database ──────────────────────────────────────────────────────
@@ -158,7 +160,7 @@ step_localconfig() {
 \$create_htaccess  = 1;
 \$webservergroup   = 'www-data';
 \$use_suexec       = 0;
-\$db_driver        = 'mysql';
+\$db_driver        = 'mariadb';
 \$db_host          = '${DB_HOST}';
 \$db_name          = '${DB_NAME}';
 \$db_user          = '${DB_USER}';
@@ -166,10 +168,14 @@ step_localconfig() {
 \$db_port          = 0;
 \$db_sock          = '';
 \$db_check         = 1;
-\$db_mysql_ssl_ca_file     = '';
-\$db_mysql_ssl_ca_path     = '';
-\$db_mysql_ssl_client_cert = '';
-\$db_mysql_ssl_client_key  = '';
+\$db_mariadb_ssl_ca_file     = '';
+\$db_mariadb_ssl_ca_path     = '';
+\$db_mariadb_ssl_client_cert = '';
+\$db_mariadb_ssl_client_key  = '';
+\$db_mysql_ssl_ca_file       = '';
+\$db_mysql_ssl_ca_path       = '';
+\$db_mysql_ssl_client_cert   = '';
+\$db_mysql_ssl_client_key    = '';
 \$index_html       = 0;
 \$interdiffbin     = '/usr/bin/interdiff';
 \$diffpath         = '/usr/bin/diff';
