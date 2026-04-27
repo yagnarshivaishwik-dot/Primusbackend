@@ -369,6 +369,14 @@ EOF
   systemctl reset-failed apache2 >/dev/null 2>&1 || true
   systemctl enable apache2 >/dev/null 2>&1 || true
   systemctl restart apache2
+
+  # If UFW is active, punch through for our port — otherwise inbound
+  # connections die at the local firewall before they reach Apache.
+  if command -v ufw >/dev/null 2>&1 && ufw status | grep -q '^Status: active'; then
+    log "UFW is active — allowing ${APACHE_PORT}/tcp"
+    ufw allow "${APACHE_PORT}/tcp" comment 'Bugzilla' >/dev/null
+    ufw reload >/dev/null
+  fi
 }
 
 # ── 10. TLS via Let's Encrypt ────────────────────────────────────────
