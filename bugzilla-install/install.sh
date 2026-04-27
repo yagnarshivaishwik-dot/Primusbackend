@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 # Bugzilla installer for Ubuntu 22.04 / 24.04 on an Azure VM.
-# Idempotent — safe to re-run after fixing config or upgrading.
+#
+# - Idempotent: safe to re-run for upgrades or config changes.
+# - Pass FRESH_INSTALL=true to wipe any prior install (DB, files, vhost,
+#   admin-password file, ports.conf customisation) before installing.
 #
 # Usage:
 #   1. cp .env.example .env  &&  edit .env
-#   2. sudo ./install.sh
+#   2. sudo ./install.sh                       # idempotent
+#      sudo FRESH_INSTALL=true ./install.sh    # nuke + reinstall
 #
 # Logs:  /var/log/bugzilla-install.log
 
@@ -43,6 +47,61 @@ load_env() {
   : "${ENABLE_TLS:=true}"
   : "${SMTP_FROM:=bugzilla@${DOMAIN}}"
   : "${LE_EMAIL:=$ADMIN_EMAIL}"
+  : "${APACHE_PORT:=80}"
+  : "${FRESH_INSTALL:=false}"
+
+  # Build the public URL for urlbase / summary.
+  local scheme="http"
+  [[ "${ENABLE_TLS}" == "true" ]] && scheme="https"
+  if [[ "${ENABLE_TLS}" == "true" || "${APACHE_PORT}" == "80" ]]; then
+    PUBLIC_URL="${scheme}://${DOMAIN}"
+  else
+    PUBLIC_URL="${scheme}://${DOMAIN}:${APACHE_PORT}"
+  fi
+}
+
+# ── 0. (optional) wipe prior install ─────────────────────────────────
+step_reset() {
+  if [[ "${FRESH_INSTALL}" != "true" ]]; then
+    return
+  fi
+  log "FRESH_INSTALL=true — wiping any prior Bugzilla state…"
+
+  # Stop apache so port frees up cleanly
+  systemctl stop apache2 >/dev/null 2>&1 || true
+
+  # Disable + remove our vhost
+  a2dissite bugzilla >/dev/null 2>&1 || true
+  rm -f /etc/apache2/sites-available/bugzilla.conf
+
+  # Restore the original ports.conf if we backed it up
+  if [[ -f /etc/apache2/ports.conf.bugzilla-orig ]]; then
+    cp /etc/apache2/ports.conf.bugzilla-orig /etc/apache2/ports.conf
+  fi
+
+  # Re-enable Apache's stock default site so apache still starts on its own
+  a2ensite 000-default >/dev/null 2>&1 || true
+
+  # Remove install tree
+  rm -rf "${INSTALL_DIR}"
+
+  # Drop DB + user (only if MariaDB is up)
+  if systemctl is-active --quiet mariadb; then
+    mysql <<SQL || true
+DROP DATABASE IF EXISTS \`${DB_NAME}\`;
+DROP USER IF EXISTS '${DB_USER}'@'${DB_HOST}';
+FLUSH PRIVILEGES;
+SQL
+  fi
+
+  # Cleanup files
+  rm -f /root/.bugzilla-admin-password
+  rm -f /etc/apache2/conf-available/bugzilla.conf
+  rm -f /var/log/apache2/bugzilla-*.log
+
+  systemctl reset-failed apache2 >/dev/null 2>&1 || true
+
+  log "Wipe complete."
 }
 
 # ── 1. system packages ───────────────────────────────────────────────
@@ -64,15 +123,14 @@ step_apt_deps() {
     curl ca-certificates openssl
 
   # DBD::MariaDB is required for MariaDB 10.6+ but its apt package
-  # (libdbd-mariadb-perl) lives in 'universe' which some Azure images
-  # strip. Try apt first, then fall back to cpanm.
+  # (libdbd-mariadb-perl) lives in 'universe' which Azure-minimal
+  # images strip. Try apt first, fall back to cpanm.
   if ! apt-get install -y -qq libdbd-mariadb-perl 2>/dev/null; then
     log "libdbd-mariadb-perl not in apt — building DBD::MariaDB via cpanm"
     cpanm --quiet --notest DBD::MariaDB
   fi
 
-  # Apache may fail to start during apt's post-install on cloud images.
-  # Reset any failure marker so the later restart in step_apache works.
+  # apt's apache2 post-install can leave the unit failed on cloud images.
   systemctl reset-failed apache2 >/dev/null 2>&1 || true
   systemctl enable apache2 >/dev/null 2>&1 || true
 }
@@ -122,7 +180,6 @@ step_perl_deps() {
   ./checksetup.pl --check-modules || true
   cpanm --quiet --notest --installdeps . || true
   cpanm --quiet --notest \
-    DBD::mysql \
     Apache2::SizeLimit \
     Email::Sender \
     Email::MIME \
@@ -193,7 +250,20 @@ EOF
   chmod 640 localconfig
 }
 
-# ── 7. checksetup.pl (schema + admin) ────────────────────────────────
+# ── 7. pre-create writable dirs ──────────────────────────────────────
+# Bugzilla's checksetup.pl uses File::Temp on data/ before its own
+# filesystem-creation phase, so the dir must exist beforehand.
+step_filesystem() {
+  log "Pre-creating writable directories…"
+  install -d -o www-data -g www-data "${INSTALL_DIR}/data"
+  install -d -o www-data -g www-data "${INSTALL_DIR}/data/webdot"
+  install -d -o www-data -g www-data "${INSTALL_DIR}/data/attachments"
+  install -d -o www-data -g www-data "${INSTALL_DIR}/data/extensions"
+  install -d -o www-data -g www-data "${INSTALL_DIR}/template_cache" 2>/dev/null || true
+  install -d -o www-data -g www-data "${INSTALL_DIR}/graphs" 2>/dev/null || true
+}
+
+# ── 8. checksetup.pl (schema + admin) ────────────────────────────────
 step_checksetup() {
   log "Running checksetup.pl…"
   cd "${INSTALL_DIR}"
@@ -204,16 +274,13 @@ step_checksetup() {
     log "Generated admin password — saving to /root/.bugzilla-admin-password"
   fi
 
-  local scheme="http"
-  [[ "${ENABLE_TLS}" == "true" ]] && scheme="https"
-
   local answers=/tmp/bugzilla-answers.$$
   cat > "$answers" <<EOF
 \$answer{'ADMIN_EMAIL'}          = '${ADMIN_EMAIL}';
 \$answer{'ADMIN_PASSWORD'}       = '${admin_pass}';
 \$answer{'ADMIN_REALNAME'}       = 'Bugzilla Admin';
-\$answer{'urlbase'}              = '${scheme}://${DOMAIN}/';
-\$answer{'ssl_redirect'}         = $( [[ "$scheme" == "https" ]] && echo 1 || echo 0 );
+\$answer{'urlbase'}              = '${PUBLIC_URL}/';
+\$answer{'ssl_redirect'}         = $( [[ "${ENABLE_TLS}" == "true" ]] && echo 1 || echo 0 );
 \$answer{'mail_delivery_method'} = 'Sendmail';
 \$answer{'mailfrom'}             = '${SMTP_FROM}';
 \$answer{'sendmailnow'}          = 1;
@@ -231,20 +298,38 @@ EOF
   chown -R www-data:www-data "${INSTALL_DIR}"
 }
 
-# ── 8. apache vhost ──────────────────────────────────────────────────
+# ── 9. apache vhost on $APACHE_PORT ──────────────────────────────────
 step_apache() {
-  log "Configuring Apache vhost for ${DOMAIN}…"
+  log "Configuring Apache to listen on :${APACHE_PORT}…"
+
   a2enmod cgi headers rewrite perl expires deflate >/dev/null
-  # Only listen on 443 if TLS is actually being set up; otherwise the
-  # module's Listen 443 in ports.conf collides with anything else on 443.
   if [[ "${ENABLE_TLS}" == "true" ]]; then
     a2enmod ssl >/dev/null
   else
+    # Without TLS we don't want the ssl module loaded, because its
+    # ports.conf snippet adds Listen 443 — which collides with anything
+    # else on 443 (e.g. a docker-proxy on a multi-tenant VM).
     a2dismod ssl >/dev/null 2>&1 || true
   fi
 
+  # Backup original ports.conf so reset can restore it.
+  if [[ ! -f /etc/apache2/ports.conf.bugzilla-orig ]]; then
+    cp /etc/apache2/ports.conf /etc/apache2/ports.conf.bugzilla-orig
+  fi
+
+  # Rewrite ports.conf from the pristine backup so Listen ${APACHE_PORT}
+  # is the single HTTP listener (avoids stale Listen 80/8080 lines).
+  awk -v port="${APACHE_PORT}" '
+    /^Listen 80$/      { print "Listen " port; next }
+    /^[[:space:]]*Listen [0-9]+$/ {
+      # leave SSL Listen 443 lines as-is; ssl module gating handles them
+      print; next
+    }
+    { print }
+  ' /etc/apache2/ports.conf.bugzilla-orig > /etc/apache2/ports.conf
+
   cat > /etc/apache2/sites-available/bugzilla.conf <<EOF
-<VirtualHost *:80>
+<VirtualHost *:${APACHE_PORT}>
     ServerName ${DOMAIN}
     DocumentRoot ${INSTALL_DIR}
 
@@ -271,15 +356,21 @@ EOF
   a2dissite 000-default >/dev/null 2>&1 || true
   a2ensite bugzilla    >/dev/null
   apache2ctl configtest
+
+  systemctl reset-failed apache2 >/dev/null 2>&1 || true
   systemctl enable apache2 >/dev/null 2>&1 || true
-  # Use restart (not reload) so we recover even if apache2 is stopped.
   systemctl restart apache2
 }
 
-# ── 9. TLS via Let's Encrypt ─────────────────────────────────────────
+# ── 10. TLS via Let's Encrypt ────────────────────────────────────────
 step_tls() {
   if [[ "${ENABLE_TLS}" != "true" ]]; then
     log "Skipping TLS (ENABLE_TLS=false)."
+    return
+  fi
+  if [[ "${APACHE_PORT}" != "80" ]]; then
+    warn "ENABLE_TLS=true but APACHE_PORT=${APACHE_PORT}; Let's Encrypt"
+    warn "needs port 80 for HTTP-01 challenge. Skipping certbot."
     return
   fi
   log "Requesting Let's Encrypt cert for ${DOMAIN}…"
@@ -288,33 +379,57 @@ step_tls() {
     --redirect --keep-until-expiring
 }
 
-# ── 10. summary ──────────────────────────────────────────────────────
+# ── 11. verify it's actually serving ─────────────────────────────────
+step_verify() {
+  log "Verifying Apache responds on :${APACHE_PORT}…"
+  local code
+  code=$(curl -s -o /dev/null -w '%{http_code}' \
+    "http://localhost:${APACHE_PORT}/" || true)
+  case "$code" in
+    200|301|302)
+      log "✓ HTTP ${code} from localhost:${APACHE_PORT}"
+      ;;
+    *)
+      warn "Got HTTP '${code}' from localhost:${APACHE_PORT} — investigate:"
+      warn "  sudo journalctl -xeu apache2.service --no-pager | tail -50"
+      warn "  sudo tail -n 50 /var/log/apache2/bugzilla-error.log"
+      ;;
+  esac
+}
+
+# ── 12. summary ──────────────────────────────────────────────────────
 step_summary() {
-  local scheme="http"
-  [[ "${ENABLE_TLS}" == "true" ]] && scheme="https"
   cat <<EOF
 
   ────────────────────────────────────────────────────────────
   Bugzilla install complete
 
-    URL       : ${scheme}://${DOMAIN}
+    URL       : ${PUBLIC_URL}
     Admin     : ${ADMIN_EMAIL}
     Password  : (see /root/.bugzilla-admin-password)
     Install   : ${INSTALL_DIR}
     Database  : ${DB_NAME}@${DB_HOST}
+    Apache    : listening on :${APACHE_PORT}
     SMTP      : ${SMTP_HOST}:${SMTP_PORT} via msmtp
     Logs      : /var/log/apache2/bugzilla-{access,error}.log
                 /var/log/msmtp.log
                 /var/log/bugzilla-install.log
 
+  Don't forget — open ${APACHE_PORT}/tcp in your Azure NSG:
+    Portal → VM → Networking → Add inbound port rule
+      Destination port: ${APACHE_PORT}
+      Protocol: TCP, Action: Allow
+
   Next steps
-    1. Open the URL, log in, change the admin password.
-    2. Administration → Products → create your first product.
-    3. Trigger a bug change and confirm the email arrives.
-    4. Schedule backups:
+    1. Open the URL, log in with the admin password above.
+    2. Administration → Parameters → urlbase = ${PUBLIC_URL}/
+    3. Administration → Products → create your first product.
+    4. File a bug, change status, confirm the email arrives.
+    5. Backups:
          mysqldump ${DB_NAME} | gzip > bugs-\$(date +%F).sql.gz
          tar czf bugs-data-\$(date +%F).tgz ${INSTALL_DIR}/data
-    5. Re-run this script after editing .env or to upgrade Bugzilla.
+    6. Re-run this script after editing .env or to upgrade Bugzilla.
+       (Add FRESH_INSTALL=true to nuke and start over.)
   ────────────────────────────────────────────────────────────
 
 EOF
@@ -323,15 +438,18 @@ EOF
 main() {
   require_root
   load_env
+  step_reset
   step_apt_deps
   step_mariadb
   step_clone
   step_perl_deps
   step_msmtp
   step_localconfig
+  step_filesystem
   step_checksetup
   step_apache
   step_tls
+  step_verify
   step_summary
 }
 
