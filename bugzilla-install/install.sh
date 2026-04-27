@@ -57,11 +57,19 @@ step_apt_deps() {
     mariadb-server mariadb-client \
     libmariadb-dev libssl-dev libgd-dev \
     libexpat1-dev libxml2-dev zlib1g-dev \
-    libdbi-perl libdbd-mariadb-perl libdbd-mysql-perl \
+    libdbi-perl libdbd-mysql-perl \
     graphviz patchutils \
     msmtp msmtp-mta mailutils \
     certbot python3-certbot-apache \
     curl ca-certificates openssl
+
+  # DBD::MariaDB is required for MariaDB 10.6+ but its apt package
+  # (libdbd-mariadb-perl) lives in 'universe' which some Azure images
+  # strip. Try apt first, then fall back to cpanm.
+  if ! apt-get install -y -qq libdbd-mariadb-perl 2>/dev/null; then
+    log "libdbd-mariadb-perl not in apt — building DBD::MariaDB via cpanm"
+    cpanm --quiet --notest DBD::MariaDB
+  fi
 
   # Apache may fail to start during apt's post-install on cloud images.
   # Reset any failure marker so the later restart in step_apache works.
