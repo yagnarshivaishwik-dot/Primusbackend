@@ -56,10 +56,59 @@ COMPONENT_MAP = {
     "backend":        "Backend",
 }
 
-DEFAULT_COMPONENTS = ["Admin", "Kiosk", "Auth", "UX", "Backend", "General"]
+DEFAULT_COMPONENTS = ["Admin", "Kiosk", "Auth", "UX", "Backend", "Security", "General"]
 PRODUCT_NAME = "Primus"
 PRODUCT_VERSION = "v1.0.x"
 PRODUCT_VERSIONS_TO_CREATE = ["v1.0.x", "v1.1.0"]
+
+
+# ── Extra bugs not in the HTML timeline (operator notes / post-incident) ──
+EXTRA_BUGS_RAW = [
+    {
+        "number": 13,
+        "title": "SuperAdmin data wiped from DB; security rebuild required to regain admin access",
+        "severity_key": "p0",
+        "component": "Security",
+        "description": (
+            "SYMPTOM:\n"
+            "The SuperAdmin-side data has been entirely wiped from the database. "
+            "We are locked out of the admin site — the SuperAdmin security "
+            "implementation is strong by design (no self-serve recovery), so "
+            "there is no in-app path back in.\n\n"
+            "IMPACT:\n"
+            "- No one can log in as SuperAdmin.\n"
+            "- All admin-only operations are blocked at the door (this gates "
+            "  every fix in issues #1, #2, #3, #8, #9 — those cannot be "
+            "  validated until SuperAdmin access is restored).\n\n"
+            "ROOT CAUSE:\n"
+            "Pending investigation. Either the table(s) backing SuperAdmin "
+            "accounts / roles / sessions were dropped or truncated, or the "
+            "rows specifically required for auth (users, role bindings, MFA "
+            "secrets) were affected. Confirm via diff against the most recent "
+            "backup before any further writes.\n\n"
+            "PLAN:\n"
+            "1. Snapshot the current DB state immediately (no more writes).\n"
+            "2. Diff against the latest known-good backup; identify exactly "
+            "   which tables/rows are missing.\n"
+            "3. Decide: restore-from-backup vs. rebuild SuperAdmin auth from "
+            "   scratch.\n"
+            "4. If rebuilding: provision a fresh SuperAdmin via a server-side "
+            "   bootstrap script (signed with a Vault key), with a one-time "
+            "   token that expires in 15 minutes. Rotate JWT signing key + "
+            "   Vault tokens immediately after.\n"
+            "5. Enable point-in-time recovery and automated nightly DB "
+            "   snapshots so this can't recur silently.\n\n"
+            "ACCEPTANCE TEST:\n"
+            "- A documented SuperAdmin login works end-to-end.\n"
+            "- Audit log shows the recovery action and who performed it.\n"
+            "- Backup/restore drill passes for both DB and Vault state.\n"
+            "- Admin endpoints used in issues #1, #2, #3 are reachable again.\n\n"
+            "OWNER / ETA:\n"
+            "Backend + Security · TOP priority. Blocks all admin-domain fixes.\n\n"
+            "— Imported from operator note (post-incident; not in original timeline HTML)."
+        ),
+    },
+]
 
 
 # ── Data model ───────────────────────────────────────────────────────
@@ -140,6 +189,19 @@ def parse_html(path: str) -> list[ParsedBug]:
             component=component,
             description=description,
         ))
+
+    # Append manually-curated extras (operator notes, post-incident bugs).
+    for raw in EXTRA_BUGS_RAW:
+        sev_key = raw["severity_key"]
+        bugs.append(ParsedBug(
+            number=raw["number"],
+            title=raw["title"],
+            severity=SEVERITY_MAP[sev_key],
+            priority=PRIORITY_MAP[sev_key],
+            component=raw["component"],
+            description=raw["description"],
+        ))
+
     return bugs
 
 
