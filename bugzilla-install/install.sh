@@ -312,21 +312,30 @@ step_apache() {
     a2dismod ssl >/dev/null 2>&1 || true
   fi
 
-  # Backup original ports.conf so reset can restore it.
+  # Backup original ports.conf the FIRST time only — but only if the
+  # current file looks pristine (Listen 80). If a prior run/manual edit
+  # has already mutated it, use Apache's package default instead.
   if [[ ! -f /etc/apache2/ports.conf.bugzilla-orig ]]; then
-    cp /etc/apache2/ports.conf /etc/apache2/ports.conf.bugzilla-orig
+    if grep -qE '^Listen 80$' /etc/apache2/ports.conf; then
+      cp /etc/apache2/ports.conf /etc/apache2/ports.conf.bugzilla-orig
+    fi
   fi
 
-  # Rewrite ports.conf from the pristine backup so Listen ${APACHE_PORT}
-  # is the single HTTP listener (avoids stale Listen 80/8080 lines).
-  awk -v port="${APACHE_PORT}" '
-    /^Listen 80$/      { print "Listen " port; next }
-    /^[[:space:]]*Listen [0-9]+$/ {
-      # leave SSL Listen 443 lines as-is; ssl module gating handles them
-      print; next
-    }
-    { print }
-  ' /etc/apache2/ports.conf.bugzilla-orig > /etc/apache2/ports.conf
+  # Always write ports.conf from scratch so re-runs are deterministic
+  # regardless of prior manual edits or backup state.
+  cat > /etc/apache2/ports.conf <<EOF
+# Managed by bugzilla-install/install.sh — do not edit by hand.
+# The original is at /etc/apache2/ports.conf.bugzilla-orig if backed up.
+Listen ${APACHE_PORT}
+
+<IfModule ssl_module>
+        Listen 443
+</IfModule>
+
+<IfModule mod_gnutls.c>
+        Listen 443
+</IfModule>
+EOF
 
   cat > /etc/apache2/sites-available/bugzilla.conf <<EOF
 <VirtualHost *:${APACHE_PORT}>
@@ -382,16 +391,23 @@ step_tls() {
 # ── 11. verify it's actually serving ─────────────────────────────────
 step_verify() {
   log "Verifying Apache responds on :${APACHE_PORT}…"
-  local code
-  code=$(curl -s -o /dev/null -w '%{http_code}' \
-    "http://localhost:${APACHE_PORT}/" || true)
+  local code=000
+  for _ in 1 2 3 4 5; do
+    code=$(curl -s -o /dev/null -w '%{http_code}' \
+      --max-time 5 "http://localhost:${APACHE_PORT}/" || echo 000)
+    [[ "$code" =~ ^(200|301|302)$ ]] && break
+    sleep 1
+  done
   case "$code" in
     200|301|302)
       log "✓ HTTP ${code} from localhost:${APACHE_PORT}"
       ;;
     *)
-      warn "Got HTTP '${code}' from localhost:${APACHE_PORT} — investigate:"
-      warn "  sudo journalctl -xeu apache2.service --no-pager | tail -50"
+      warn "Got HTTP '${code}' from localhost:${APACHE_PORT} after 5 retries — investigate:"
+      warn "  sudo systemctl status apache2 --no-pager"
+      warn "  sudo ss -tlnp | grep ':${APACHE_PORT} '"
+      warn "  grep -E '^Listen' /etc/apache2/ports.conf"
+      warn "  sudo journalctl -xeu apache2.service --no-pager | tail -30"
       warn "  sudo tail -n 50 /var/log/apache2/bugzilla-error.log"
       ;;
   esac
