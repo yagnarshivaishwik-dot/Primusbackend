@@ -234,7 +234,14 @@ EOF
 # ── 8. apache vhost ──────────────────────────────────────────────────
 step_apache() {
   log "Configuring Apache vhost for ${DOMAIN}…"
-  a2enmod cgi headers rewrite ssl perl expires deflate >/dev/null
+  a2enmod cgi headers rewrite perl expires deflate >/dev/null
+  # Only listen on 443 if TLS is actually being set up; otherwise the
+  # module's Listen 443 in ports.conf collides with anything else on 443.
+  if [[ "${ENABLE_TLS}" == "true" ]]; then
+    a2enmod ssl >/dev/null
+  else
+    a2dismod ssl >/dev/null 2>&1 || true
+  fi
 
   cat > /etc/apache2/sites-available/bugzilla.conf <<EOF
 <VirtualHost *:80>
