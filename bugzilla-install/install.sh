@@ -184,7 +184,11 @@ step_perl_deps() {
     Email::Sender \
     Email::MIME \
     Cache::Memcached \
-    File::MimeInfo::Magic || true
+    File::MimeInfo::Magic \
+    Test::Taint \
+    JSON::RPC \
+    HTML::Scrubber \
+    Encode::Detect || true
 }
 
 # ── 5. SMTP relay (Azure blocks port 25) ─────────────────────────────

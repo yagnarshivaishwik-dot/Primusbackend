@@ -213,6 +213,7 @@ class BZClient:
         self.session = requests.Session()
         self.session.headers["X-BUGZILLA-API-KEY"] = api_key
         self.session.headers["Content-Type"] = "application/json"
+        self.session.headers["Accept"] = "application/json"
 
     def _do(self, method: str, path: str, **kw) -> dict:
         url = f"{self.base}/rest{path}"
