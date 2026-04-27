@@ -659,25 +659,43 @@ class ForgotPasswordIn(BaseModel):
     email: EmailStr
 
 
+def _hash_reset_token(token: str) -> str:
+    """SHA-256 the user-visible token before persisting.
+
+    We store the digest (not the plaintext) so a DB compromise can't be
+    weaponised into account takeover via still-valid reset links.
+    """
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+# Bumped from 15 min → 60 min to absorb Indian SMTP delivery latency
+# (commonly 2–5 min, tail to 30+).
+_RESET_TOKEN_TTL = timedelta(hours=1)
+
+
 @router.post("/password/forgot")
 def forgot_password(payload: ForgotPasswordIn, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == payload.email).first()
     if not user:
         # Do not reveal user existence
         return {"ok": True}
-    # Minimal token model without email-sending for now
     from app.models import PasswordResetToken
 
-    token = secrets.token_urlsafe(32)
-    expires = datetime.utcnow() + timedelta(hours=1)
-    pr = PasswordResetToken(user_id=user.id, token=token, expires_at=expires)
+    raw_token = secrets.token_urlsafe(32)
+    expires = datetime.utcnow() + _RESET_TOKEN_TTL
+    pr = PasswordResetToken(
+        user_id=user.id,
+        token=_hash_reset_token(raw_token),
+        expires_at=expires,
+    )
     db.add(pr)
     db.commit()
-    # If SMTP configured, send email (optional)
+    # If SMTP configured, send email (optional). We send the *raw* token
+    # to the user; only the hash is in the DB.
     try:
         from app.utils.auth import send_email
 
-        reset_link = f"/reset?token={token}"
+        reset_link = f"/reset?token={raw_token}"
         send_email(user.email, "Password reset", f"Click to reset: {reset_link}")
     except Exception:
         pass
@@ -693,18 +711,29 @@ class ResetPasswordIn(BaseModel):
 def reset_password(payload: ResetPasswordIn, db: Session = Depends(get_db)):
     from app.models import PasswordResetToken
 
+    if not payload.token:
+        # Frontend forgot to read ?token=… from the URL
+        raise HTTPException(status_code=400, detail="Reset link is missing its token")
+
+    token_hash = _hash_reset_token(payload.token)
     rec = (
         db.query(PasswordResetToken)
-        .filter(PasswordResetToken.token == payload.token, PasswordResetToken.used.is_(False))
+        .filter(PasswordResetToken.token == token_hash)
         .first()
     )
-    if not rec or rec.expires_at < datetime.utcnow():
-        raise HTTPException(status_code=400, detail="Invalid or expired token")
+    if not rec:
+        raise HTTPException(status_code=400, detail="Reset link is invalid")
+    if rec.used:
+        raise HTTPException(status_code=400, detail="This reset link has already been used")
+    if rec.expires_at < datetime.utcnow():
+        raise HTTPException(
+            status_code=400,
+            detail="This reset link has expired; please request a new one",
+        )
     user = db.query(User).filter(User.id == rec.user_id).first()
     if not user:
-        raise HTTPException(status_code=400, detail="Invalid token")
-    new_password = payload.new_password
-    normalized = _normalize_password(new_password)
+        raise HTTPException(status_code=400, detail="Reset link is invalid")
+    normalized = _normalize_password(payload.new_password)
     user.password_hash = ph.hash(normalized)
     rec.used = True
     db.commit()

@@ -157,13 +157,10 @@ def verify_webhook_signature(
       D. hex(HMAC(secret, timestamp + raw_body))         — hex-encoded variant
       E. hex(HMAC(secret, raw_body))                     — hex no-timestamp
 
-    A failure here only means "none of our known schemes matched". Operators
-    can set `CASHFREE_TRUST_UNSIGNED=true` to bypass verification entirely
-    as a last-resort debugging valve (never do this in prod long-term).
+    A failure here only means "none of our known schemes matched". The
+    caller MUST reject the webhook on False — there is intentionally no
+    "trust unsigned" bypass.
     """
-    if _env("CASHFREE_TRUST_UNSIGNED", "false").lower() == "true":
-        return True
-
     secret = _env("CASHFREE_WEBHOOK_SECRET")
     if not secret or not received_signature:
         return False

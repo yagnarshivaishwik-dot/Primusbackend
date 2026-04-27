@@ -200,12 +200,13 @@ async def webhook(request: Request):
             "x-cf-{signature,timestamp}. Check the all_header_names log above "
             "for what Cashfree actually sent."
         )
-        # Return 200 so Cashfree's dashboard Test shows success; log above
-        # tells operators to re-examine header naming. The real handler
-        # below will never reach this — we only short-circuit when headers
-        # are genuinely absent, which for the production /webhook path
-        # means Cashfree changed their scheme and we need to adapt.
-        return {"ok": True, "ignored": "no_signature_headers_seen"}
+        # Reject unsigned webhooks. Cashfree's dashboard "Test" button will
+        # see 401 — that's expected; production webhooks always carry a
+        # signature, and accepting unsigned bodies would let any caller
+        # credit minutes to any wallet.
+        raise HTTPException(
+            status_code=401, detail="Missing webhook signature headers"
+        )
 
     if not cf.verify_webhook_signature(
         raw_body=raw, timestamp=timestamp, received_signature=signature
