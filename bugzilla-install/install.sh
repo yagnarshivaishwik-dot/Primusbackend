@@ -205,8 +205,16 @@ from      ${SMTP_FROM}
 user      ${SMTP_USER}
 password  ${SMTP_PASS}
 EOF
-  chmod 600 /etc/msmtprc
-  chown root:root /etc/msmtprc
+  # /etc/msmtprc must be readable by Apache's user (www-data) — Bugzilla
+  # invokes sendmail as www-data, and msmtp exits EX_CONFIG (78) if it
+  # can't read its own config. 0640 + group=www-data keeps the SMTP
+  # password off other users while still letting Apache use it.
+  chown root:www-data /etc/msmtprc
+  chmod 640 /etc/msmtprc
+
+  # Same story for the log file — msmtp writes here as www-data.
+  install -m 640 -o www-data -g www-data /dev/null /var/log/msmtp.log
+
   ln -sf /usr/bin/msmtp /usr/sbin/sendmail
 }
 
