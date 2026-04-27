@@ -19,6 +19,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import io
 import re
 import sys
 from dataclasses import dataclass
@@ -26,6 +27,12 @@ from typing import Optional
 
 import requests
 from bs4 import BeautifulSoup
+
+# Windows consoles default to cp1252 which can't render the unicode arrows
+# we use in status output. Switch stdout/stderr to utf-8 unconditionally.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 
 # ── Mapping tables ───────────────────────────────────────────────────
@@ -209,14 +216,23 @@ def parse_html(path: str) -> list[ParsedBug]:
 class BZClient:
     def __init__(self, base_url: str, api_key: str, dry_run: bool = False):
         self.base = base_url.rstrip("/")
+        self.api_key = api_key
         self.dry = dry_run
         self.session = requests.Session()
+        # Send the key two different ways so we work on stock Bugzilla 5.x
+        # (Bugzilla_api_key query param) and BMO-style installs (header).
         self.session.headers["X-BUGZILLA-API-KEY"] = api_key
         self.session.headers["Content-Type"] = "application/json"
         self.session.headers["Accept"] = "application/json"
 
     def _do(self, method: str, path: str, **kw) -> dict:
         url = f"{self.base}/rest{path}"
+        # Always inject Bugzilla_api_key — works for both GET (query string)
+        # and POST/PUT (form/json fall-through)
+        params = kw.pop("params", {}) or {}
+        params.setdefault("Bugzilla_api_key", self.api_key)
+        kw["params"] = params
+
         if self.dry and method in ("POST", "PUT", "DELETE"):
             print(f"  [dry-run] {method} {path}")
             return {}
@@ -264,6 +280,9 @@ class BZClient:
                 raise
 
     def ensure_version(self, product: str, version: str):
+        # Stock Bugzilla 5.2 has no REST endpoint for creating versions
+        # (only the product POST takes a single 'version' field). Try it
+        # in case we're on a fork that supports it; otherwise skip.
         try:
             self._do("POST", "/version", json={
                 "product": product,
@@ -271,7 +290,11 @@ class BZClient:
             })
             print(f"  + version {version!r}")
         except requests.HTTPError as e:
-            if e.response.status_code in (400, 409):
+            sc = e.response.status_code
+            if sc == 404:
+                print(f"  · version {version!r}: REST endpoint not available — "
+                      f"add via Administration → Products → {product} → Versions if needed")
+            elif sc in (400, 409):
                 print(f"  · version {version!r} already exists")
             else:
                 raise
@@ -326,13 +349,19 @@ def main():
 
     bz = BZClient(args.url, args.key, dry_run=args.dry_run)
 
-    # Resolve default assignee
+    # Resolve default assignee — query a logged-in endpoint and read the
+    # 'real_name'/'name' of the API key's owner. Stock Bugzilla 5.2 doesn't
+    # have /rest/whoami; /rest/user lets us look up the current user.
     if not args.admin_email:
         try:
-            who = bz._do("GET", "/whoami")
-            args.admin_email = who.get("name") or "admin@example.com"
+            data = bz._do("GET", "/user", params={"match": ""})
+            users = data.get("users") or []
+            if users:
+                args.admin_email = users[0].get("email") or users[0].get("name", "")
         except Exception:
-            args.admin_email = "admin@example.com"
+            pass
+    if not args.admin_email:
+        args.admin_email = "admin@example.com"
     print(f"\nDefault assignee: {args.admin_email}")
 
     # Ensure product
