@@ -5,7 +5,7 @@ import { getApiBase, authHeaders, showToast } from '../utils/api';
 import { eventStream } from '../utils/eventStream';
 import Login from './Login';
 import { settingsAPI, settingsToObject, objectToSettings } from '../utils/settings.js';
-import { BarChart, Users, Monitor, DollarSign, Settings as SettingsIcon, Annoyed, LogOut, Search, Clock, Ticket, Package, ShoppingCart, Calendar, MessageSquare } from 'lucide-react';
+import { BarChart, Users, Monitor, DollarSign, Settings as SettingsIcon, Annoyed, LogOut, Search, Clock, Ticket, Package, ShoppingCart, Calendar, MessageSquare, Megaphone } from 'lucide-react';
 import ChatPanel from './ChatPanel.jsx';
 import NotificationBell from './NotificationBell.jsx';
 import StatisticsPage from './StatisticsPage';
@@ -894,6 +894,519 @@ const ShopPage = ({ cafeInfo }) => {
     );
 };
 
+// ── Coupons (Bugzilla #1) ─────────────────────────────────────────
+// Admin CRUD over POST /api/coupon/ + GET /api/coupon/. Backend
+// CouponIn schema: { code, discount_percent, max_uses, per_user_limit,
+// expires_at, applies_to }. cafe_id is injected from JWT, never sent.
+const CouponsPage = ({ cafeInfo }) => {
+    const [coupons, setCoupons] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [showModal, setShowModal] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [form, setForm] = useState({
+        code: '',
+        discount_percent: '',
+        max_uses: '',
+        per_user_limit: '',
+        expires_at: '',
+        applies_to: '*',
+    });
+
+    const fetchCoupons = useCallback(async () => {
+        try {
+            setLoading(true);
+            const base = getApiBase().replace(/\/$/, "");
+            const res = await axios.get(`${base}/api/coupon/`, { headers: authHeaders() });
+            setCoupons(res.data || []);
+        } catch (e) {
+            showToast(e?.response?.data?.detail || 'Failed to load coupons');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => { fetchCoupons(); }, [fetchCoupons]);
+
+    const openCreate = () => {
+        setForm({
+            code: '',
+            discount_percent: '',
+            max_uses: '',
+            per_user_limit: '',
+            expires_at: '',
+            applies_to: '*',
+        });
+        setShowModal(true);
+    };
+
+    const handleSave = async () => {
+        const code = form.code.trim().toUpperCase();
+        if (!code) {
+            showToast('Coupon code is required');
+            return;
+        }
+        const discount = parseFloat(form.discount_percent || '0');
+        if (Number.isNaN(discount) || discount < 0 || discount > 100) {
+            showToast('Discount must be between 0 and 100');
+            return;
+        }
+        try {
+            setSaving(true);
+            const base = getApiBase().replace(/\/$/, "");
+            const payload = {
+                code,
+                discount_percent: discount,
+                max_uses: form.max_uses ? parseInt(form.max_uses, 10) : null,
+                per_user_limit: form.per_user_limit ? parseInt(form.per_user_limit, 10) : null,
+                // <input type="datetime-local"> gives us "YYYY-MM-DDTHH:mm";
+                // backend's CouponIn expects an ISO datetime so append :00 if needed.
+                expires_at: form.expires_at
+                    ? new Date(form.expires_at).toISOString()
+                    : null,
+                applies_to: form.applies_to.trim() || '*',
+            };
+            await axios.post(`${base}/api/coupon/`, payload, {
+                headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+            });
+            showToast(`Coupon "${code}" created`);
+            setShowModal(false);
+            fetchCoupons();
+        } catch (e) {
+            showToast(e?.response?.data?.detail || 'Failed to save coupon');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const cafeName = cafeInfo?.name || cafeInfo?.cafe_name || '';
+
+    return (
+        <div>
+            <div className="flex items-center justify-between mb-2">
+                <div>
+                    <h1 className="text-3xl font-bold text-white">Coupons</h1>
+                    {cafeName && (
+                        <p className="text-sm text-indigo-400 mt-1">
+                            Coupons for: <span className="font-semibold">{cafeName}</span>
+                        </p>
+                    )}
+                </div>
+                <button onClick={openCreate} className="btn-primary-neo px-4 py-2 rounded-md">+ New Coupon</button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+                {loading && [1, 2, 3].map(i => <div key={i} className="card-animated h-40 skeleton-shimmer" />)}
+                {!loading && coupons.length === 0 && (
+                    <div className="card-animated p-6 text-gray-400 col-span-full">
+                        No coupons yet. Click "+ New Coupon" to create one.
+                    </div>
+                )}
+                {!loading && coupons.map(c => {
+                    const expired = c.expires_at && new Date(c.expires_at) < new Date();
+                    const exhausted = c.max_uses && c.times_used >= c.max_uses;
+                    const status = expired ? 'Expired' : exhausted ? 'Exhausted' : 'Active';
+                    const statusClass = expired || exhausted
+                        ? 'bg-gray-500/20 text-gray-400'
+                        : 'bg-green-500/20 text-green-400';
+                    return (
+                        <div key={c.id} className="card-animated p-6">
+                            <div className="flex items-center justify-between mb-2">
+                                <h3 className="text-lg font-bold text-white font-mono tracking-wider">{c.code}</h3>
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${statusClass}`}>{status}</span>
+                            </div>
+                            <p className="text-3xl font-bold text-indigo-400 mb-1">{c.discount_percent}% off</p>
+                            <p className="text-xs text-gray-400 mt-2">
+                                Used {c.times_used}{c.max_uses ? ` / ${c.max_uses}` : ''}
+                                {c.per_user_limit ? ` · ${c.per_user_limit}/user` : ''}
+                            </p>
+                            {c.expires_at && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Expires {new Date(c.expires_at).toLocaleString()}
+                                </p>
+                            )}
+                            {c.applies_to && c.applies_to !== '*' && (
+                                <p className="text-xs text-gray-500 mt-1">Applies to: {c.applies_to}</p>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+
+            {showModal && (
+                <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+                    <div className="w-full max-w-md rounded-xl" style={{ background: '#1a1d21', border: '1px solid #2a2d31' }}>
+                        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                            <h3 className="text-white font-semibold">New Coupon</h3>
+                            <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white">✕</button>
+                        </div>
+                        <div className="p-4 space-y-4">
+                            <div>
+                                <label className="text-xs text-gray-400 block mb-1">Code *</label>
+                                <input className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white font-mono uppercase"
+                                    value={form.code}
+                                    onChange={e => setForm({ ...form, code: e.target.value })}
+                                    placeholder="WELCOME10" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs text-gray-400 block mb-1">Discount % *</label>
+                                    <input type="number" min="0" max="100" step="0.1"
+                                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                                        value={form.discount_percent}
+                                        onChange={e => setForm({ ...form, discount_percent: e.target.value })}
+                                        placeholder="10" />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-400 block mb-1">Applies to</label>
+                                    <input className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                                        value={form.applies_to}
+                                        onChange={e => setForm({ ...form, applies_to: e.target.value })}
+                                        placeholder="* (everything)" />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs text-gray-400 block mb-1">Max uses</label>
+                                    <input type="number" min="1"
+                                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                                        value={form.max_uses}
+                                        onChange={e => setForm({ ...form, max_uses: e.target.value })}
+                                        placeholder="100" />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-400 block mb-1">Per-user limit</label>
+                                    <input type="number" min="1"
+                                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                                        value={form.per_user_limit}
+                                        onChange={e => setForm({ ...form, per_user_limit: e.target.value })}
+                                        placeholder="1" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-400 block mb-1">Expires (optional)</label>
+                                <input type="datetime-local"
+                                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                                    value={form.expires_at}
+                                    onChange={e => setForm({ ...form, expires_at: e.target.value })} />
+                            </div>
+                        </div>
+                        <div className="p-4 border-t border-white/10 flex justify-end gap-2">
+                            <button onClick={() => setShowModal(false)} className="pill">Cancel</button>
+                            <button onClick={handleSave} disabled={saving} className="btn-primary-neo px-4 py-2 rounded-md disabled:opacity-50">
+                                {saving ? 'Saving…' : 'Create Coupon'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+CouponsPage.propTypes = {
+    cafeInfo: PropTypes.object,
+};
+
+// ── Campaigns (Bugzilla #3) ───────────────────────────────────────
+// Admin CRUD over /api/campaign/. Backend CampaignIn schema:
+// { name, type, content, image_url, discount_percent, target_audience,
+//   start_date, end_date, active }. <input type="datetime-local"> values
+// are converted to ISO via new Date(...).toISOString() before POSTing.
+const CampaignsPage = ({ cafeInfo }) => {
+    const [campaigns, setCampaigns] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [showModal, setShowModal] = useState(false);
+    const [editCampaign, setEditCampaign] = useState(null);
+    const [saving, setSaving] = useState(false);
+    const [form, setForm] = useState({
+        name: '',
+        type: 'discount',
+        content: '',
+        image_url: '',
+        discount_percent: '',
+        target_audience: 'all',
+        start_date: '',
+        end_date: '',
+        active: true,
+    });
+
+    const fetchCampaigns = useCallback(async () => {
+        try {
+            setLoading(true);
+            const base = getApiBase().replace(/\/$/, "");
+            const res = await axios.get(`${base}/api/campaign/`, { headers: authHeaders() });
+            setCampaigns(res.data || []);
+        } catch (e) {
+            showToast(e?.response?.data?.detail || 'Failed to load campaigns');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => { fetchCampaigns(); }, [fetchCampaigns]);
+
+    const openCreate = () => {
+        setEditCampaign(null);
+        setForm({
+            name: '',
+            type: 'discount',
+            content: '',
+            image_url: '',
+            discount_percent: '',
+            target_audience: 'all',
+            start_date: '',
+            end_date: '',
+            active: true,
+        });
+        setShowModal(true);
+    };
+
+    const openEdit = (c) => {
+        setEditCampaign(c);
+        const toLocalInput = (iso) =>
+            iso ? new Date(iso).toISOString().slice(0, 16) : '';
+        setForm({
+            name: c.name || '',
+            type: c.type || 'discount',
+            content: c.content || '',
+            image_url: c.image_url || '',
+            discount_percent: String(c.discount_percent ?? ''),
+            target_audience: c.target_audience || 'all',
+            start_date: toLocalInput(c.start_date),
+            end_date: toLocalInput(c.end_date),
+            active: c.active ?? true,
+        });
+        setShowModal(true);
+    };
+
+    const handleSave = async () => {
+        if (!form.name.trim()) {
+            showToast('Name is required');
+            return;
+        }
+        if (form.start_date && form.end_date &&
+            new Date(form.end_date) < new Date(form.start_date)) {
+            showToast('End date must be after start date');
+            return;
+        }
+        try {
+            setSaving(true);
+            const base = getApiBase().replace(/\/$/, "");
+            const payload = {
+                name: form.name.trim(),
+                type: form.type,
+                content: form.content.trim() || null,
+                image_url: form.image_url.trim() || null,
+                discount_percent: parseFloat(form.discount_percent || '0'),
+                target_audience: form.target_audience,
+                // Always send ISO 8601; backend rejects naive strings.
+                start_date: form.start_date ? new Date(form.start_date).toISOString() : null,
+                end_date: form.end_date ? new Date(form.end_date).toISOString() : null,
+                active: form.active,
+            };
+            if (editCampaign) {
+                await axios.put(`${base}/api/campaign/${editCampaign.id}`, payload, {
+                    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                });
+                showToast('Campaign updated');
+            } else {
+                await axios.post(`${base}/api/campaign/`, payload, {
+                    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                });
+                showToast('Campaign created');
+            }
+            setShowModal(false);
+            fetchCampaigns();
+        } catch (e) {
+            showToast(e?.response?.data?.detail || 'Failed to save campaign');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleToggle = async (c) => {
+        try {
+            const base = getApiBase().replace(/\/$/, "");
+            await axios.patch(`${base}/api/campaign/${c.id}/toggle`, null, {
+                headers: authHeaders(),
+            });
+            fetchCampaigns();
+        } catch (e) {
+            showToast('Failed to toggle');
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!confirm('Delete this campaign?')) return;
+        try {
+            const base = getApiBase().replace(/\/$/, "");
+            await axios.delete(`${base}/api/campaign/${id}`, { headers: authHeaders() });
+            showToast('Campaign deleted');
+            fetchCampaigns();
+        } catch {
+            showToast('Failed to delete');
+        }
+    };
+
+    const cafeName = cafeInfo?.name || cafeInfo?.cafe_name || '';
+
+    return (
+        <div>
+            <div className="flex items-center justify-between mb-2">
+                <div>
+                    <h1 className="text-3xl font-bold text-white">Campaigns</h1>
+                    {cafeName && (
+                        <p className="text-sm text-indigo-400 mt-1">
+                            Campaigns for: <span className="font-semibold">{cafeName}</span>
+                        </p>
+                    )}
+                </div>
+                <button onClick={openCreate} className="btn-primary-neo px-4 py-2 rounded-md">+ New Campaign</button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                {loading && [1, 2].map(i => <div key={i} className="card-animated h-48 skeleton-shimmer" />)}
+                {!loading && campaigns.length === 0 && (
+                    <div className="card-animated p-6 text-gray-400 col-span-full">
+                        No campaigns yet. Click "+ New Campaign" to launch one.
+                    </div>
+                )}
+                {!loading && campaigns.map(c => (
+                    <div key={c.id} className="card-animated p-6">
+                        <div className="flex items-start justify-between mb-2">
+                            <div>
+                                <h3 className="text-lg font-bold text-white">{c.name}</h3>
+                                <p className="text-xs text-gray-400 mt-1">
+                                    {c.type} · {c.target_audience}
+                                </p>
+                            </div>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${c.active ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                                {c.active ? 'Active' : 'Paused'}
+                            </span>
+                        </div>
+                        {c.discount_percent > 0 && (
+                            <p className="text-2xl font-bold text-indigo-400 mb-2">{c.discount_percent}% off</p>
+                        )}
+                        {c.content && <p className="text-sm text-gray-300 mt-2">{c.content}</p>}
+                        <div className="text-xs text-gray-500 mt-3 space-y-0.5">
+                            {c.start_date && <p>Starts: {new Date(c.start_date).toLocaleString()}</p>}
+                            {c.end_date && <p>Ends: {new Date(c.end_date).toLocaleString()}</p>}
+                        </div>
+                        <div className="flex gap-2 mt-4">
+                            <button onClick={() => openEdit(c)} className="flex-1 px-3 py-2 text-sm rounded-md bg-gray-700 text-white hover:bg-gray-600 transition-colors">Edit</button>
+                            <button onClick={() => handleToggle(c)} className="px-3 py-2 text-sm rounded-md bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600/40 transition-colors">
+                                {c.active ? 'Pause' : 'Resume'}
+                            </button>
+                            <button onClick={() => handleDelete(c.id)} className="px-3 py-2 text-sm rounded-md bg-red-600/20 text-red-400 hover:bg-red-600/40 transition-colors">Delete</button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {showModal && (
+                <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+                    <div className="w-full max-w-lg rounded-xl max-h-[90vh] overflow-y-auto"
+                        style={{ background: '#1a1d21', border: '1px solid #2a2d31' }}>
+                        <div className="p-4 border-b border-white/10 flex items-center justify-between sticky top-0 bg-[#1a1d21] z-10">
+                            <h3 className="text-white font-semibold">
+                                {editCampaign ? 'Edit Campaign' : 'New Campaign'}
+                            </h3>
+                            <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white">✕</button>
+                        </div>
+                        <div className="p-4 space-y-4">
+                            <div>
+                                <label className="text-xs text-gray-400 block mb-1">Name *</label>
+                                <input className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                                    value={form.name}
+                                    onChange={e => setForm({ ...form, name: e.target.value })}
+                                    placeholder="Friday Night LAN" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs text-gray-400 block mb-1">Type</label>
+                                    <select className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                                        value={form.type}
+                                        onChange={e => setForm({ ...form, type: e.target.value })}>
+                                        <option value="discount">Discount</option>
+                                        <option value="announcement">Announcement</option>
+                                        <option value="promotion">Promotion</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-400 block mb-1">Audience</label>
+                                    <select className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                                        value={form.target_audience}
+                                        onChange={e => setForm({ ...form, target_audience: e.target.value })}>
+                                        <option value="all">Everyone</option>
+                                        <option value="members">Members only</option>
+                                        <option value="guests">Guests only</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-400 block mb-1">Description / Body</label>
+                                <textarea rows="3"
+                                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                                    value={form.content}
+                                    onChange={e => setForm({ ...form, content: e.target.value })}
+                                    placeholder="Half-price hourly packs all night long" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs text-gray-400 block mb-1">Discount %</label>
+                                    <input type="number" min="0" max="100" step="0.1"
+                                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                                        value={form.discount_percent}
+                                        onChange={e => setForm({ ...form, discount_percent: e.target.value })}
+                                        placeholder="0" />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-400 block mb-1">Image URL</label>
+                                    <input className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                                        value={form.image_url}
+                                        onChange={e => setForm({ ...form, image_url: e.target.value })}
+                                        placeholder="https://…" />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs text-gray-400 block mb-1">Starts</label>
+                                    <input type="datetime-local"
+                                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                                        value={form.start_date}
+                                        onChange={e => setForm({ ...form, start_date: e.target.value })} />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-400 block mb-1">Ends</label>
+                                    <input type="datetime-local"
+                                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                                        value={form.end_date}
+                                        onChange={e => setForm({ ...form, end_date: e.target.value })} />
+                                </div>
+                            </div>
+                            <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                                <input type="checkbox" checked={form.active}
+                                    onChange={e => setForm({ ...form, active: e.target.checked })} />
+                                Active
+                            </label>
+                        </div>
+                        <div className="p-4 border-t border-white/10 flex justify-end gap-2 sticky bottom-0 bg-[#1a1d21]">
+                            <button onClick={() => setShowModal(false)} className="pill">Cancel</button>
+                            <button onClick={handleSave} disabled={saving} className="btn-primary-neo px-4 py-2 rounded-md disabled:opacity-50">
+                                {saving ? 'Saving…' : (editCampaign ? 'Save Changes' : 'Create Campaign')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+CampaignsPage.propTypes = {
+    cafeInfo: PropTypes.object,
+};
+
 const Financials = () => (
     <div>
         <h1 className="text-3xl font-bold text-white mb-6">Financials</h1>
@@ -1468,6 +1981,8 @@ const AdminUI = ({ cafeInfo, onLogout }) => {
             case 'Games': return <GameManagement />;
             case 'Financials': return <Financials />;
             case 'Shop': return <ShopPage cafeInfo={cafeInfo} />;
+            case 'Coupons': return <CouponsPage cafeInfo={cafeInfo} />;
+            case 'Campaigns': return <CampaignsPage cafeInfo={cafeInfo} />;
             case 'Orders': return <OrdersPage />;
             case 'Bookings': return <BookingsPage />;
             case 'Guests': return <GuestsPage />;
@@ -1492,6 +2007,8 @@ const AdminUI = ({ cafeInfo, onLogout }) => {
                             <NavItem pageName="Dashboard" icon={<BarChart size={20} />}>Dashboard</NavItem>
                             <NavItem pageName="PC list" icon={<Monitor size={20} />}>PC list</NavItem>
                             <NavItem pageName="Shop" icon={<ShoppingCart size={20} />}>Shop</NavItem>
+                            <NavItem pageName="Coupons" icon={<Ticket size={20} />}>Coupons</NavItem>
+                            <NavItem pageName="Campaigns" icon={<Megaphone size={20} />}>Campaigns</NavItem>
                             <NavItem pageName="Orders" icon={<Ticket size={20} />}>Orders</NavItem>
                             <NavItem pageName="Users" icon={<Users size={20} />}>Users</NavItem>
                             <NavItem pageName="Guests" icon={<Annoyed size={20} />}>Guests</NavItem>
