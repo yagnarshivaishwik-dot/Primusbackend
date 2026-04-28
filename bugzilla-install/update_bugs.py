@@ -41,16 +41,36 @@ UPDATES = {
     },
     "[Primus #2]": {
         "comment": (
-            "Backend audit: payload from primus-admin-main/src/components/"
-            "AdminUI.jsx::handleSave (Add Time Package modal) is "
-            "{name, hours, price, description, active}, which matches "
-            "OfferCreate in backend/app/api/endpoints/shop.py exactly. "
-            "No schema mismatch in current code; previous report was "
-            "speculative. If 'add pack' still fails in prod the cause is "
-            "runtime (auth role / cafe context), not schema."
+            "Deep-dive fix in commit dba3c5a (backend) plus uncommitted "
+            "primus-admin-main edits.\n\n"
+            "Schema match was already correct (name/hours/price/"
+            "description/active matches OfferCreate). The real failure "
+            "mode was that operational errors became 'Failed to save "
+            "package' with no detail:\n\n"
+            "Backend (shop.py::create_offer):\n"
+            "  - Pre-validate name (non-empty), hours (>0), price (>=0) "
+            "    with specific 400s instead of pydantic 422s the UI "
+            "    rendered as [object Object].\n"
+            "  - Catch sqlalchemy IntegrityError on commit; UNIQUE/"
+            "    DUPLICATE constraint violations now return 400 with "
+            "    'A pack named \"X\" already exists' instead of bubbling "
+            "    as opaque 500. (Legacy single-DB Offer schema has "
+            "    UNIQUE(name) which silently broke same-name packs.)\n"
+            "  - Set cafe_id on the row when the model has the column "
+            "    AND ctx has cafe_id, so two cafes can have a pack with "
+            "    the same name without colliding.\n\n"
+            "Frontend (primus-admin-main/AdminUI.jsx::handleSave):\n"
+            "  - Strict pre-validate (Number.isFinite, hours>0, price>=0) "
+            "    with field-specific toast messages.\n"
+            "  - Render FastAPI's two error shapes correctly: "
+            "    {detail: 'string'} verbatim, {detail: [{loc, msg}, ...]} "
+            "    pretty-printed as 'field: msg'.\n"
+            "  - Specific messages for 401 (session expired) and 403 "
+            "    (no admin role for cafe), instead of falling through "
+            "    to 'Failed to save package'."
         ),
         "status": "RESOLVED",
-        "resolution": "WORKSFORME",
+        "resolution": "FIXED",
     },
     "[Primus #3]": {
         "comment": (
@@ -146,25 +166,35 @@ UPDATES = {
     },
     "[Primus #8]": {
         "comment": (
-            "Backend audit: /api/command/send endpoint in "
-            "app/api/endpoints/remote_command.py supports lock, unlock, "
-            "shutdown, reboot, restart, logout, login, message, "
-            "screenshot via ALLOWED_COMMANDS allowlist. Admin frontend "
-            "wiring in primus-admin-main/src/components/AdminUI.jsx "
-            "(sendCmd / openCommandModal / per-PC menu) calls the right "
-            "endpoint with the right payload.\n\n"
-            "If buttons appear DISABLED, that's the per-PC capability "
-            "negotiation in lines 506/512/518/524 — pc.capabilities."
-            "features must include the command name. Backend is "
-            "explicitly relaxed (line 111-113 'Capability Negotiation "
-            "Relaxed for now') so this is a frontend / kiosk-reporting "
-            "issue, not a backend bug.\n\n"
-            "If commands DON'T REACH the kiosk, check WebSocket "
-            "delivery (notify_pc) and kiosk-side command handler.\n\n"
-            "No backend code change needed."
+            "Deep-dive fix in commit dba3c5a (backend) plus uncommitted "
+            "primus-admin-main edits.\n\n"
+            "Two real root causes addressed:\n\n"
+            "1) Frontend was DISABLING Lock/Unlock/Restart/Message buttons "
+            "   when pc.capabilities.features didn't include the command "
+            "   name. Backend explicitly says capabilities are relaxed "
+            "   (remote_command.py:111-113), so the gate was rejecting "
+            "   commands the backend would have accepted. Removed the "
+            "   `disabled={pc.capabilities && !pc.capabilities.features."
+            "   includes('X')}` clause from all four buttons in "
+            "   primus-admin-main/AdminUI.jsx. We'd rather let the user "
+            "   click and have the backend respond with a meaningful 400 "
+            "   than show a button that does nothing without explanation.\n\n"
+            "2) Admin had no way to tell whether a queued command would "
+            "   reach the kiosk in real time vs. wait for HTTP long-poll. "
+            "   client_pc.py::list_pcs now returns:\n"
+            "   - ws_connected: bool — WebSocket alive, commands ship "
+            "     instantly\n"
+            "   - online: ws_connected OR heartbeat within 90 s\n"
+            "   - seconds_since_seen: int — surfaced in the UI as '12s "
+            "     ago'\n"
+            "   Frontend renders Realtime (green) / Polling (yellow) / "
+            "   Offline (gray) badges per PC card so admins know what to "
+            "   expect when they click. sendCmd error handler now "
+            "   surfaces 401/403/404 + backend detail strings verbatim "
+            "   instead of always showing 'Failed to send command'."
         ),
         "status": "RESOLVED",
-        "resolution": "WORKSFORME",
+        "resolution": "FIXED",
     },
     "[Primus #9]": {
         "comment": (
