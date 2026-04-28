@@ -23,7 +23,7 @@ from app.db.dependencies import MULTI_DB_ENABLED
 if MULTI_DB_ENABLED:
     from app.db.models_cafe import Event, EventProgress
     from app.db.global_db import global_session_factory
-    from app.db.cafe_db import cafe_db_router
+    from app.db.router import cafe_db_router
 else:
     from app.models import Event, EventProgress  # type: ignore[no-redef]
     from app.db.global_db import global_session_factory
