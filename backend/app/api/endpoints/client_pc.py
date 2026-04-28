@@ -411,9 +411,31 @@ async def list_pcs(current_user=Depends(get_current_user), db: Session = Depends
     else:
         pcs = db.query(ClientPC).filter_by(cafe_id=current_user.cafe_id).all()
 
+    # Bugzilla #8 — surface a real "ws_connected" flag so admins can see
+    # at a glance whether a queued command will reach the kiosk in real
+    # time vs. wait for the next HTTP long-poll cycle. Read-only snapshot
+    # of the in-memory _pc_connections registry.
+    from app.ws.pc import _pc_connections
+
+    now = datetime.now(UTC)
+    # Anything seen within the last 90 s is considered online; matches
+    # the heartbeat cadence of 30 s + 3x grace.
+    online_window_seconds = 90
+
     # Return basic data for fast loading
     result = []
     for pc in pcs:
+        last_seen = pc.last_seen
+        if last_seen and last_seen.tzinfo is None:
+            last_seen = last_seen.replace(tzinfo=UTC)
+        seconds_since_seen = (
+            (now - last_seen).total_seconds() if last_seen else None
+        )
+        recently_seen = (
+            seconds_since_seen is not None and seconds_since_seen <= online_window_seconds
+        )
+        ws_connected = bool(_pc_connections.get(pc.id))
+
         result.append({
             "id": pc.id,
             "name": pc.name,
@@ -425,7 +447,13 @@ async def list_pcs(current_user=Depends(get_current_user), db: Session = Depends
             "current_user_id": pc.current_user_id,
             "user_name": None,
             "session_start": None,
-            "remaining_time": None
+            "remaining_time": None,
+            # Reachability hints for the admin UI
+            "ws_connected": ws_connected,
+            "online": ws_connected or recently_seen,
+            "seconds_since_seen": (
+                int(seconds_since_seen) if seconds_since_seen is not None else None
+            ),
         })
 
     return result

@@ -132,19 +132,62 @@ async def create_offer(
     """
     Admin: Create a new time package.
     cafe_id injected from JWT — never from frontend payload.
+
+    Surfaces real reasons for failure (duplicate name, validation,
+    cafe-scope mismatch) instead of letting them bubble as a generic
+    500 the admin UI can only render as "Failed to save package".
     """
+    from sqlalchemy.exc import IntegrityError
+
+    name = (data.name or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+    if data.hours is None or data.hours <= 0:
+        raise HTTPException(
+            status_code=400, detail="Hours must be greater than 0"
+        )
+    if data.price is None or data.price < 0:
+        raise HTTPException(
+            status_code=400, detail="Price must be 0 or greater"
+        )
+
     db = _get_cafe_db(ctx)
     try:
         minutes = int(round(data.hours * 60))
-        offer = Offer(
-            name=data.name,
+
+        # When the global Offer model carries a cafe_id column (single-DB
+        # mode runs against app.models.Offer transparently because the
+        # tablename matches), set it from the admin's JWT so two cafes
+        # can have a pack named "1 hour pass" without colliding on the
+        # legacy unique-on-name constraint.
+        kwargs = dict(
+            name=name,
             hours_minutes=minutes,
             price=data.price,
             description=data.description,
             active=data.active,
         )
+        if hasattr(Offer, "cafe_id") and ctx.cafe_id:
+            kwargs["cafe_id"] = ctx.cafe_id
+
+        offer = Offer(**kwargs)
         db.add(offer)
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError as exc:
+            db.rollback()
+            # Likely the UNIQUE(name) constraint on the legacy single-DB
+            # offers table; tell the admin so they can rename instead of
+            # staring at a generic 500.
+            if "UNIQUE" in str(exc.orig).upper() or "DUPLICATE" in str(exc.orig).upper():
+                raise HTTPException(
+                    status_code=400,
+                    detail=f'A pack named "{name}" already exists. Pick a different name.',
+                ) from exc
+            raise HTTPException(
+                status_code=400,
+                detail="Could not save package — check the values and try again.",
+            ) from exc
         db.refresh(offer)
         return {
             "id": offer.id,
