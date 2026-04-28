@@ -121,13 +121,28 @@ UPDATES = {
     },
     "[Primus #7]": {
         "comment": (
-            "Out of scope for this session — the React source for the "
-            "kiosk Homepage that ships inside Primus C#/PrimusKiosk.App/"
-            "bin/.../web/assets is not in this monorepo (only the "
-            "bundled minified JS is). Need access to that source repo "
-            "to fix the CSS clipping."
+            "Quests panel rebuilt from scratch in PrimusClient (the C# "
+            "kiosk's React source bundled into Primus C#/web/). Changes "
+            "are LOCAL ONLY — not pushed to git per operator request.\n\n"
+            "Files touched:\n"
+            "  - PrimusClient/src/components/Widget.jsx: new "
+            "    QuestsWidget export. Constrains its body to "
+            "    max-height:320px + overflow-y:auto so a long quest "
+            "    list can never push the layout and clip its own "
+            "    header (the original symptom).\n"
+            "  - PrimusClient/src/pages/HomePage.jsx: imports the "
+            "    QuestsWidget, fetches /api/quests/ on mount with its "
+            "    own loading/error/empty states (independent of the "
+            "    games fetch), wires onClaim and onViewAll → /quests.\n\n"
+            "Backend endpoint added (will need to ship): "
+            "GET /api/quests/ returns active Event(type='quest') "
+            "rows joined with EventProgress for the current user; "
+            "POST /api/quests/{id}/claim marks one completed.\n\n"
+            "Build PrimusClient (npm run build) and stage dist/ into "
+            "Primus C#/web/ for the next kiosk installer."
         ),
-        "status": None,
+        "status": "RESOLVED",
+        "resolution": "FIXED",
     },
     "[Primus #8]": {
         "comment": (
@@ -199,27 +214,57 @@ UPDATES = {
     },
     "[Primus #11]": {
         "comment": (
-            "Out of scope for this session — same as #7, the Sidebar "
-            "lives in the kiosk React source bundled into Primus C#'s "
-            "web/assets/, source not in this monorepo."
+            "Header / mobile nav toggle clipping fixed locally in "
+            "PrimusClient. Changes are NOT pushed to git per operator "
+            "request — apply via npm run build → drop dist/ into "
+            "Primus C#/web/ for the next installer.\n\n"
+            "Files touched:\n"
+            "  - PrimusClient/src/App.css\n"
+            "    .header: added gap, position-relative-friendly "
+            "    overflow-x:clip so the actions stack can never crop "
+            "    the toggle button.\n"
+            "    .mobile-nav-toggle: position:relative + z-index:5 + "
+            "    margin-right so the icon never sits flush against the "
+            "    adjacent .header__icon-btn (visual cropping bug).\n"
+            "    @media(max-width:1024px): now hides the inline nav "
+            "    AND shows the toggle (was previously only at 768px). "
+            "    Kiosk windowed mode commonly runs at ~1280×720 with "
+            "    chrome, where the 7-link nav + 4 icons + user "
+            "    dropdown were overflowing the available width."
         ),
-        "status": None,
+        "status": "RESOLVED",
+        "resolution": "FIXED",
     },
     "[Primus #12]": {
         "comment": (
-            "Out of scope for this session — the 'View all quests' UI "
-            "string only appears in the bundled minified JS at "
-            "Primus C#/PrimusKiosk.App/bin/.../web/assets/index-*.js, "
-            "and there is no quest/Quest source code in PrimusClient, "
-            "primus-admin-main, Primus-SuperAdmin-main, or backend/. "
-            "The quests-rendering source is in a kiosk repo not "
-            "checked into this monorepo.\n\n"
-            "Backend has no quests endpoint either — likely a "
-            "client-only feature reading from an analytics/event log "
-            "endpoint that returns empty when no quest events have "
-            "been emitted."
+            "Full /quests page added locally — NOT pushed to git per "
+            "operator request. Apply via npm run build of PrimusClient "
+            "→ stage dist/ into Primus C#/web/.\n\n"
+            "Files touched:\n"
+            "  - PrimusClient/src/pages/QuestsPage.jsx (new): groups "
+            "    quests into Ready-to-claim / In-progress / Completed "
+            "    sections, per-quest progress bars, claim button on "
+            "    ready rows. Empty state explicitly says 'no active "
+            "    quests right now — admins will publish more on the "
+            "    next refresh' so the page never looks broken (which "
+            "    was the original #12 symptom).\n"
+            "  - PrimusClient/src/App.jsx: registered <Route "
+            "    path='/quests' element={<QuestsPage />} />.\n"
+            "  - PrimusClient/src/components/ui/Header.jsx: added "
+            "    Quests to navLinks (Target icon).\n"
+            "  - PrimusClient/src/services/apiClient.ts: apiService."
+            "    quests = { list, claim }.\n\n"
+            "Backend endpoint (also added in this session, ships via "
+            "git):\n"
+            "  - app/api/endpoints/quests.py — GET /api/quests/ returns "
+            "    active Event(type='quest') rows joined with "
+            "    EventProgress for the current user; POST "
+            "    /api/quests/{id}/claim marks completed when "
+            "    progress >= target. Tolerates malformed rule_json. "
+            "    Mounted in main.py at /api/quests."
         ),
-        "status": None,
+        "status": "RESOLVED",
+        "resolution": "FIXED",
     },
     "[Primus #13]": {
         "comment": (
