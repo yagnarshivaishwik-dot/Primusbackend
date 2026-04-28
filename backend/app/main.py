@@ -198,8 +198,15 @@ origins = [
     "tauri://localhost",  # Tauri app production
     # --- Primus Windows kiosk (WebView2 virtual host) ---
     # The native Windows client (PrimusClient.exe / WebView2) serves the React
-    # build at https://primus.local/ via SetVirtualHostNameToFolderMapping.
-    # Axios requests from that origin to api.primustech.in need CORS clearance.
+    # build at https://primus.localhost/ via SetVirtualHostNameToFolderMapping.
+    # We use *.localhost (not *.local) because Google OAuth's Cloud Console
+    # rejects `.local` origins — RFC 6761 reserves *.localhost for loopback
+    # and Google explicitly accepts any *.localhost subdomain. Axios requests
+    # from that origin to api.primustech.in need CORS clearance.
+    "https://primus.localhost",
+    # Keep the old origin during the rollout window so any kiosk still
+    # running an older build doesn't get CORS-blocked. Remove once every
+    # kiosk in the field is on the post-2026-04-28 installer.
     "https://primus.local",
     # --- Primus mobile app ---
     "https://app.primustech.in",  # Mobile companion web host (OAuth landing)
