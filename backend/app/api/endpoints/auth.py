@@ -660,79 +660,121 @@ class ForgotPasswordIn(BaseModel):
 
 
 def _hash_reset_token(token: str) -> str:
-    """SHA-256 the user-visible token before persisting.
+    """SHA-256 the user-visible OTP/token before persisting.
 
-    We store the digest (not the plaintext) so a DB compromise can't be
-    weaponised into account takeover via still-valid reset links.
+    We store the digest, not the plaintext, so a DB compromise can't be
+    weaponised into account takeover via still-valid OTPs.
     """
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-# Bumped from 15 min → 60 min to absorb Indian SMTP delivery latency
-# (commonly 2–5 min, tail to 30+).
-_RESET_TOKEN_TTL = timedelta(hours=1)
+def _generate_reset_otp() -> str:
+    """Cryptographically-secure 6-digit numeric OTP, zero-padded."""
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+# OTPs are short-lived because they're only 6 digits — 10 minutes gives
+# users enough time to tab to email and back without leaving a valid
+# code lying around for hours.
+_RESET_OTP_TTL = timedelta(minutes=10)
 
 
 @router.post("/password/forgot")
 def forgot_password(payload: ForgotPasswordIn, db: Session = Depends(get_db)):
+    """Email the user a 6-digit OTP to begin a password reset.
+
+    Always returns {ok: true} regardless of whether the email is
+    registered, so callers can't enumerate accounts.
+    """
     user = db.query(User).filter(User.email == payload.email).first()
     if not user:
-        # Do not reveal user existence
         return {"ok": True}
+
     from app.models import PasswordResetToken
 
-    raw_token = secrets.token_urlsafe(32)
-    expires = datetime.utcnow() + _RESET_TOKEN_TTL
+    # One active OTP per user — invalidate any prior unused ones so a
+    # newly-emailed code is the only one that works.
+    (
+        db.query(PasswordResetToken)
+        .filter(PasswordResetToken.user_id == user.id, PasswordResetToken.used.is_(False))
+        .update({"used": True}, synchronize_session=False)
+    )
+
+    otp = _generate_reset_otp()
+    expires = datetime.utcnow() + _RESET_OTP_TTL
     pr = PasswordResetToken(
         user_id=user.id,
-        token=_hash_reset_token(raw_token),
+        token=_hash_reset_token(otp),
         expires_at=expires,
     )
     db.add(pr)
     db.commit()
-    # If SMTP configured, send email (optional). We send the *raw* token
-    # to the user; only the hash is in the DB.
+
+    # Send the raw OTP to the user; only the hash is in the DB.
     try:
         from app.utils.auth import send_email
 
-        reset_link = f"/reset?token={raw_token}"
-        send_email(user.email, "Password reset", f"Click to reset: {reset_link}")
+        body = (
+            f"Your Primus password reset code is: {otp}\n\n"
+            f"It expires in 10 minutes. If you didn't request this, "
+            f"you can ignore this email."
+        )
+        send_email(user.email, "Your password reset code", body)
     except Exception:
+        # Email delivery failure shouldn't reveal user existence either.
         pass
     return {"ok": True}
 
 
 class ResetPasswordIn(BaseModel):
-    token: str
+    email: EmailStr
+    otp: str
     new_password: str
 
 
 @router.post("/password/reset")
 def reset_password(payload: ResetPasswordIn, db: Session = Depends(get_db)):
+    """Verify the email + OTP and set a new password.
+
+    Returns a uniform "Invalid or expired code" for any failure that
+    could leak whether the email is registered (no user, no active
+    OTP, OTP mismatch). Distinguishes only used / expired states for
+    OTPs we know exist for this user, since those don't leak account
+    existence beyond what the forgot endpoint already exposes.
+    """
     from app.models import PasswordResetToken
 
-    if not payload.token:
-        # Frontend forgot to read ?token=… from the URL
-        raise HTTPException(status_code=400, detail="Reset link is missing its token")
+    if not payload.otp.strip():
+        raise HTTPException(status_code=400, detail="Enter the code from your email")
 
-    token_hash = _hash_reset_token(payload.token)
+    user = db.query(User).filter(User.email == payload.email).first()
+    generic = HTTPException(status_code=400, detail="Invalid or expired code")
+    if not user:
+        raise generic
+
+    otp_hash = _hash_reset_token(payload.otp.strip())
     rec = (
         db.query(PasswordResetToken)
-        .filter(PasswordResetToken.token == token_hash)
+        .filter(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.token == otp_hash,
+        )
+        .order_by(PasswordResetToken.id.desc())
         .first()
     )
     if not rec:
-        raise HTTPException(status_code=400, detail="Reset link is invalid")
+        raise generic
     if rec.used:
-        raise HTTPException(status_code=400, detail="This reset link has already been used")
+        raise HTTPException(
+            status_code=400,
+            detail="This code has already been used — request a new one",
+        )
     if rec.expires_at < datetime.utcnow():
         raise HTTPException(
             status_code=400,
-            detail="This reset link has expired; please request a new one",
+            detail="This code has expired — request a new one",
         )
-    user = db.query(User).filter(User.id == rec.user_id).first()
-    if not user:
-        raise HTTPException(status_code=400, detail="Reset link is invalid")
+
     normalized = _normalize_password(payload.new_password)
     user.password_hash = ph.hash(normalized)
     rec.used = True

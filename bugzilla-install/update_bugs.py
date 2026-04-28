@@ -25,21 +25,19 @@ if hasattr(sys.stdout, "reconfigure"):
 UPDATES = {
     "[Primus #1]": {
         "comment": (
-            "Backend audit (claude/trusting-goldwasser-d550f8): the admin "
-            "UI for creating coupons does not currently exist in either "
-            "primus-admin-main or Primus-SuperAdmin-main — searched for "
-            "/api/coupon, 'Coupon', 'coupon' across both src trees and "
-            "found no creation form (only the kiosk-side redeem call in "
-            "PrimusClient/src/Dashboard.jsx).\n\n"
-            "Backend POST /api/v1/coupon/ accepts CouponIn "
-            "{code, discount_percent, max_uses, per_user_limit, "
-            "expires_at, applies_to}. The fields 'discount_paise' and "
-            "'active' mentioned in the original report do NOT exist in "
-            "the schema.\n\n"
-            "RECLASSIFY: this is a missing-feature, not a bug. To close, "
-            "the admin coupon CRUD page needs to be built."
+            "Coupons admin page built in commit d75685a: new CouponsPage "
+            "component in primus-admin-main/src/components/AdminUI.jsx "
+            "with grid view + create modal. Wired into the sidebar nav "
+            "(Ticket icon) and renderPage switch.\n\n"
+            "Form fields match backend CouponIn exactly: code, "
+            "discount_percent (0-100), max_uses, per_user_limit, "
+            "expires_at (datetime-local → ISO), applies_to. cafe_id is "
+            "injected from JWT, never sent. Per-card status pill shows "
+            "Active / Expired / Exhausted based on expires_at and "
+            "times_used."
         ),
-        "status": None,  # leave open
+        "status": "RESOLVED",
+        "resolution": "FIXED",
     },
     "[Primus #2]": {
         "comment": (
@@ -56,14 +54,21 @@ UPDATES = {
     },
     "[Primus #3]": {
         "comment": (
-            "Backend audit: no campaign creation UI exists in "
-            "primus-admin-main or Primus-SuperAdmin-main (no calls to "
-            "/api/campaign anywhere in either src tree). "
-            "RECLASSIFY: missing-feature, not bug. To close, admin "
-            "campaign CRUD page needs to be built (and ISO date "
-            "validation tested then)."
+            "Campaigns admin page built in commit d75685a: new "
+            "CampaignsPage component in primus-admin-main/src/components/"
+            "AdminUI.jsx with grid + create/edit modal + pause-toggle + "
+            "delete actions. Wired into the sidebar nav (Megaphone icon).\n\n"
+            "Form fields match backend CampaignIn: name, type "
+            "(discount/announcement/promotion), content, image_url, "
+            "discount_percent, target_audience (all/members/guests), "
+            "start_date, end_date, active. start_date/end_date are POSTed "
+            "as ISO 8601 via new Date(input).toISOString() — fixes the "
+            "'backend rejects naive datetime strings' suspicion from the "
+            "original report. Edit hydrates by slicing the ISO back to "
+            "YYYY-MM-DDTHH:mm for the datetime-local input."
         ),
-        "status": None,
+        "status": "RESOLVED",
+        "resolution": "FIXED",
     },
     "[Primus #4]": {
         "comment": (
@@ -166,16 +171,31 @@ UPDATES = {
     },
     "[Primus #10]": {
         "comment": (
-            "Out of scope for this session — there is no in-app reset "
-            "page in PrimusClient/src (grep'd for 'reset', "
-            "'ResetPassword', 'forgot-password' — only the "
-            "reset_device_credentials Tauri command, unrelated). This "
-            "is a feature-add (reset page + routing + token-from-URL "
-            "reading), not a fix.\n\n"
-            "Backend /password/forgot and /password/reset are "
-            "correct after #5 fix and ready for the page when built."
+            "In-app password reset built and switched to OTP flow per "
+            "operator request. Two commits:\n"
+            "  - d75685a: initial token-link reset UI (now superseded)\n"
+            "  - <next>: backend /password/{forgot,reset} converted to "
+            "    6-digit OTP, frontend rebuilt as 2-step flow\n\n"
+            "Backend (app/api/endpoints/auth.py):\n"
+            "  - /password/forgot generates a 6-digit numeric OTP, hashes "
+            "    it (SHA-256), stores with 10 min TTL, emails the raw "
+            "    OTP. Old unused OTPs for the same user are invalidated "
+            "    on issue (one active code per user).\n"
+            "  - /password/reset accepts {email, otp, new_password}; "
+            "    returns generic 'Invalid or expired code' when the "
+            "    email/otp combo isn't found (no enumeration), but "
+            "    distinguishes used / expired states for matched codes.\n\n"
+            "Frontend (PrimusClient/src/login-and-register.jsx):\n"
+            "  - ForgotPasswordView (step 1): email field → POSTs to "
+            "    /forgot, advances to step 2 regardless (privacy)\n"
+            "  - ResetPasswordView (step 2): email pre-filled, 6-digit "
+            "    numeric OTP input (autocomplete one-time-code, mono "
+            "    spaced), new password + confirm with min-8 + match "
+            "    validation, 'Resend code' link, surfaces backend's "
+            "    specific error messages verbatim"
         ),
-        "status": None,
+        "status": "RESOLVED",
+        "resolution": "FIXED",
     },
     "[Primus #11]": {
         "comment": (

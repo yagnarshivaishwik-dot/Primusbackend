@@ -566,11 +566,13 @@ const RegisterView = ({ setScreen, onLogin }) => {
     );
 };
 
-// Forgot Password View — wired to POST /api/auth/password/forgot
-const ForgotPasswordView = ({ setScreen }) => {
+// Forgot Password View — step 1 of the OTP flow.
+// POSTs the email to /api/auth/password/forgot which mails a 6-digit
+// OTP. On success we hand the email to ResetPasswordView so the user
+// doesn't have to retype it.
+const ForgotPasswordView = ({ setScreen, setResetEmail }) => {
     const [email, setEmail] = useState('');
     const [submitting, setSubmitting] = useState(false);
-    const [sent, setSent] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -584,36 +586,16 @@ const ForgotPasswordView = ({ setScreen }) => {
             await axios.post(url, { email: email.trim() }, {
                 headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
             });
-            // Backend never reveals whether the email exists — show the
-            // same success message either way.
-            setSent(true);
         } catch (err) {
-            // Even on a network/server error, avoid leaking user existence.
-            // Still show the success state so the page behaves consistently.
-            setSent(true);
+            // Backend never reveals user existence; treat any error the
+            // same as success so we don't leak it on the client either.
         } finally {
             setSubmitting(false);
         }
+        // Always advance to the OTP step — that's the privacy-preserving UX.
+        setResetEmail(email.trim());
+        setScreen('resetPassword');
     };
-
-    if (sent) {
-        return (
-            <div className="auth-card">
-                <h2 className="auth-title">Check your email</h2>
-                <p className="auth-subtitle">
-                    If an account exists for <strong>{email}</strong>, we've sent a password
-                    reset link. The link is valid for 1 hour.
-                </p>
-                <button
-                    type="button"
-                    className="auth-btn-primary"
-                    onClick={() => setScreen('login')}
-                >
-                    Back to login
-                </button>
-            </div>
-        );
-    }
 
     return (
         <div className="auth-card">
@@ -623,7 +605,9 @@ const ForgotPasswordView = ({ setScreen }) => {
             </button>
 
             <h2 className="auth-title">Forgot Password?</h2>
-            <p className="auth-subtitle">Enter your email and we'll send you a reset link.</p>
+            <p className="auth-subtitle">
+                Enter your email and we'll send you a 6-digit code.
+            </p>
 
             <form className="auth-form" onSubmit={handleSubmit}>
                 <div className="auth-input-group">
@@ -639,30 +623,35 @@ const ForgotPasswordView = ({ setScreen }) => {
                 </div>
 
                 <button type="submit" className="auth-btn-primary" disabled={submitting}>
-                    {submitting ? 'Sending…' : 'Send Reset Link'}
+                    {submitting ? 'Sending…' : 'Send code'}
                 </button>
             </form>
         </div>
     );
 };
 
-// Reset Password View — used when the kiosk lands on the app with a
-// ?token=… query string from the email link, OR when a logged-out user
-// clicks "Reset password" after entering one. Submits to
-// POST /api/auth/password/reset which handles missing/invalid/used/
-// expired token states with distinct error messages we surface verbatim.
-const ResetPasswordView = ({ setScreen, token: initialToken, onLogin }) => {
-    const [token, setToken] = useState(initialToken || '');
+// Reset Password View — step 2 of the OTP flow.
+// User pastes the 6-digit code from the email and picks a new password.
+// Submits to POST /api/auth/password/reset which surfaces specific
+// errors for invalid / used / expired codes; we display them verbatim.
+const ResetPasswordView = ({ setScreen, prefillEmail, onLogin: _onLogin }) => {
+    const [email, setEmail] = useState(prefillEmail || '');
+    const [otp, setOtp] = useState('');
     const [password, setPassword] = useState('');
     const [confirm, setConfirm] = useState('');
     const [showPwd, setShowPwd] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [resending, setResending] = useState(false);
     const [done, setDone] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!token.trim()) {
-            showToast('Reset link is missing its token');
+        if (!email.trim()) {
+            showToast('Enter the email you used');
+            return;
+        }
+        if (!/^\d{6}$/.test(otp.trim())) {
+            showToast('Enter the 6-digit code from your email');
             return;
         }
         if (password.length < 8) {
@@ -676,25 +665,39 @@ const ResetPasswordView = ({ setScreen, token: initialToken, onLogin }) => {
         try {
             setSubmitting(true);
             const url = getApiBase().replace(/\/$/, "") + "/api/auth/password/reset";
-            await axios.post(url, { token: token.trim(), new_password: password }, {
+            await axios.post(url, {
+                email: email.trim(),
+                otp: otp.trim(),
+                new_password: password,
+            }, {
                 headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
             });
             setDone(true);
-            // Clear the ?token= from the URL so a refresh doesn't re-attempt.
-            try {
-                const u = new URL(window.location.href);
-                u.searchParams.delete('token');
-                window.history.replaceState({}, '', u.toString());
-            } catch { /* non-browser env */ }
         } catch (err) {
-            // Backend now returns specific messages: "Reset link is invalid",
-            // "This reset link has already been used", "This reset link has
-            // expired; please request a new one", "Reset link is missing its
-            // token". Show whichever the backend gave us.
             const detail = err?.response?.data?.detail;
             showToast(detail || 'Could not reset password');
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const handleResend = async () => {
+        if (!email.trim()) {
+            showToast('Enter your email above first');
+            return;
+        }
+        try {
+            setResending(true);
+            const url = getApiBase().replace(/\/$/, "") + "/api/auth/password/forgot";
+            await axios.post(url, { email: email.trim() }, {
+                headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+            });
+            showToast('A new code has been emailed (if the account exists)');
+        } catch {
+            // Quiet — don't leak existence.
+            showToast('A new code has been emailed (if the account exists)');
+        } finally {
+            setResending(false);
         }
     };
 
@@ -723,24 +726,38 @@ const ResetPasswordView = ({ setScreen, token: initialToken, onLogin }) => {
                 Back to login
             </button>
 
-            <h2 className="auth-title">Set a new password</h2>
+            <h2 className="auth-title">Reset your password</h2>
             <p className="auth-subtitle">
-                Pick something at least 8 characters long.
+                Enter the 6-digit code we emailed you and pick a new password.
             </p>
 
             <form className="auth-form" onSubmit={handleSubmit}>
-                {!initialToken && (
-                    <div className="auth-input-group">
-                        <Lock size={18} className="auth-input-icon" />
-                        <input
-                            type="text"
-                            placeholder="Reset code (from email)"
-                            value={token}
-                            onChange={(e) => setToken(e.target.value)}
-                            required
-                        />
-                    </div>
-                )}
+                <div className="auth-input-group">
+                    <Mail size={18} className="auth-input-icon" />
+                    <input
+                        type="email"
+                        placeholder="Email Address"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        autoComplete="email"
+                        required
+                    />
+                </div>
+                <div className="auth-input-group">
+                    <Lock size={18} className="auth-input-icon" />
+                    <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="\d{6}"
+                        maxLength={6}
+                        placeholder="6-digit code"
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        autoComplete="one-time-code"
+                        required
+                        style={{ letterSpacing: '0.4em', fontFamily: 'monospace' }}
+                    />
+                </div>
                 <div className="auth-input-group">
                     <Lock size={18} className="auth-input-icon" />
                     <input
@@ -777,6 +794,16 @@ const ResetPasswordView = ({ setScreen, token: initialToken, onLogin }) => {
                 <button type="submit" className="auth-btn-primary" disabled={submitting}>
                     {submitting ? 'Saving…' : 'Update password'}
                 </button>
+
+                <button
+                    type="button"
+                    className="auth-link"
+                    onClick={handleResend}
+                    disabled={resending}
+                    style={{ marginTop: '0.5rem' }}
+                >
+                    {resending ? 'Sending…' : "Didn't get it? Resend code"}
+                </button>
             </form>
         </div>
     );
@@ -784,29 +811,27 @@ const ResetPasswordView = ({ setScreen, token: initialToken, onLogin }) => {
 
 // Main Auth Component
 export default function AuthCombined({ onLogin }) {
-    // If the page was opened with ?token=… in the URL, jump straight to
-    // the reset view — the email link does this. The token is lifted
-    // out of the URL on submit so it doesn't survive a refresh.
-    const initialToken = (() => {
-        try {
-            return new URLSearchParams(window.location.search).get('token') || '';
-        } catch {
-            return '';
-        }
-    })();
-    const [screen, setScreen] = useState(initialToken ? 'resetPassword' : 'login');
+    const [screen, setScreen] = useState('login');
+    // Carry the email from the forgot-password step into the reset step
+    // so the user doesn't have to type it twice.
+    const [resetEmail, setResetEmail] = useState('');
 
     const renderContent = () => {
         switch (screen) {
             case 'register':
                 return <RegisterView setScreen={setScreen} onLogin={onLogin} />;
             case 'forgotPassword':
-                return <ForgotPasswordView setScreen={setScreen} />;
+                return (
+                    <ForgotPasswordView
+                        setScreen={setScreen}
+                        setResetEmail={setResetEmail}
+                    />
+                );
             case 'resetPassword':
                 return (
                     <ResetPasswordView
                         setScreen={setScreen}
-                        token={initialToken}
+                        prefillEmail={resetEmail}
                         onLogin={onLogin}
                     />
                 );
