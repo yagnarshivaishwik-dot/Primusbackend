@@ -37,19 +37,26 @@ public partial class WebHostWindow : Window
             Directory.CreateDirectory(userDataFolder);
 
             // For kiosk deployment the React UI is served from the virtual host
-            // https://primus.localhost/ and calls https://api.primustech.in/* via Axios.
-            // We use *.localhost (not *.local) because Google OAuth's Cloud Console
-            // refuses to add a `.local` origin to a client's authorized JS origins
-            // list — it requires a publicly resolvable TLD. RFC 6761 reserves
-            // *.localhost for loopback, and Google explicitly accepts any
-            // *.localhost subdomain as a valid origin without DNS verification.
+            // https://kiosk.primustech.in/ and calls https://api.primustech.in/* via Axios.
             //
-            // Because primus.localhost and api.primustech.in are different origins,
-            // the embedded Chromium would normally block every XHR/fetch with a
-            // CORS preflight failure (Axios reports this as "Network Error").
-            // --disable-web-security removes that restriction for the embedded
-            // browser only — it has zero effect on the C# HTTP pipeline and is
-            // a standard practice for locked-down kiosk WebView2 deployments.
+            // Origin choice: Google OAuth's Cloud Console rejects ".local" AND
+            // "*.localhost" subdomains as authorized JavaScript origins — it
+            // requires a publicly registered TLD. We use a subdomain of our
+            // own brand domain (primustech.in) which Google accepts. The
+            // subdomain doesn't have to actually resolve in public DNS:
+            // SetVirtualHostNameToFolderMapping below intercepts requests to
+            // kiosk.primustech.in inside this WebView2 instance only and
+            // serves them from the local web/ folder. WebView2 treats it as
+            // a first-party HTTPS origin, so fetch / WebSocket / SubtleCrypto
+            // / GSI button all behave as if it were a real production page.
+            //
+            // Because kiosk.primustech.in and api.primustech.in are different
+            // origins, the embedded Chromium would normally block every
+            // XHR/fetch with a CORS preflight failure (Axios reports this as
+            // "Network Error"). --disable-web-security removes that
+            // restriction for the embedded browser only — it has zero effect
+            // on the C# HTTP pipeline and is standard practice for locked-down
+            // kiosk WebView2 deployments.
             var options = new CoreWebView2EnvironmentOptions
             {
                 AdditionalBrowserArguments =
@@ -76,7 +83,7 @@ public partial class WebHostWindow : Window
             core.Settings.IsPasswordAutosaveEnabled = false;
             core.Settings.IsGeneralAutofillEnabled = false;
 
-            // Serve the React build as https://primus.localhost/ — WebView2 treats
+            // Serve the React build as https://kiosk.primustech.in/ — WebView2 treats
             // this as a first-party HTTPS origin so fetch / WebSocket / crypto
             // APIs all work, AND Google OAuth accepts it as an authorized
             // JavaScript origin (which https://primus.local was rejected for).
@@ -88,7 +95,7 @@ public partial class WebHostWindow : Window
             }
 
             core.SetVirtualHostNameToFolderMapping(
-                "primus.localhost",
+                "kiosk.primustech.in",
                 _webRoot,
                 CoreWebView2HostResourceAccessKind.Allow);
 
@@ -112,7 +119,7 @@ public partial class WebHostWindow : Window
                 }
             };
 
-            core.Navigate("https://primus.localhost/index.html");
+            core.Navigate("https://kiosk.primustech.in/index.html");
         }
         catch (Exception ex)
         {
