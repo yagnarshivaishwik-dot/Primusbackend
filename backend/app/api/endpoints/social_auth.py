@@ -173,3 +173,32 @@ def login_with_google_idtoken(payload: GoogleIdTokenIn):
         raise HTTPException(400, "Invalid Google token") from err
     finally:
         db.close()
+
+
+# ── Health / config probe ────────────────────────────────────────────
+@router.get("/oauth/health")
+def oauth_health():
+    """Lightweight probe: which providers have their env vars wired.
+
+    Useful as a post-deploy curl smoke-test:
+        curl -s https://api.primustech.in/api/social/oauth/health
+
+    Returns the *prefix* of the client ID (first 14 chars before the
+    leading 6 digits) so operators can confirm the right credential
+    landed without exposing the full ID. Never returns secrets.
+    """
+    def _prefix(value: str | None, n: int = 12) -> str | None:
+        if not value:
+            return None
+        return value[:n] + "…"
+
+    google_cid = os.getenv("GOOGLE_CLIENT_ID")
+    google_csec = os.getenv("GOOGLE_CLIENT_SECRET")
+
+    return {
+        "google_configured": bool(google_cid),
+        "google_client_id_prefix": _prefix(google_cid),
+        "google_secret_present": bool(google_csec),
+        "discord_configured": bool(os.getenv("DISCORD_CLIENT_ID")),
+        "twitter_configured": bool(os.getenv("TWITTER_CLIENT_ID")),
+    }

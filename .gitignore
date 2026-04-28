@@ -23,9 +23,15 @@ __pycache__/
 *.py[cod]
 *$py.class
 venv/
-.env/
 env/
 .venv/
+
+# Environment files — NEVER commit. Only the *.example files are tracked.
+.env
+.env.local
+.env.*.local
+.env/
+*.env.bak.*
 
 # Electron / Executables
 electron-dist/
