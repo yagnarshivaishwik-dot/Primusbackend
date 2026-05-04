@@ -79,7 +79,55 @@ SUPERADMIN_FIRST_NAME="$SUPERADMIN_FIRST_NAME" \
 SUPERADMIN_LAST_NAME="$SUPERADMIN_LAST_NAME" \
 python scripts/seed_superadmin.py --force --no-prompt
 
-# ---------- 5. Smoke test ----------
+# ---------- 5. Verify the row actually landed in the DB ----------
+info "Verifying SuperAdmin row in Postgres..."
+SA_EMAIL="$SUPERADMIN_EMAIL" SA_USER="$SUPERADMIN_USERNAME" python <<'PYEOF'
+import os, sys
+from sqlalchemy import create_engine, text
+
+url = os.getenv("GLOBAL_DATABASE_URL") or os.getenv("DATABASE_URL")
+if not url:
+    print("FAIL: no GLOBAL_DATABASE_URL / DATABASE_URL")
+    sys.exit(1)
+
+engine = create_engine(url, pool_pre_ping=True, future=True)
+with engine.connect() as conn:
+    row = conn.execute(
+        text(
+            "SELECT id, name, email, role, "
+            "       COALESCE(LENGTH(password_hash), 0) AS pwhash_len, "
+            "       COALESCE(is_email_verified, FALSE)  AS verified "
+            "  FROM users "
+            " WHERE email = :em OR name = :nm "
+            " LIMIT 1"
+        ),
+        {"em": os.environ["SA_EMAIL"], "nm": os.environ["SA_USER"]},
+    ).first()
+
+    if not row:
+        print("FAIL: row not found after seed (something is very wrong)")
+        sys.exit(1)
+
+    print(f"  id              = {row.id}                  (auto-generated)")
+    print(f"  name (username) = {row.name}")
+    print(f"  email           = {row.email}")
+    print(f"  role            = {row.role}")
+    print(f"  password_hash   = stored ({row.pwhash_len}-char Argon2 hash; never plaintext)")
+    print(f"  is_verified     = {row.verified}")
+
+    # Prove the connection user has grants on other tables, not just `users`.
+    print()
+    print("  DB-grant sanity check (the Postgres role can read other tables):")
+    for tbl in ("cafes", "audit_logs", "user_cafe_map"):
+        try:
+            n = conn.execute(text(f"SELECT COUNT(*) FROM {tbl}")).scalar()
+            print(f"    {tbl:<16} accessible — {n} row(s)")
+        except Exception as e:
+            msg = str(e).split("\n")[0]
+            print(f"    {tbl:<16} NOT accessible: {msg[:80]}")
+PYEOF
+
+# ---------- 6. Smoke test ----------
 info "Smoke test: $API_BASE/api/internal/auth/login"
 resp_body="$(mktemp)"
 http_code="$(
