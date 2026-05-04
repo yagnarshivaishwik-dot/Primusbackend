@@ -7,6 +7,10 @@ to the new entry; the default note is `"Automated rebuild."`.
 
 Format: `YYYY-MM-DD — vX.Y.Z — notes`. Most recent version on top.
 
+## v1.0.18 — 2026-05-04
+
+- fix(auth): friendly error rendering on Reset/Forgot pages — no more [object Object] when backend returns object/array detail (e.g. 429 / 422)
+
 ## v1.0.17 — 2026-05-04
 
 - fix(auth): wire OTP-based password reset (email + 6-digit code + new password) — clutchh UI was still using old token-link flow against backend that switched to OTP in 95f2e27
