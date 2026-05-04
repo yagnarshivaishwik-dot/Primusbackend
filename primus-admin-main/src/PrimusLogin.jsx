@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { getApiBase, setApiBase } from "./utils/api";
+import { getApiBase } from "./utils/api";
 
 export default function PrimusLogin({ onLogin, allowedRoles }) {
   const [username, setUsername] = useState("");
@@ -69,12 +69,12 @@ export default function PrimusLogin({ onLogin, allowedRoles }) {
         </div>
 
         <form onSubmit={submit} className="space-y-4">
+          {/* Phase 3 (audit FE-C2): backend URL is fixed at build time via
+              VITE_API_BASE_URL. The previous "Change" prompt was a DNS-hijack
+              pivot. The server is shown for diagnostic visibility only and
+              cannot be edited at runtime. */}
           <div className="text-xs text-gray-400 -mt-2 mb-1">
-            Server: <span className="text-primary">{getApiBase()}</span>
-            <button type="button" className="ml-2 underline text-primary" onClick={() => {
-              const base = window.prompt("Set backend URL", getApiBase());
-              if (base) setApiBase(base);
-            }}>Change</button>
+            Server: <span className="text-primary">{getApiBase() || "(unconfigured)"}</span>
           </div>
 
           <div>

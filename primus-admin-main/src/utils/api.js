@@ -1,26 +1,55 @@
-const hostname = window.location.hostname;
-const isLocal =
+// Phase 3 (audit FE-C2 / B.8): the backend URL is fixed at build time via
+// VITE_API_BASE_URL. The previous version pulled the URL from localStorage
+// and exposed a window.prompt UI for the user to edit it — that turned the
+// login screen into a DNS-hijacking pivot (any compromised network or
+// social-engineering attack could redirect the admin to an attacker
+// backend, capture the JWT, and replay it against the real backend).
+//
+// Now: the URL is resolved purely from build-time env. There is no runtime
+// override path, so the value cannot be changed by the operator at the
+// kiosk. Local-development fallbacks remain ONLY when the page is loaded
+// from a private hostname.
+
+const hostname = (typeof window !== "undefined" && window.location?.hostname) || "";
+
+const isLocalHost =
   hostname === "localhost" ||
   hostname === "127.0.0.1" ||
   hostname.startsWith("192.168.") ||
   hostname.startsWith("10.") ||
   hostname.endsWith(".local");
 
-const rootHost = hostname.startsWith("www.") ? hostname.slice(4) : hostname;
-
-const ENV_BASE =
+const ENV_BASE_RAW =
   (typeof import.meta !== "undefined" &&
     import.meta.env &&
     import.meta.env.VITE_API_BASE_URL) ||
-  (isLocal ? `http://${hostname}:8000` : `https://api.${rootHost}`);
+  (isLocalHost ? `http://${hostname}:8000` : "");
 
-export function getApiBase() {
-  return localStorage.getItem("primus_api_base") || ENV_BASE;
+if (!ENV_BASE_RAW) {
+  // Build-time misconfiguration — fail fast and visibly so a bad deploy
+  // doesn't silently send credentials to undefined origins.
+  // eslint-disable-next-line no-console
+  console.error(
+    "[primus] VITE_API_BASE_URL is not set; the admin app will not reach the backend."
+  );
 }
 
-export function setApiBase(url) {
-  if (url && typeof url === "string") {
-    localStorage.setItem("primus_api_base", url.replace(/\/$/, ""));
+// Strip trailing slash exactly once.
+const ENV_BASE = ENV_BASE_RAW.replace(/\/$/, "");
+
+export function getApiBase() {
+  return ENV_BASE;
+}
+
+// setApiBase is preserved as a no-op for backwards compatibility with any
+// caller that still imports it. Production behavior is to ignore — the
+// only legal source of truth is VITE_API_BASE_URL.
+export function setApiBase(_url) {
+  if (typeof window !== "undefined" && window.console) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "[primus] setApiBase() is disabled in Phase 3+ — backend URL is set at build time via VITE_API_BASE_URL."
+    );
   }
 }
 
@@ -46,11 +75,29 @@ function writeQueue(q) {
   try { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); } catch { }
 }
 
+// Phase 3 (audit FE-C3): never persist Authorization or other auth
+// headers to localStorage. The queued envelope only carries non-auth
+// headers; on flush we re-attach the CURRENT bearer token via
+// authHeaders() so the request is signed with whatever JWT is valid at
+// retry time, not whatever was current when the request was queued.
+function stripAuthHeaders(headers) {
+  const out = {};
+  if (!headers) return out;
+  for (const [k, v] of Object.entries(headers)) {
+    const lower = String(k).toLowerCase();
+    if (lower === "authorization" || lower === "x-csrf-token" || lower.startsWith("x-pc-")) {
+      continue;
+    }
+    out[k] = v;
+  }
+  return out;
+}
+
 export async function postWithQueue(url, data, config = {}) {
   const attempt = async () => {
     return await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(config.headers || {}) },
+      headers: { 'Content-Type': 'application/json', ...(config.headers || {}), ...authHeaders() },
       body: JSON.stringify(data)
     });
   };
@@ -60,7 +107,7 @@ export async function postWithQueue(url, data, config = {}) {
     return await res.json().catch(() => ({}));
   } catch (e) {
     const q = readQueue();
-    q.push({ url, data, headers: config.headers || {} });
+    q.push({ url, data, headers: stripAuthHeaders(config.headers) });
     writeQueue(q);
     showToast('Action queued (offline). Will retry when online.');
     return null;
@@ -73,7 +120,15 @@ export async function flushQueue() {
   const next = [];
   for (const item of q) {
     try {
-      const res = await fetch(item.url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(item.headers || {}) }, body: JSON.stringify(item.data) });
+      const res = await fetch(item.url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...stripAuthHeaders(item.headers || {}),
+          ...authHeaders(),  // re-attach CURRENT auth at retry time
+        },
+        body: JSON.stringify(item.data),
+      });
       if (!res.ok) throw new Error('HTTP ' + res.status);
     } catch {
       next.push(item);
