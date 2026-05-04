@@ -743,7 +743,26 @@ async def forgot_password(
 
     Always returns {ok: true} regardless of whether the email is
     registered, so callers can't enumerate accounts.
+
+    Wrapped in a top-level try/except so ANY internal failure (DB issue,
+    PasswordResetToken schema drift, fastapi-mail config, etc.) returns
+    a clean {ok: true} to the caller instead of leaking a 500. The real
+    error is logged so operators can fix it without taking the reset
+    flow offline for users.
     """
+    try:
+        return await _forgot_password_inner(payload, db)
+    except Exception as exc:
+        import logging
+        import traceback
+        logging.getLogger("primus.auth").error(
+            "forgot_password crashed: %s\n%s",
+            exc, traceback.format_exc(),
+        )
+        return {"ok": True}
+
+
+async def _forgot_password_inner(payload: "ForgotPasswordIn", db: Session) -> dict:
     user = db.query(User).filter(User.email == payload.email).first()
     if not user:
         return {"ok": True}
