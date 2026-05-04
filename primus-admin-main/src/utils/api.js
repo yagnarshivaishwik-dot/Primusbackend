@@ -19,18 +19,26 @@ const isLocalHost =
   hostname.startsWith("10.") ||
   hostname.endsWith(".local");
 
+// Production fallback: when VITE_API_BASE_URL isn't baked into the build
+// (e.g. the env var was forgotten in the Vercel project settings), default
+// to the canonical Primus backend so HTTP + WebSocket calls still resolve
+// instead of falling back to "" and hitting the static host with 404s.
+// Override at build time with VITE_API_BASE_URL when deploying to a
+// different backend (staging, self-hosted, etc.).
+const PROD_FALLBACK_BASE = "https://api.primustech.in";
+
 const ENV_BASE_RAW =
   (typeof import.meta !== "undefined" &&
     import.meta.env &&
     import.meta.env.VITE_API_BASE_URL) ||
-  (isLocalHost ? `http://${hostname}:8000` : "");
+  (isLocalHost ? `http://${hostname}:8000` : PROD_FALLBACK_BASE);
 
 if (!ENV_BASE_RAW) {
-  // Build-time misconfiguration — fail fast and visibly so a bad deploy
-  // doesn't silently send credentials to undefined origins.
+  // Should be unreachable now that PROD_FALLBACK_BASE always supplies a
+  // value for non-local hosts, but keep the guard for defense in depth.
   // eslint-disable-next-line no-console
   console.error(
-    "[primus] VITE_API_BASE_URL is not set; the admin app will not reach the backend."
+    "[primus] No backend base URL resolved; the admin app will not reach the backend."
   );
 }
 
