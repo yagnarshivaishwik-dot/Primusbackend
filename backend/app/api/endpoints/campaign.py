@@ -1,15 +1,19 @@
 """Marketing campaign CRUD endpoints."""
+import logging
 from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import require_role
 from app.auth.context import AuthContext, get_auth_context
 from app.db.dependencies import get_cafe_db as get_db
 from app.db.models_cafe import Campaign
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -64,7 +68,8 @@ def create_campaign(
     ctx: AuthContext = Depends(get_auth_context),
     db: Session = Depends(get_db),
 ):
-    campaign = Campaign(
+    # Common fields (always safe).
+    fields = dict(
         name=data.name,
         type=data.type,
         content=data.content,
@@ -74,12 +79,29 @@ def create_campaign(
         start_date=data.start_date,
         end_date=data.end_date,
         active=data.active,
-        created_by=current_user.id,
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
     )
+
+    # `created_by` is a FK to users.id IN THE CAFE DB. The admin user lives
+    # in the GLOBAL DB, so its id may not exist in the cafe DB's users
+    # table → INSERT fails with sqlalchemy.exc.IntegrityError → 500. Try
+    # with created_by first; on FK violation, retry without it (the column
+    # is nullable on the model). Same defensive pattern would apply to any
+    # other cross-DB FK that ends up in cafe-scoped admin-CRUD endpoints.
+    campaign = Campaign(**fields, created_by=current_user.id)
     db.add(campaign)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        logger.warning(
+            "create_campaign: FK violation on created_by=%s — retrying without it (%s)",
+            current_user.id, exc.orig if hasattr(exc, "orig") else exc,
+        )
+        campaign = Campaign(**fields, created_by=None)
+        db.add(campaign)
+        db.commit()
     db.refresh(campaign)
     return campaign
 
