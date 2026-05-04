@@ -7,6 +7,10 @@ to the new entry; the default note is `"Automated rebuild."`.
 
 Format: `YYYY-MM-DD — vX.Y.Z — notes`. Most recent version on top.
 
+## v1.0.16 — 2026-05-04
+
+- rebuild against latest backend; bundles WS license_key + X-License-Key + heartbeat alias fixes from a07483e + admin URL fix from 8092ab7
+
 ## v1.0.15 — 2026-05-04
 
 - fix(realtime): multi-DB cafe routing via X-License-Key + license_key in WS device_auth/URL — heartbeat & WS auth now actually reach the per-cafe ClientPC row

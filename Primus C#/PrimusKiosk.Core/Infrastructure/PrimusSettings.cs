@@ -18,7 +18,18 @@ public sealed class PrimusSettings
     /// <summary>WSS base URL of the FastAPI realtime gateway, e.g. wss://api.primustech.in.</summary>
     public string WsBaseUrl { get; set; } = string.Empty;
 
-    /// <summary>Path to the provisioning token file used for first-run device pairing.</summary>
+    /// <summary>
+    /// Path to the one-time provisioning token file used for first-run device
+    /// pairing. The file is consumed and securely erased after the first
+    /// successful pairing exchange — see
+    /// <see cref="Device.ProvisioningTokenStore"/>. The long-lived device
+    /// credentials are then DPAPI-wrapped via
+    /// <see cref="Device.DeviceCredentialStore"/> at
+    /// <c>%ProgramData%\PrimusKiosk\device.bin</c>.
+    ///
+    /// Relative paths resolve to %ProgramData%\PrimusKiosk\&lt;path&gt; so the
+    /// token never lives in the user's profile.
+    /// </summary>
     public string ProvisioningTokenPath { get; set; } = "provisioning_token.txt";
 
     /// <summary>Long-poll command pull timeout in seconds.</summary>
