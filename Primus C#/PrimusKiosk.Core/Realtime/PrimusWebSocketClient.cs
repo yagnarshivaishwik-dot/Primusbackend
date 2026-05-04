@@ -202,7 +202,18 @@ public sealed class PrimusWebSocketClient : IPrimusRealtimeClient, IAsyncDisposa
         {
             try
             {
-                await SendAsync(new { @event = "ping", ts = DateTime.UtcNow.ToString("O") }, cancellationToken).ConfigureAwait(false);
+                // Backend's WebSocket dispatcher (backend/app/ws/pc.py) only refreshes
+                // pc.last_seen for {event:"heartbeat"}. Sending {event:"ping"} was a
+                // silent no-op that left the PC stuck on its initial device_auth
+                // last_seen value and got it marked offline by presence_monitor_loop
+                // ~45s later. Send the real event name with the hostname payload so
+                // the admin sees a current "Last seen" + machine name.
+                await SendAsync(new
+                {
+                    @event = "heartbeat",
+                    payload = new { hostname = Environment.MachineName },
+                    ts = DateTime.UtcNow.ToString("O"),
+                }, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {

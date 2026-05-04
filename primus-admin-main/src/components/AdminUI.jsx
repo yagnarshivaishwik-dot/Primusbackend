@@ -499,29 +499,40 @@ const PCManagement = () => {
                             )}
                         </div>
                         <div className="mt-6 flex flex-wrap gap-2">
+                            {/*
+                              Capability gating intentionally removed.
+                              The C# kiosk registers capabilities as a flat list (e.g.
+                              ["screenshot","heartbeat","command"]) but this UI used to
+                              read pc.capabilities.features.includes(...) — a key that
+                              never existed, which either threw or short-circuited every
+                              button to disabled.
+                              The backend's ALLOWED_COMMANDS allowlist (remote_command.py)
+                              is the actual source of truth; here we just gate on whether
+                              the PC is reachable (ws_connected OR recently seen).
+                            */}
                             <Button
                                 onClick={() => sendCmd(pc.id, 'lock')}
                                 variant="secondary"
                                 className="flex-1 text-xs"
-                                disabled={pc.capabilities && !pc.capabilities.features.includes('lock')}
+                                disabled={!pc.online}
                             >Lock</Button>
                             <Button
                                 onClick={() => sendCmd(pc.id, 'unlock')}
                                 variant="secondary"
                                 className="flex-1 text-xs"
-                                disabled={pc.capabilities && !pc.capabilities.features.includes('unlock')}
+                                disabled={!pc.online}
                             >Unlock</Button>
                             <Button
                                 onClick={() => sendCmd(pc.id, 'restart')}
                                 variant="secondary"
                                 className="flex-1 text-xs"
-                                disabled={pc.capabilities && !pc.capabilities.features.includes('restart')}
+                                disabled={!pc.online}
                             >Restart</Button>
                             <Button
                                 onClick={() => { const text = prompt('Message to display on PC'); if (text) sendCmd(pc.id, 'message', { text }); }}
                                 variant="secondary"
                                 className="flex-1 text-xs"
-                                disabled={pc.capabilities && !pc.capabilities.features.includes('message')}
+                                disabled={!pc.online}
                             >Message</Button>
                             <Button onClick={() => setChatPc(pc)} variant="secondary" className="flex-1 text-xs">
                                 <MessageSquare size={12} className="mr-1" /> Chat

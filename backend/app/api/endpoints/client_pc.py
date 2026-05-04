@@ -413,9 +413,15 @@ async def list_pcs(current_user=Depends(get_current_user), db: Session = Depends
 
     # Bugzilla #8 — surface a real "ws_connected" flag so admins can see
     # at a glance whether a queued command will reach the kiosk in real
-    # time vs. wait for the next HTTP long-poll cycle. Read-only snapshot
-    # of the in-memory _pc_connections registry.
+    # time vs. wait for the next HTTP long-poll cycle.
+    #
+    # ``_pc_connections`` is a per-process dict (only true for the worker
+    # holding the WS). ``get_alive_pc_ids`` reads the Redis-backed cluster
+    # presence set so multi-worker deployments report consistently.
     from app.ws.pc import _pc_connections
+    from app.utils.presence import get_alive_pc_ids
+
+    cluster_alive = await get_alive_pc_ids([pc.id for pc in pcs])
 
     now = datetime.now(UTC)
     # Anything seen within the last 90 s is considered online; matches
@@ -434,7 +440,7 @@ async def list_pcs(current_user=Depends(get_current_user), db: Session = Depends
         recently_seen = (
             seconds_since_seen is not None and seconds_since_seen <= online_window_seconds
         )
-        ws_connected = bool(_pc_connections.get(pc.id))
+        ws_connected = bool(_pc_connections.get(pc.id)) or pc.id in cluster_alive
 
         result.append({
             "id": pc.id,

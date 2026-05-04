@@ -13,6 +13,7 @@ from app.models import ClientPC, SystemEvent, User
 from app.ws.admin import broadcast_admin
 from app.ws.auth import WSAuthError, authenticate_ws_token, build_event
 from app.utils.cache import publish_invalidation
+from app.utils.presence import mark_ws_alive, mark_ws_dead
 
 router = APIRouter()
 
@@ -176,6 +177,10 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
         finally:
             db.close()
 
+        # Register this WS in the cluster-wide presence set so other workers
+        # can see ws_connected=True for this PC. Refreshed on every heartbeat.
+        await mark_ws_alive(pc_id)
+
         # Broadcast status change and invalidate cache (after db is closed)
         if status_changed:
             try:
@@ -227,8 +232,16 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
             event = data.get("event")
             payload = data.get("payload") or {}
 
-            # Heartbeat: update last_seen and surface status to admins
-            if event == "heartbeat":
+            # Heartbeat: update last_seen and surface status to admins.
+            # The C# clutchh kiosk's WebSocket loop ships {event:"ping"} as its
+            # keepalive — accept it as an alias so we don't silently drop every
+            # heartbeat from the new client (which would mark the PC offline
+            # 45s after presence_monitor_loop next runs).
+            if event in ("heartbeat", "ping"):
+                # Refresh cluster-wide presence TTL so any worker handling an
+                # admin /api/clientpc/ request sees this PC as ws_connected.
+                await mark_ws_alive(pc_id)
+
                 # Update last_seen so presence_monitor_loop knows this PC is alive.
                 # Also lookup current user for admin display.
                 user_name: str | None = None
@@ -331,6 +344,11 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
         remaining = _pc_connections.get(pc_id, [])
         if remaining:
             return
+
+        # Drop the PC from the cluster-wide WS presence set so other workers
+        # stop reporting ws_connected=True. The TTL would catch it eventually,
+        # but explicit cleanup avoids the 120s window of stale "online" state.
+        await mark_ws_dead(pc_id)
 
         # No connections remain — mark PC offline
         try:
