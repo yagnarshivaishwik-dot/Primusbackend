@@ -59,6 +59,8 @@ def _register_cors(app: FastAPI, is_production: bool) -> None:
         "https://api.primustech.in",
         "https://primusinfotech.com",
         "https://www.primusinfotech.com",
+        "https://primusinfotech.in",
+        "https://www.primusinfotech.in",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:3000",
@@ -67,6 +69,17 @@ def _register_cors(app: FastAPI, is_production: bool) -> None:
         "http://127.0.0.1:1420",
         "tauri://localhost",
     ]
+
+    # Defensive regex: even if an operator's .env has ALLOWED_ORIGINS set
+    # to the bare apex (https://primusadmin.in) and forgot the www. variant,
+    # browsers that get a 301 from primusadmin.in -> www.primusadmin.in
+    # will end up with an Origin: https://www.primusadmin.in header. Without
+    # this regex the user sees a CORS wall on every authenticated XHR/fetch
+    # while login (which is a "simple" request without preflight) appears to
+    # work. Regex matches both apex and www. for the canonical Primus domains.
+    primus_origin_regex = (
+        r"^https://(www\.)?(primustech|primusadmin|primusinfotech)\.(in|com)$"
+    )
 
     allow_all_cors = os.getenv("ALLOW_ALL_CORS", "false").lower() == "true"
 
@@ -96,6 +109,7 @@ def _register_cors(app: FastAPI, is_production: bool) -> None:
         app.add_middleware(
             CORSMiddleware,
             allow_origins=origins,
+            allow_origin_regex=primus_origin_regex,
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
