@@ -56,13 +56,32 @@ for v in venv .venv env; do
   fi
 done
 
-# ---------- 3. Source .env ----------
+# ---------- 3. Load .env ----------
+# We deliberately do NOT use `set -a; source .env`. That naive approach
+# breaks on common, valid .env values that contain unquoted spaces — e.g.
+# Gmail App Passwords (`MAIL_PASSWORD=wfcq egau rthj wlgj`), which bash
+# interprets as `MAIL_PASSWORD=wfcq` followed by the command `egau`.
+#
+# Instead, parse .env via python-dotenv (already a backend dependency)
+# which correctly handles unquoted spaces, surrounding quotes, comments,
+# and escapes. Then export each KEY into the current shell.
 [[ -f .env ]] || fail ".env not found in $(pwd). Copy .env.template -> .env first."
-info "Sourcing .env"
-set -a
-# shellcheck disable=SC1091
-source .env
-set +a
+info "Loading .env via python-dotenv"
+if ! python -c "import dotenv" >/dev/null 2>&1; then
+  fail "python-dotenv not installed in this venv. Run: pip install python-dotenv"
+fi
+# shellcheck disable=SC2046
+eval "$(
+  python - <<'PYEOF'
+import shlex
+from dotenv import dotenv_values
+
+for key, value in dotenv_values(".env").items():
+    if value is None:
+        continue
+    print(f"export {key}={shlex.quote(value)}")
+PYEOF
+)"
 
 [[ -n "${GLOBAL_DATABASE_URL:-}${DATABASE_URL:-}" ]] \
   || fail "Neither GLOBAL_DATABASE_URL nor DATABASE_URL is set after sourcing .env."
