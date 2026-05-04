@@ -514,25 +514,25 @@ const PCManagement = () => {
                                 onClick={() => sendCmd(pc.id, 'lock')}
                                 variant="secondary"
                                 className="flex-1 text-xs"
-                                disabled={!pc.online}
+                                disabled={pc.online === false || pc.status === 'offline'}
                             >Lock</Button>
                             <Button
                                 onClick={() => sendCmd(pc.id, 'unlock')}
                                 variant="secondary"
                                 className="flex-1 text-xs"
-                                disabled={!pc.online}
+                                disabled={pc.online === false || pc.status === 'offline'}
                             >Unlock</Button>
                             <Button
                                 onClick={() => sendCmd(pc.id, 'restart')}
                                 variant="secondary"
                                 className="flex-1 text-xs"
-                                disabled={!pc.online}
+                                disabled={pc.online === false || pc.status === 'offline'}
                             >Restart</Button>
                             <Button
                                 onClick={() => { const text = prompt('Message to display on PC'); if (text) sendCmd(pc.id, 'message', { text }); }}
                                 variant="secondary"
                                 className="flex-1 text-xs"
-                                disabled={!pc.online}
+                                disabled={pc.online === false || pc.status === 'offline'}
                             >Message</Button>
                             <Button onClick={() => setChatPc(pc)} variant="secondary" className="flex-1 text-xs">
                                 <MessageSquare size={12} className="mr-1" /> Chat

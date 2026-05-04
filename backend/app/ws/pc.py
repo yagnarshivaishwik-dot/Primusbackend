@@ -243,8 +243,14 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
                 await mark_ws_alive(pc_id)
 
                 # Update last_seen so presence_monitor_loop knows this PC is alive.
-                # Also lookup current user for admin display.
+                # Also lookup current user for admin display. Track whether the
+                # status flipped from a "stuck" state (offline/restarting/
+                # shutting_down) → online, so we can invalidate the cached
+                # /api/clientpc/ list and emit a pc.status SystemEvent. Without
+                # this, an admin doing a fresh fetch right after a kiosk reboot
+                # gets the cached "restarting" row and the PC appears stuck.
                 user_name: str | None = None
+                status_flipped_to_online = False
                 try:
                     db_hb = SessionLocal()
                     try:
@@ -253,6 +259,15 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
                             pc_obj.last_seen = datetime.now(UTC)
                             if pc_obj.status != "online":
                                 pc_obj.status = "online"
+                                status_flipped_to_online = True
+                                _flip_kwargs = dict(
+                                    type="pc.status",
+                                    pc_id=pc_obj.id,
+                                    payload={"status": "online", "reason": "heartbeat_recovery"},
+                                )
+                                if getattr(pc_obj, "cafe_id", None) is not None:
+                                    _flip_kwargs["cafe_id"] = pc_obj.cafe_id
+                                db_hb.add(SystemEvent(**_flip_kwargs))
                             db_hb.commit()
 
                             if pc_obj.current_user_id:
@@ -272,6 +287,18 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
 
                 if not user_name:
                     user_name = "Guest"
+
+                # Bust the admin's REST cache so a page reload doesn't resurrect
+                # the stale "restarting" / "offline" status the heartbeat just
+                # cleared.
+                if status_flipped_to_online:
+                    try:
+                        await publish_invalidation({
+                            "scope": "client_pc",
+                            "items": [{"type": "client_pc_list", "id": "*"}]
+                        })
+                    except Exception:
+                        pass
 
                 status_payload = {
                     "client_id": pc_id,
