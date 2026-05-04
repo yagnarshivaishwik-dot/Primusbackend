@@ -7,6 +7,10 @@ to the new entry; the default note is `"Automated rebuild."`.
 
 Format: `YYYY-MM-DD — vX.Y.Z — notes`. Most recent version on top.
 
+## v1.0.17 — 2026-05-04
+
+- fix(auth): wire OTP-based password reset (email + 6-digit code + new password) — clutchh UI was still using old token-link flow against backend that switched to OTP in 95f2e27
+
 ## v1.0.16 — 2026-05-04
 
 - rebuild against latest backend; bundles WS license_key + X-License-Key + heartbeat alias fixes from a07483e + admin URL fix from 8092ab7

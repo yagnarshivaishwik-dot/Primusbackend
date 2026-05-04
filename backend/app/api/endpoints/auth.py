@@ -1,20 +1,24 @@
-import hashlib
 import logging
 import secrets
 from datetime import UTC, datetime, timedelta
 
 import httpx
 import pyotp
-from argon2 import PasswordHasher
-from argon2 import exceptions as argon2_exceptions
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import jwt
 from jwt.exceptions import PyJWTError as JWTError
-from passlib.hash import bcrypt
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
+from app.api.dependencies.rate_limit import (
+    FORGOT_LIMIT,
+    LOGIN_LIMIT,
+    OTP_REQUEST_LIMIT,
+    OTP_VERIFY_LIMIT,
+    PASSWORD_CHANGE_LIMIT,
+    REGISTER_LIMIT,
+)
 from app.config import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     ALGORITHM,
@@ -26,11 +30,16 @@ from app.config import (
 from app.db.dependencies import get_global_db as get_db
 from app.models import User
 from app.schemas import UserOut, UserUpdate
+from app.utils.jwt_revocation import new_jti as _new_jti
+from app.utils.passwords import (
+    authenticate_and_maybe_rehash as _authenticate_and_maybe_rehash,
+    hash_password as _hash_password_v2,
+    verify_password as _verify_password_v2,
+)
 from app.utils.security import validate_password_strength
 
 router = APIRouter()
 
-ph = PasswordHasher(time_cost=3, memory_cost=65536, parallelism=2)
 logger = logging.getLogger(__name__)
 
 # ---- JWT Settings ----
@@ -117,63 +126,39 @@ def require_role(role: str):
 ## Registration: simple name/email/password
 
 
-# ---- Password normalization & authenticate helper ----
-
-
-def _normalize_password(password: str) -> str:
-    """
-    Normalize user passwords before hashing/verifying.
-
-    - Allows arbitrarily long passwords without hitting bcrypt's 72‑byte limit
-      by hashing the UTF‑8 password with SHA‑256 first.
-    - Keeps one consistent hashing scheme everywhere.
-    """
-    # Encode as UTF‑8 and hash; hex digest is always 64 ASCII chars.
-    return hashlib.sha256(password.encode("utf-8")).hexdigest()
-
-
-def _is_argon2_hash(hash_str: str) -> bool:
-    return hash_str.startswith("$argon2")
-
-
 # ---- Authenticate Helper ----
+#
+# Phase 1: password verification is now delegated to app.utils.passwords,
+# which removes the SHA-256 pre-hash (audit BE-H2 / SEC-H2) and supports a
+# rolling migration from any of {modern Argon2id, legacy Argon2id-of-SHA256,
+# bcrypt, bare SHA-256 hex}. On a successful match against any legacy
+# format, the user's password_hash is rewritten to the modern format in the
+# same DB transaction — no forced password reset for legacy users.
+
 def authenticate_user(db, email_or_username, password):
-    # Support login by email or username if needed
+    """Verify credentials and rolling-migrate the hash on success."""
     user = (
         db.query(User)
         .filter((User.email == email_or_username) | (User.name == email_or_username))
         .first()
     )
     if not user:
-        return None
-
-    normalized = _normalize_password(password)
-    stored = user.password_hash or ""
-
-    # Prefer Argon2id for new and migrated users
-    if _is_argon2_hash(stored):
+        # Constant-ish work even on miss — verify against a dummy hash so the
+        # response time of "no such user" matches "wrong password". This is a
+        # cheap mitigation against username enumeration via timing.
         try:
-            if ph.verify(stored, normalized):
-                # Rehash if parameters changed
-                if ph.check_needs_rehash(stored):
-                    user.password_hash = ph.hash(normalized)
-                    db.add(user)
-                    db.commit()
-                return user
-        except argon2_exceptions.VerifyMismatchError:
-            return None
-        except Exception:
-            return None
-
-    # Backwards-compatible bcrypt verification for existing users
-    if bcrypt.verify(normalized, stored):
-        # Optionally migrate to Argon2id on successful login
-        try:
-            user.password_hash = ph.hash(normalized)
-            db.add(user)
-            db.commit()
+            _verify_password_v2(password, "$argon2id$v=19$m=65536,t=3,p=2$unused$"
+                                          "0000000000000000000000000000000000000000000")
         except Exception:
             pass
+        return None
+
+    def _persist_new_hash(new_hash: str) -> None:
+        user.password_hash = new_hash
+        db.add(user)
+        db.commit()
+
+    if _authenticate_and_maybe_rehash(password, user.password_hash, on_rehash=_persist_new_hash):
         return user
     return None
 
@@ -181,18 +166,25 @@ def authenticate_user(db, email_or_username, password):
 # ---- JWT Token Creation ----
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """
-    Create a JWT access token.
+    Create a JWT access token (legacy data-dict signature).
 
-    Args:
-        data: Dictionary containing token claims (e.g., {'sub': email, 'role': role})
-        expires_delta: Optional custom expiration time. If None, uses ACCESS_TOKEN_EXPIRE_MINUTES from config.
+    Phase 1 changes:
+      - Always sets `type: "access"` so this token cannot be confused with a
+        refresh token by decode_access_token().
+      - Always sets `jti` (random per-token id) so the token can be revoked
+        via the Redis revocation store. Callers that already supplied a
+        jti in `data` are honored.
+      - Always sets `iat` (issued-at).
 
     Returns:
         Encoded JWT token string
     """
     to_encode = data.copy()
     expire = datetime.now(UTC) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    to_encode.update({"exp": expire})
+    to_encode.setdefault("type", "access")
+    to_encode.setdefault("jti", _new_jti())
+    to_encode.setdefault("iat", datetime.now(UTC))
+    to_encode["exp"] = expire
     return jwt.encode(to_encode, JWT_SECRET, algorithm=ALGORITHM)
 
 
@@ -254,6 +246,7 @@ async def login(
     response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
+    _rate_limited: None = Depends(LOGIN_LIMIT),
 ):
     """authenticate user and set HttpOnly cookie."""
     from fastapi import Response
@@ -384,8 +377,11 @@ async def login(
                 },
             )
 
-    # Create enriched access token
-    access_token = create_enriched_token(
+    # Create enriched access token (Phase 1: also returns the jti so we can
+    # bind it to the refresh-token row for force-logout revocation).
+    from app.auth.tokens import mint_access_token
+
+    access_token, access_jti, _access_exp = mint_access_token(
         email=user.email,
         user_id=user.id,
         cafe_id=resolved_cafe_id,
@@ -393,13 +389,15 @@ async def login(
         role=resolved_role,
     )
 
-    # Create refresh token
+    # Create refresh token, binding it to the access token's jti so a future
+    # force-logout can revoke both at once.
     refresh_token = create_refresh_token(
         db,
         user_id=user.id,
         cafe_id=resolved_cafe_id,
         device_id=device_id,
         ip_address=client_ip,
+        access_jti=access_jti,
     )
 
     # SET HTTPONLY COOKIES
@@ -489,8 +487,10 @@ def refresh_tokens(request: Request, response: Response, db: Session = Depends(g
 
     client_ip = str(request.client.host) if request.client else None
 
-    # Issue new tokens
-    new_access = create_enriched_token(
+    # Issue new tokens (Phase 1: bind access jti onto the refresh row).
+    from app.auth.tokens import mint_access_token
+
+    new_access, new_access_jti, _ = mint_access_token(
         email=user.email,
         user_id=user.id,
         cafe_id=rt.cafe_id,
@@ -503,6 +503,7 @@ def refresh_tokens(request: Request, response: Response, db: Session = Depends(g
         cafe_id=rt.cafe_id,
         device_id=rt.device_id,
         ip_address=client_ip,
+        access_jti=new_access_jti,
     )
 
     response.set_cookie(
@@ -543,7 +544,9 @@ class RegisterIn(BaseModel):
 
 @router.post("/register")
 def register_user(
+    request: Request,
     body: RegisterIn | None = None,
+    _rate_limited: None = Depends(REGISTER_LIMIT),
     name: str = Form(None),
     email: str = Form(None),
     password: str = Form(None),
@@ -595,10 +598,11 @@ def register_user(
         # This prevents user enumeration attacks
         return {"ok": True}
 
-    # Hash normalized password with Argon2id (preferred) while keeping bcrypt
-    # verification for legacy accounts via authenticate_user().
-    normalized = _normalize_password(reg_password)
-    hashed = ph.hash(normalized)
+    # Phase 1: hash with Argon2id directly. No SHA-256 pre-hash. Legacy
+    # accounts created with the old format are still accepted on login via
+    # authenticate_user() and rolling-migrated to the new format on first
+    # successful login.
+    hashed = _hash_password_v2(reg_password)
     # Parse birthdate if provided
     bd = None
     if reg_birthdate:
@@ -680,7 +684,11 @@ _RESET_OTP_TTL = timedelta(minutes=10)
 
 
 @router.post("/password/forgot")
-def forgot_password(payload: ForgotPasswordIn, db: Session = Depends(get_db)):
+async def forgot_password(
+    payload: ForgotPasswordIn,
+    db: Session = Depends(get_db),
+    _rate_limited: None = Depends(FORGOT_LIMIT),
+):
     """Email the user a 6-digit OTP to begin a password reset.
 
     Always returns {ok: true} regardless of whether the email is
@@ -711,18 +719,46 @@ def forgot_password(payload: ForgotPasswordIn, db: Session = Depends(get_db)):
     db.commit()
 
     # Send the raw OTP to the user; only the hash is in the DB.
+    # Use the real fastapi-mail-backed sender from app.utils.email — the
+    # one in app.utils.auth is a no-op stub that was silently swallowing
+    # every reset email and leaving users unable to recover their account.
     try:
-        from app.utils.auth import send_email
+        from app.utils.email import send_email as send_email_async
 
-        body = (
-            f"Your Primus password reset code is: {otp}\n\n"
-            f"It expires in 10 minutes. If you didn't request this, "
-            f"you can ignore this email."
-        )
-        send_email(user.email, "Your password reset code", body)
-    except Exception:
+        subject = "Here is your OTP to reset your Primus password"
+        body = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; color: #1f2937;">
+                <h2 style="color: #E8364F; margin-bottom: 4px;">Reset your password</h2>
+                <p>Hi {user.email},</p>
+                <p>Here is the OTP to reset your password:</p>
+                <p style="font-size: 32px; font-weight: bold; letter-spacing: 8px;
+                          background: #f3f4f6; padding: 16px 24px; border-radius: 8px;
+                          display: inline-block; margin: 12px 0;">
+                    {otp}
+                </p>
+                <p>This code expires in <b>10 minutes</b>. Enter it in the
+                Primus reset password screen to choose a new password.</p>
+                <p style="color: #6b7280; font-size: 13px;">
+                    If you didn't request this, you can safely ignore this email —
+                    your password will stay the same.
+                </p>
+                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
+                <p style="color: #9ca3af; font-size: 12px;">
+                    Sent automatically by Primus. Don't reply to this email.
+                </p>
+            </body>
+        </html>
+        """
+        await send_email_async([user.email], subject, body)
+    except Exception as exc:  # pragma: no cover - email infra issues
         # Email delivery failure shouldn't reveal user existence either.
-        pass
+        # Log so operators can diagnose SMTP issues without surfacing to caller.
+        import logging
+        logging.getLogger("primus.auth").warning(
+            "forgot_password: email send failed for user_id=%s: %s",
+            user.id, exc,
+        )
     return {"ok": True}
 
 
@@ -733,7 +769,11 @@ class ResetPasswordIn(BaseModel):
 
 
 @router.post("/password/reset")
-def reset_password(payload: ResetPasswordIn, db: Session = Depends(get_db)):
+def reset_password(
+    payload: ResetPasswordIn,
+    db: Session = Depends(get_db),
+    _rate_limited: None = Depends(FORGOT_LIMIT),
+):
     """Verify the email + OTP and set a new password.
 
     Returns a uniform "Invalid or expired code" for any failure that
@@ -775,10 +815,19 @@ def reset_password(payload: ResetPasswordIn, db: Session = Depends(get_db)):
             detail="This code has expired — request a new one",
         )
 
-    normalized = _normalize_password(payload.new_password)
-    user.password_hash = ph.hash(normalized)
+    user.password_hash = _hash_password_v2(payload.new_password)
     rec.used = True
     db.commit()
+
+    # Defensive: revoke every active session for this user so a leaked
+    # access token from before the reset cannot survive.
+    try:
+        from app.auth.tokens import revoke_all_refresh_tokens
+
+        revoke_all_refresh_tokens(db, user_id=user.id)
+    except Exception:
+        logger.exception("password reset: failed to revoke active sessions")
+
     return {"ok": True}
 
 
