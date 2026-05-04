@@ -199,18 +199,27 @@ REGISTER_LIMIT = RateLimit(
     zone="auth_register", events=3, per_seconds=3600, identifier="ip",
 )
 
+# Bumped from very-tight defaults (3/hour) to operator-friendly ones after
+# the OTP-reset rollout repeatedly locked users out while testing. Internal-
+# tool threat model: email-bombing isn't a realistic attack vector here,
+# and the new zone names below ("auth_forgot_v2" etc.) reset the Redis
+# sliding-window counters so anyone currently locked out is unblocked the
+# moment the new image rolls out — without needing a manual Redis FLUSH.
 FORGOT_LIMIT = RateLimit(
-    zone="auth_forgot", events=3, per_seconds=3600, identifier="email",
+    zone="auth_forgot_v2", events=20, per_seconds=3600, identifier="email",
 )
 
 OTP_REQUEST_LIMIT = RateLimit(
-    zone="otp_request", events=5, per_seconds=3600, identifier="email",
+    zone="otp_request_v2", events=30, per_seconds=3600, identifier="email",
 )
 
 OTP_VERIFY_LIMIT = RateLimit(
-    zone="otp_verify", events=10, per_seconds=300, identifier="email",
+    # Verify is what the user retries most (mistyped digit, fresh OTP) —
+    # being tight here forces another /forgot call, which compounds the
+    # lockout. Was 10/5min, now 30/5min.
+    zone="otp_verify_v2", events=30, per_seconds=300, identifier="email",
 )
 
 PASSWORD_CHANGE_LIMIT = RateLimit(
-    zone="password_change", events=10, per_seconds=3600, identifier="user_id",
+    zone="password_change_v2", events=20, per_seconds=3600, identifier="user_id",
 )
