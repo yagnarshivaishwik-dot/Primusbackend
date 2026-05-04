@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# =============================================================================
+# setup_superadmin_azure.sh
+# One-shot SuperAdmin setup for the Primus Azure VM.
+#
+# What it does:
+#   1. Verifies you are in the backend root (where app/main.py lives).
+#   2. Activates a Python virtualenv if one exists (venv / .venv / env).
+#   3. Sources backend/.env so DATABASE_URL etc. are available.
+#   4. Runs scripts/seed_superadmin.py with --force (idempotent: creates
+#      the row if missing, updates the password/role if it already exists).
+#   5. Smoke-tests POST /api/internal/auth/login against the local backend.
+#
+# Run on the Azure VM, from the backend root:
+#   ssh azureuser@20.55.214.91
+#   cd /opt/primus/backend          # or wherever you cloned the repo
+#   git pull origin main            # make sure this script is present
+#   bash scripts/setup_superadmin_azure.sh
+#
+# Override anything via env vars, e.g.:
+#   SUPERADMIN_PASSWORD='other-pass' bash scripts/setup_superadmin_azure.sh
+#
+# SECURITY: the default password below is convenient but well-known.
+# Rotate it after first login by re-running this script with a stronger
+# SUPERADMIN_PASSWORD env var, or via the Change Password flow in the UI.
+# =============================================================================
+set -e
+
+# ---------- Defaults (override via env) ----------
+SUPERADMIN_USERNAME="${SUPERADMIN_USERNAME:-primus}"
+SUPERADMIN_EMAIL="${SUPERADMIN_EMAIL:-admin@primusadmin.in}"
+SUPERADMIN_PASSWORD="${SUPERADMIN_PASSWORD:-Vaishwik@123}"
+SUPERADMIN_FIRST_NAME="${SUPERADMIN_FIRST_NAME:-Primus}"
+SUPERADMIN_LAST_NAME="${SUPERADMIN_LAST_NAME:-Admin}"
+API_BASE="${API_BASE:-http://localhost:8000}"
+
+# ---------- Tiny output helpers ----------
+info()  { printf '\033[0;36m==>\033[0m %s\n' "$*"; }
+ok()    { printf '\033[0;32mOK \033[0m %s\n' "$*"; }
+warn()  { printf '\033[1;33mWARN\033[0m %s\n' "$*"; }
+fail()  { printf '\033[0;31mFAIL\033[0m %s\n' "$*"; exit 1; }
+
+# ---------- 1. Sanity ----------
+[[ -f app/main.py ]] \
+  || fail "Run from the backend root (where app/main.py lives). Currently in: $(pwd)"
+[[ -f scripts/seed_superadmin.py ]] \
+  || fail "scripts/seed_superadmin.py missing. Run 'git pull origin main' first."
+
+# ---------- 2. Activate venv (best-effort) ----------
+for v in venv .venv env; do
+  if [[ -f "$v/bin/activate" ]]; then
+    info "Activating venv: $v"
+    # shellcheck disable=SC1090
+    source "$v/bin/activate"
+    break
+  fi
+done
+
+# ---------- 3. Source .env ----------
+[[ -f .env ]] || fail ".env not found in $(pwd). Copy .env.template -> .env first."
+info "Sourcing .env"
+set -a
+# shellcheck disable=SC1091
+source .env
+set +a
+
+[[ -n "${GLOBAL_DATABASE_URL:-}${DATABASE_URL:-}" ]] \
+  || fail "Neither GLOBAL_DATABASE_URL nor DATABASE_URL is set after sourcing .env."
+
+db_host="$(printf '%s' "${GLOBAL_DATABASE_URL:-$DATABASE_URL}" | sed 's|.*@||')"
+info "Target Postgres: $db_host"
+
+# ---------- 4. Run the seed ----------
+info "Seeding SuperAdmin (username=$SUPERADMIN_USERNAME, email=$SUPERADMIN_EMAIL)"
+SUPERADMIN_USERNAME="$SUPERADMIN_USERNAME" \
+SUPERADMIN_EMAIL="$SUPERADMIN_EMAIL" \
+SUPERADMIN_PASSWORD="$SUPERADMIN_PASSWORD" \
+SUPERADMIN_FIRST_NAME="$SUPERADMIN_FIRST_NAME" \
+SUPERADMIN_LAST_NAME="$SUPERADMIN_LAST_NAME" \
+python scripts/seed_superadmin.py --force --no-prompt
+
+# ---------- 5. Smoke test ----------
+info "Smoke test: $API_BASE/api/internal/auth/login"
+resp_body="$(mktemp)"
+http_code="$(
+  curl -sS -o "$resp_body" -w '%{http_code}' \
+       -X POST "$API_BASE/api/internal/auth/login" \
+       -H 'content-type: application/json' \
+       -d "{\"username\":\"$SUPERADMIN_USERNAME\",\"password\":\"$SUPERADMIN_PASSWORD\"}" \
+  || echo "000"
+)"
+if [[ "$http_code" == "200" ]] && grep -q access_token "$resp_body"; then
+  ok "Login returned 200 with access_token."
+else
+  warn "Login probe returned HTTP $http_code. Response (first 5 lines):"
+  head -5 "$resp_body" || true
+  warn "(If the backend isn't running on $API_BASE, this is expected. Try from your laptop against the public URL.)"
+fi
+rm -f "$resp_body"
+
+# ---------- Done ----------
+cat <<EOF
+
+============================================================
+SuperAdmin ready.
+  Username: $SUPERADMIN_USERNAME
+  Email:    $SUPERADMIN_EMAIL
+  Password: $SUPERADMIN_PASSWORD
+
+Open your Vercel URL and log in with those credentials.
+Re-run this script anytime to reset the password (idempotent).
+============================================================
+EOF
