@@ -9,15 +9,69 @@ from datetime import datetime, UTC
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.db.global_db import global_session_factory as SessionLocal
-from app.models import ClientPC, SystemEvent, User
+from app.db.dependencies import MULTI_DB_ENABLED
+from app.db.router import cafe_db_router
 from app.ws.admin import broadcast_admin
 from app.ws.auth import WSAuthError, authenticate_ws_token, build_event
 from app.utils.cache import publish_invalidation
 from app.utils.presence import mark_ws_alive, mark_ws_dead
 
+# Pick the right ClientPC / SystemEvent model class for the DB mode at module
+# load time. In multi-DB mode the per-cafe schema has no cafe_id column (each
+# DB IS a cafe), so we use the cafe-scoped models. In single-DB mode the
+# legacy global schema with cafe_id columns is correct. ``User`` always lives
+# in the global DB, so it's imported unconditionally from app.models.
+if MULTI_DB_ENABLED:
+    from app.db.models_cafe import ClientPC, SystemEvent
+    from app.models import User
+else:
+    from app.models import ClientPC, SystemEvent, User  # type: ignore[no-redef]
+
 router = APIRouter()
 
 _pc_connections: dict[int, list[WebSocket]] = {}
+
+
+def _resolve_cafe_id_from_license(license_key: str) -> int | None:
+    """Look up cafe_id for a license_key from the global DB. Returns None on miss."""
+    if not license_key:
+        return None
+    try:
+        from app.models import License  # legacy global model — License always lives globally
+        gdb = SessionLocal()
+        try:
+            lic = gdb.query(License).filter_by(key=license_key).first()
+            if lic and lic.cafe_id is not None:
+                return int(lic.cafe_id)
+        finally:
+            gdb.close()
+    except Exception:
+        pass
+    return None
+
+
+def _open_pc_session(license_key: str | None):
+    """
+    Open a SQLAlchemy session pointed at the database that holds this PC's row.
+
+    In multi-DB mode the WS endpoint only knows pc_id — but pc_id is per-cafe,
+    so we MUST resolve cafe_id first (via the License table in the global DB)
+    and then open a session against ``primus_cafe_<cafe_id>`` / similar. The
+    kiosk includes its license_key in the device_auth payload (and in the
+    URL query string as a fallback) for exactly this reason.
+
+    In single-DB mode there's only one DB, so we just return the global session.
+    Returns ``(session, cafe_id)``. ``cafe_id`` is None in single-DB mode.
+    """
+    if not MULTI_DB_ENABLED:
+        return SessionLocal(), None
+    cafe_id = _resolve_cafe_id_from_license(license_key) if license_key else None
+    if cafe_id is None:
+        # No license_key means we can't route to the cafe DB. Fall back to
+        # the global session so the caller can still raise a clean
+        # WSAuthError, but the lookup will return None.
+        return SessionLocal(), None
+    return cafe_db_router.get_session(cafe_id), cafe_id
 
 
 async def notify_pc(pc_id: int, payload: str):
@@ -73,7 +127,19 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
             raise WSAuthError("First message must be auth or device_auth")
 
         event_type = msg.get("event")
-        db = SessionLocal()
+
+        # Multi-DB routing: PC records live in per-cafe databases under
+        # MULTI_DB_ENABLED, so we need the license_key (kiosk → cafe mapping)
+        # to know which DB to query. The kiosk sends license_key in two places
+        # for redundancy: (1) the device_auth payload, and (2) the URL query
+        # string. The auth flow pulls from payload; the URL fallback covers
+        # the JWT "auth" path used by browser admins (also rare on this WS).
+        envelope_payload = msg.get("payload") or {}
+        license_key = envelope_payload.get("license_key")
+        if not license_key:
+            license_key = websocket.query_params.get("license_key")
+
+        db, cafe_db_id = _open_pc_session(license_key)
         status_changed = False
         pc_hostname = None
         try:
@@ -112,13 +178,17 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
                 db.commit()
 
                 if prev_status != "online":
-                    event = SystemEvent(
+                    # Cafe-scoped SystemEvent has no cafe_id column in
+                    # multi-DB mode (the DB itself IS the cafe). Only attach
+                    # cafe_id when the column exists (single-DB legacy schema).
+                    _evt_kwargs = dict(
                         type="pc.status",
-                        cafe_id=pc.cafe_id,
                         pc_id=pc.id,
                         payload={"status": "online", "reason": "ws_reconnect"},
                     )
-                    db.add(event)
+                    if not MULTI_DB_ENABLED and getattr(pc, "cafe_id", None) is not None:
+                        _evt_kwargs["cafe_id"] = pc.cafe_id
+                    db.add(SystemEvent(**_evt_kwargs))
                     db.commit()
                     status_changed = True
 
@@ -178,18 +248,22 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
                 db.commit()
 
                 if prev_status != "online":
-                    event = SystemEvent(
+                    _evt_kwargs = dict(
                         type="pc.status",
-                        cafe_id=pc.cafe_id,
                         pc_id=pc.id,
                         payload={"status": "online", "reason": "ws_reconnect"},
                     )
-                    db.add(event)
+                    if not MULTI_DB_ENABLED and getattr(pc, "cafe_id", None) is not None:
+                        _evt_kwargs["cafe_id"] = pc.cafe_id
+                    db.add(SystemEvent(**_evt_kwargs))
                     db.commit()
                     status_changed = True
 
             pc_hostname = pc.name
-            pc_cafe_id = pc.cafe_id
+            # In multi-DB mode the cafe-scoped ClientPC has no cafe_id column;
+            # use the cafe_id we resolved from the license_key when opening
+            # the session. In single-DB mode pc.cafe_id is the source of truth.
+            pc_cafe_id = getattr(pc, "cafe_id", None) or cafe_db_id
         finally:
             db.close()
 
@@ -268,7 +342,11 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
                 user_name: str | None = None
                 status_flipped_to_online = False
                 try:
-                    db_hb = SessionLocal()
+                    # Heartbeat must hit the SAME DB the auth handler picked
+                    # — for multi-DB that's the per-cafe DB resolved from
+                    # license_key. Use _open_pc_session with the license_key
+                    # captured at auth time (in scope via closure-ish var).
+                    db_hb, _ = _open_pc_session(license_key)
                     try:
                         pc_obj = db_hb.query(ClientPC).filter_by(id=pc_id).first()
                         if pc_obj:
@@ -281,21 +359,27 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
                                     pc_id=pc_obj.id,
                                     payload={"status": "online", "reason": "heartbeat_recovery"},
                                 )
-                                if getattr(pc_obj, "cafe_id", None) is not None:
+                                if not MULTI_DB_ENABLED and getattr(pc_obj, "cafe_id", None) is not None:
                                     _flip_kwargs["cafe_id"] = pc_obj.cafe_id
                                 db_hb.add(SystemEvent(**_flip_kwargs))
                             db_hb.commit()
 
                             if pc_obj.current_user_id:
-                                user_obj = (
-                                    db_hb.query(User).filter_by(id=pc_obj.current_user_id).first()
-                                )
-                                if user_obj:
-                                    user_name = (
-                                        getattr(user_obj, "name", None)
-                                        or f"{getattr(user_obj, 'first_name', '')} {getattr(user_obj, 'last_name', '')}".strip()
-                                        or getattr(user_obj, "email", "")
+                                # User table lives in the global DB, not the
+                                # cafe DB. Open a global session for the lookup.
+                                gdb = SessionLocal()
+                                try:
+                                    user_obj = (
+                                        gdb.query(User).filter_by(id=pc_obj.current_user_id).first()
                                     )
+                                    if user_obj:
+                                        user_name = (
+                                            getattr(user_obj, "name", None)
+                                            or f"{getattr(user_obj, 'first_name', '')} {getattr(user_obj, 'last_name', '')}".strip()
+                                            or getattr(user_obj, "email", "")
+                                        )
+                                finally:
+                                    gdb.close()
                     finally:
                         db_hb.close()
                 except Exception:
@@ -393,9 +477,12 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
         # but explicit cleanup avoids the 120s window of stale "online" state.
         await mark_ws_dead(pc_id)
 
-        # No connections remain — mark PC offline
+        # No connections remain — mark PC offline.
+        # Use the same per-cafe DB the auth handler resolved; falling back to
+        # global session in single-DB mode. ``license_key`` is in scope from
+        # the outer try-block where we read it from the auth envelope.
         try:
-            db = SessionLocal()
+            db, _ = _open_pc_session(license_key)
             try:
                 pc = db.query(ClientPC).filter_by(id=pc_id).first()
                 if pc and pc.status != "offline":

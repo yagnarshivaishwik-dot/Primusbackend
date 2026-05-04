@@ -113,7 +113,16 @@ public sealed class PrimusWebSocketClient : IPrimusRealtimeClient, IAsyncDisposa
                     continue;
                 }
 
-                var url = new Uri($"{_settings.WsBaseUrl.TrimEnd('/')}/ws/pc/{creds.PcId}");
+                // license_key in the query string lets the backend's multi-DB
+                // router resolve which per-cafe database holds this PC record
+                // BEFORE we do any work in the WS handler. Without this hint,
+                // the handler queries the global DB (where ClientPC doesn't
+                // live in multi-DB mode), gets None, and closes the socket
+                // immediately with WSAuthError("PC not found").
+                var licenseQuery = string.IsNullOrWhiteSpace(creds.LicenseKey)
+                    ? string.Empty
+                    : $"?license_key={Uri.EscapeDataString(creds.LicenseKey)}";
+                var url = new Uri($"{_settings.WsBaseUrl.TrimEnd('/')}/ws/pc/{creds.PcId}{licenseQuery}");
                 _socket = new ClientWebSocket();
                 _socket.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
 
@@ -186,6 +195,7 @@ public sealed class PrimusWebSocketClient : IPrimusRealtimeClient, IAsyncDisposa
             payload = new
             {
                 pc_id = creds.PcId,
+                license_key = creds.LicenseKey,  // multi-DB cafe routing hint
                 signature,
                 timestamp,
             },

@@ -100,7 +100,11 @@ public sealed class HmacSigningHandler : DelegatingHandler
         // Strip any stale headers a caller might have set manually, then apply
         // the fresh set. TryAddWithoutValidation silently no-ops on dupes so
         // we Remove first to keep the pipeline deterministic under retries.
-        foreach (var h in new[] { "X-PC-ID", "X-Device-Signature", "X-Device-Timestamp", "X-Device-Nonce" })
+        // X-License-Key is REQUIRED in multi-DB mode — backend's
+        // _extract_cafe_id (backend/app/db/dependencies.py) uses it to resolve
+        // cafe_id and route to the right per-cafe Postgres database. Without
+        // it, /api/clientpc/heartbeat returns 400 "cafe_id is required".
+        foreach (var h in new[] { "X-PC-ID", "X-Device-Signature", "X-Device-Timestamp", "X-Device-Nonce", "X-License-Key" })
         {
             request.Headers.Remove(h);
         }
@@ -108,6 +112,10 @@ public sealed class HmacSigningHandler : DelegatingHandler
         request.Headers.TryAddWithoutValidation("X-Device-Signature", signature);
         request.Headers.TryAddWithoutValidation("X-Device-Timestamp", timestamp);
         request.Headers.TryAddWithoutValidation("X-Device-Nonce", nonce);
+        if (!string.IsNullOrWhiteSpace(creds.LicenseKey))
+        {
+            request.Headers.TryAddWithoutValidation("X-License-Key", creds.LicenseKey);
+        }
 
         return await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
     }
