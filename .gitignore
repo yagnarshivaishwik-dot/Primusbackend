@@ -58,3 +58,6 @@ load_test_state.json
 About-us/
 primus-admin/
 Super-Admin/
+
+# Primus Client build output (C# app + Inno Setup installer artifacts — permanent location)
+Primus C#/

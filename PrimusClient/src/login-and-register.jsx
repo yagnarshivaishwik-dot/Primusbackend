@@ -3,27 +3,9 @@ import axios from "axios";
 import { Mail, Lock, User, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { getApiBase, setApiBase, presetApiBases, showToast, csrfHeaders } from "./utils/api";
 
-// Google Web Client ID from environment
-const GOOGLE_WEB_CLIENT_ID = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID || "";
-
-// Load Google Identity Services script
-let _gsiLoading = null;
-function loadGsiScript() {
-    if (window.google && window.google.accounts && window.google.accounts.id) return Promise.resolve();
-    if (_gsiLoading) return _gsiLoading;
-    _gsiLoading = new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = 'https://accounts.google.com/gsi/client';
-        s.async = true;
-        s.defer = true;
-        s.onload = () => resolve();
-        s.onerror = () => reject(new Error('Failed to load Google Identity Services'));
-        document.head.appendChild(s);
-    });
-    return _gsiLoading;
-}
-
-// Social callback listener
+// Social callback listener — picks up ?token=... when the backend redirects
+// back to the kiosk after a successful OAuth round-trip. Also accepts a
+// postMessage from a popup window if one is ever used.
 function SocialCallbackListener({ onLogin }) {
     useEffect(() => {
         const urlHandler = () => {
@@ -52,53 +34,71 @@ function SocialCallbackListener({ onLogin }) {
     return null;
 }
 
-// Google button component
-function GoogleButton({ onLoginSuccess }) {
-    const btnRef = React.useRef(null);
-    useEffect(() => {
-        let mounted = true;
-        (async () => {
-            try {
-                await loadGsiScript();
-                if (!mounted) return;
-                window.google.accounts.id.initialize({
-                    client_id: GOOGLE_WEB_CLIENT_ID,
-                    callback: async (response) => {
-                        try {
-                            const base = getApiBase().replace(/\/$/, "");
-                            const res = await axios.post(`${base}/api/social/google/idtoken`, {
-                                id_token: response.credential,
-                                client_id: GOOGLE_WEB_CLIENT_ID
-                            }, { headers: { 'Content-Type': 'application/json', ...csrfHeaders() } });
-                            const token = res?.data?.access_token;
-                            if (token) {
-                                localStorage.setItem('primus_jwt', token);
-                                if (typeof onLoginSuccess === 'function') onLoginSuccess(token);
-                                showToast('Signed in with Google');
-                            } else {
-                                showToast('Google sign-in failed');
-                            }
-                        } catch (e) {
-                            showToast('Google sign-in failed');
-                        }
-                    },
-                });
-                if (btnRef.current) {
-                    window.google.accounts.id.renderButton(btnRef.current, {
-                        type: 'standard',
-                        theme: 'filled_black',
-                        size: 'large',
-                        text: 'continue_with',
-                        logo_alignment: 'center',
-                        shape: 'rectangular',
-                        width: btnRef.current.offsetWidth,
-                    });
-                }
-            } catch (_) { }
-        })();
-        return () => { mounted = false; };
-    }, [onLoginSuccess]);
-    return <div ref={btnRef} className="google-btn-container" />;
+// Google sign-in button — redirect flow.
+//
+// We deliberately do NOT use Google Identity Services (GSI) here because
+// GSI validates the calling page's origin against Cloud Console's
+// authorized JavaScript origins list, and Google rejects every shape the
+// kiosk's WebView2 virtual host can take (.local, *.localhost, raw IP,
+// publicly-resolving subdomains break SetVirtualHostNameToFolderMapping).
+//
+// Redirect flow side-steps the whole problem: the kiosk just navigates to
+// the backend's /api/social/login/google?state=<return-url>. Backend
+// redirects to Google's consent screen. Google redirects back to the
+// backend's /api/social/auth/google?code=... — that callback URL only
+// needs to be in Cloud Console's "Authorized redirect URIs", which IS a
+// real public-TLD URL (https://api.primustech.in/api/social/auth/google).
+// Backend then redirects to <state>?token=<jwt>; SocialCallbackListener
+// above picks up the token from the URL.
+function GoogleButton({ onLoginSuccess: _onLoginSuccess }) {
+    const handleClick = () => {
+        const apiBase = getApiBase().replace(/\/$/, "");
+        // Where Google should bring the user back to after consent.
+        // window.location.origin = "https://primus.local" inside WebView2.
+        const returnUrl = window.location.origin + window.location.pathname;
+        const url = `${apiBase}/api/social/login/google?state=${encodeURIComponent(returnUrl)}`;
+        window.location.href = url;
+    };
+
+    return (
+        <button
+            type="button"
+            onClick={handleClick}
+            className="google-btn-redirect"
+            style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.75rem',
+                width: '100%',
+                padding: '0.75rem 1rem',
+                background: '#1a1a1a',
+                border: '1px solid #3a3a3a',
+                borderRadius: '6px',
+                color: '#fff',
+                fontWeight: 500,
+                fontSize: '0.9375rem',
+                cursor: 'pointer',
+                transition: 'background 0.15s, border-color 0.15s',
+            }}
+            onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#262626';
+                e.currentTarget.style.borderColor = '#4a4a4a';
+            }}
+            onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#1a1a1a';
+                e.currentTarget.style.borderColor = '#3a3a3a';
+            }}
+        >
+            <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+                <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                <path d="M9 18c2.43 0 4.467-.806 5.956-2.18L12.048 13.56c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+                <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+            </svg>
+            Continue with Google
+        </button>
+    );
 }
 
 // Login View

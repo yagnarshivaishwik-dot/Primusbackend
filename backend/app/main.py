@@ -84,6 +84,7 @@ from app.utils.cache import (
     subscribe_invalidation_loop,
 )
 from app.ws import admin as ws_admin
+from app.ws import mobile as ws_mobile
 from app.ws import pc as ws_pc
 from otp_email import send_otp_email
 from verify_otp import router as otp_router
@@ -371,6 +372,18 @@ app.include_router(system_control.router, prefix="/api/internal/system", tags=["
 # WebSocket routes
 app.include_router(ws_pc.router)
 app.include_router(ws_admin.router)
+app.include_router(ws_mobile.router)
+
+# Static file serving for user avatars (Phase 3 mobile profile editor).
+# In production, this should sit behind nginx with proper caching headers.
+try:
+    from fastapi.staticfiles import StaticFiles as _StaticFiles
+    import os as _os
+    _avatar_dir = _os.getenv("AVATAR_DIR", "uploads/avatars")
+    _os.makedirs(_avatar_dir, exist_ok=True)
+    app.mount("/static/avatars", _StaticFiles(directory=_avatar_dir), name="avatars")
+except Exception as _e:
+    logging.warning(f"Could not mount /static/avatars: {_e}")
 
 if _make_prometheus_app is not None:
     prometheus_app = _make_prometheus_app()
