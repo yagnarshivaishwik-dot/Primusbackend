@@ -38,6 +38,56 @@ from app.utils.passwords import (
 )
 from app.utils.security import validate_password_strength
 
+# ---- Backward-compatible re-exports ----
+# Phase 1 password handling (commit utils/passwords.py) moved the Argon2id
+# hasher and the legacy SHA-256 normaliser out of this module. Several
+# callers still import them from the OLD location:
+#
+#   from app.api.endpoints.auth import _normalize_password, ph
+#       — utils/onboarding.py, endpoints/staff.py, endpoints/user.py,
+#         endpoints/internal_auth.py
+#
+# When the rebuild lacked these names the container crashed with
+# `ImportError: cannot import name '_normalize_password' from
+# 'app.api.endpoints.auth'` BEFORE main.py finished loading. Re-export
+# under the legacy names so the import path keeps working without
+# touching every caller. Migrating those callers to the new public API
+# (hash_password / verify_password) is a follow-up cleanup, not a
+# deploy-blocker.
+from app.utils.passwords import (  # noqa: E402  (intentional re-export)
+    _hasher as ph,
+    _legacy_sha256_normalized as _normalize_password,
+)
+
+
+def send_email(to_email: str, subject: str, html_body: str) -> None:
+    """Backward-compat sync wrapper around the async fastapi-mail sender.
+
+    Lazy callers (e.g. app/utils/otp_v2.py:196) still do
+        from app.api.endpoints.auth import send_email
+    expecting the legacy 3-arg sync signature. Forward to the real
+    sender in app.utils.email — fire-and-forget when an event loop is
+    already running (caller is sync, won't await), otherwise run to
+    completion in a fresh loop.
+    """
+    import asyncio
+
+    from app.utils.email import send_email as _send_async
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    coro = _send_async([to_email], subject, html_body)
+    if loop is not None:
+        asyncio.ensure_future(coro)
+    else:
+        try:
+            asyncio.run(coro)
+        except Exception:  # pragma: no cover - best-effort
+            pass
+
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
