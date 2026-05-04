@@ -175,16 +175,25 @@ else {
 # ---------------------------------------------------------------------------
 Write-Host "[1b] Staging React UI to $webDir ..." -ForegroundColor Cyan
 
-if (Test-Path $reactDistDir) {
+# Guard against $reactDistDir being $null when none of the candidate paths
+# resolved (happens when this script runs from a deep worktree where
+# Split-Path -Parent walks past the STIC-SOFT root). Test-Path $null throws.
+if ($reactDistDir -and (Test-Path $reactDistDir)) {
     if (Test-Path $webDir) { Remove-Item $webDir -Recurse -Force }
     Copy-Item -Path $reactDistDir -Destination $webDir -Recurse -Force
     Write-Host "    React dist staged from $reactDistDir" -ForegroundColor DarkGray
 }
 else {
-    Write-Host "    React dist not found at $reactDistDir" -ForegroundColor Yellow
+    if ($reactDistDir) {
+        Write-Host "    React dist not found at $reactDistDir" -ForegroundColor Yellow
+    } else {
+        Write-Host "    No React dist candidate path resolved (likely running from a worktree)." -ForegroundColor Yellow
+    }
     Write-Host "    Checking existing $webDir ..." -ForegroundColor Yellow
     if (-not (Test-Path (Join-Path $webDir 'index.html'))) {
         Write-Host "    WARNING: $webDir\index.html missing. Run 'npm run build' in PrimusClient/ first, or copy dist/ to $webDir" -ForegroundColor Yellow
+    } else {
+        Write-Host "    Using pre-staged $webDir" -ForegroundColor DarkGray
     }
 }
 Write-Host ""

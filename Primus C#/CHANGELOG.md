@@ -7,6 +7,10 @@ to the new entry; the default note is `"Automated rebuild."`.
 
 Format: `YYYY-MM-DD — vX.Y.Z — notes`. Most recent version on top.
 
+## v1.0.6 — 2026-05-04
+
+- fix(realtime): clutchh WS heartbeat event-name (ping->heartbeat with hostname payload) so backend refreshes pc.last_seen and PC stays online
+
 ## v1.0.5 — 2026-04-24
 
 - cashfree credit-time flow + 5 min starter + ticking timer
