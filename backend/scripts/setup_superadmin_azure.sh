@@ -1,28 +1,35 @@
 #!/usr/bin/env bash
 # =============================================================================
 # setup_superadmin_azure.sh
-# One-shot SuperAdmin setup for the Primus Azure VM.
+# Docker-aware one-shot SuperAdmin setup for the Primus Azure VM.
 #
-# What it does:
-#   1. Verifies you are in the backend root (where app/main.py lives).
-#   2. Activates a Python virtualenv if one exists (venv / .venv / env).
-#   3. Sources backend/.env so DATABASE_URL etc. are available.
-#   4. Runs scripts/seed_superadmin.py with --force (idempotent: creates
-#      the row if missing, updates the password/role if it already exists).
-#   5. Smoke-tests POST /api/internal/auth/login against the local backend.
+# Runs every piece of Python work INSIDE the running backend container, so:
+#   * no host venv required
+#   * no host pip install required
+#   * no host-side .env parsing (the container already has env loaded
+#     via the `env_file:` entry in docker-compose.yml)
 #
-# Run on the Azure VM, from the backend root:
-#   ssh azureuser@20.55.214.91
-#   cd /opt/primus/backend          # or wherever you cloned the repo
-#   git pull origin main            # make sure this script is present
+# Workflow:
+#   1. Verify docker-compose.yml is in the cwd and the backend container
+#      is running.
+#   2. `docker cp` the freshly-pulled seed script into the container so
+#      we don't have to rebuild the image for a script-only change.
+#   3. `docker compose exec` to run the seed (--force --no-prompt) inside
+#      the container, where DATABASE_URL etc. are already exported.
+#   4. `docker compose exec` again to verify the row + DB grants.
+#   5. curl the published port 8000 from the host to confirm login works.
+#
+# Run from the directory that contains docker-compose.yml (i.e. backend/):
+#   cd ~/Primusbackend/backend       # or /opt/primus/backend
+#   git pull origin main
 #   bash scripts/setup_superadmin_azure.sh
 #
-# Override anything via env vars, e.g.:
+# Override defaults via env vars:
 #   SUPERADMIN_PASSWORD='other-pass' bash scripts/setup_superadmin_azure.sh
 #
-# SECURITY: the default password below is convenient but well-known.
-# Rotate it after first login by re-running this script with a stronger
-# SUPERADMIN_PASSWORD env var, or via the Change Password flow in the UI.
+# SECURITY: the default password below (Vaishwik@123) is convenient but
+# well-known. Rotate it after first login by re-running this script with
+# SUPERADMIN_PASSWORD=... or via the UI's Change Password flow.
 # =============================================================================
 set -e
 
@@ -32,6 +39,7 @@ SUPERADMIN_EMAIL="${SUPERADMIN_EMAIL:-admin@primusadmin.in}"
 SUPERADMIN_PASSWORD="${SUPERADMIN_PASSWORD:-Vaishwik@123}"
 SUPERADMIN_FIRST_NAME="${SUPERADMIN_FIRST_NAME:-Primus}"
 SUPERADMIN_LAST_NAME="${SUPERADMIN_LAST_NAME:-Admin}"
+SERVICE_NAME="${SERVICE_NAME:-backend}"
 API_BASE="${API_BASE:-http://localhost:8000}"
 
 # ---------- Tiny output helpers ----------
@@ -41,72 +49,59 @@ warn()  { printf '\033[1;33mWARN\033[0m %s\n' "$*"; }
 fail()  { printf '\033[0;31mFAIL\033[0m %s\n' "$*"; exit 1; }
 
 # ---------- 1. Sanity ----------
-[[ -f app/main.py ]] \
-  || fail "Run from the backend root (where app/main.py lives). Currently in: $(pwd)"
+[[ -f docker-compose.yml ]] \
+  || fail "docker-compose.yml not found in $(pwd). Run from the backend/ dir (the one that contains docker-compose.yml)."
 [[ -f scripts/seed_superadmin.py ]] \
-  || fail "scripts/seed_superadmin.py missing. Run 'git pull origin main' first."
+  || fail "scripts/seed_superadmin.py missing on the host. Run 'git pull origin main' first."
 
-# ---------- 2. Activate venv (best-effort) ----------
-for v in venv .venv env; do
-  if [[ -f "$v/bin/activate" ]]; then
-    info "Activating venv: $v"
-    # shellcheck disable=SC1090
-    source "$v/bin/activate"
-    break
-  fi
-done
-
-# ---------- 3. Load .env ----------
-# We deliberately do NOT use `set -a; source .env`. That naive approach
-# breaks on common, valid .env values that contain unquoted spaces — e.g.
-# Gmail App Passwords (`MAIL_PASSWORD=wfcq egau rthj wlgj`), which bash
-# interprets as `MAIL_PASSWORD=wfcq` followed by the command `egau`.
-#
-# Instead, parse .env via python-dotenv (already a backend dependency)
-# which correctly handles unquoted spaces, surrounding quotes, comments,
-# and escapes. Then export each KEY into the current shell.
-[[ -f .env ]] || fail ".env not found in $(pwd). Copy .env.template -> .env first."
-info "Loading .env via python-dotenv"
-if ! python -c "import dotenv" >/dev/null 2>&1; then
-  fail "python-dotenv not installed in this venv. Run: pip install python-dotenv"
+# ---------- 2. Pick a docker compose command (v2 plugin or v1 binary) ----------
+if docker compose version >/dev/null 2>&1; then
+  DC=(docker compose)
+elif command -v docker-compose >/dev/null 2>&1; then
+  DC=(docker-compose)
+else
+  fail "Neither 'docker compose' (v2 plugin) nor 'docker-compose' (v1) is available. Install Docker first."
 fi
-# shellcheck disable=SC2046
-eval "$(
-  python - <<'PYEOF'
-import shlex
-from dotenv import dotenv_values
+info "Using: ${DC[*]}"
 
-for key, value in dotenv_values(".env").items():
-    if value is None:
-        continue
-    print(f"export {key}={shlex.quote(value)}")
-PYEOF
-)"
+# ---------- 3. Confirm the backend container is running ----------
+cid="$("${DC[@]}" ps -q "$SERVICE_NAME" 2>/dev/null || true)"
+if [[ -z "$cid" ]]; then
+  fail "Container for service '$SERVICE_NAME' is not running. Start it: ${DC[*]} up -d $SERVICE_NAME"
+fi
+info "Backend container: $SERVICE_NAME ($cid)"
 
-[[ -n "${GLOBAL_DATABASE_URL:-}${DATABASE_URL:-}" ]] \
-  || fail "Neither GLOBAL_DATABASE_URL nor DATABASE_URL is set after sourcing .env."
+# ---------- 4. Sync latest seed script into the running container ----------
+# The image was built with `COPY . /app`, so the bundled scripts are
+# whatever existed at last `docker compose build`. We push the freshly
+# pulled file in directly, which is much faster than a full rebuild and
+# is fine for a one-off seed script.
+info "Copying latest seed_superadmin.py into the container"
+docker cp scripts/seed_superadmin.py "$cid:/app/scripts/seed_superadmin.py" \
+  || fail "docker cp failed. Is the container running and writable?"
 
-db_host="$(printf '%s' "${GLOBAL_DATABASE_URL:-$DATABASE_URL}" | sed 's|.*@||')"
-info "Target Postgres: $db_host"
-
-# ---------- 4. Run the seed ----------
+# ---------- 5. Run the seed INSIDE the container ----------
 info "Seeding SuperAdmin (username=$SUPERADMIN_USERNAME, email=$SUPERADMIN_EMAIL)"
-SUPERADMIN_USERNAME="$SUPERADMIN_USERNAME" \
-SUPERADMIN_EMAIL="$SUPERADMIN_EMAIL" \
-SUPERADMIN_PASSWORD="$SUPERADMIN_PASSWORD" \
-SUPERADMIN_FIRST_NAME="$SUPERADMIN_FIRST_NAME" \
-SUPERADMIN_LAST_NAME="$SUPERADMIN_LAST_NAME" \
-python scripts/seed_superadmin.py --force --no-prompt
+"${DC[@]}" exec -T \
+  -e SUPERADMIN_USERNAME="$SUPERADMIN_USERNAME" \
+  -e SUPERADMIN_EMAIL="$SUPERADMIN_EMAIL" \
+  -e SUPERADMIN_PASSWORD="$SUPERADMIN_PASSWORD" \
+  -e SUPERADMIN_FIRST_NAME="$SUPERADMIN_FIRST_NAME" \
+  -e SUPERADMIN_LAST_NAME="$SUPERADMIN_LAST_NAME" \
+  "$SERVICE_NAME" python scripts/seed_superadmin.py --force --no-prompt
 
-# ---------- 5. Verify the row actually landed in the DB ----------
-info "Verifying SuperAdmin row in Postgres..."
-SA_EMAIL="$SUPERADMIN_EMAIL" SA_USER="$SUPERADMIN_USERNAME" python <<'PYEOF'
+# ---------- 6. Verify the row + DB grants (also inside the container) ----------
+info "Verifying SuperAdmin row in Postgres (from inside the container)..."
+"${DC[@]}" exec -T \
+  -e SA_EMAIL="$SUPERADMIN_EMAIL" \
+  -e SA_USER="$SUPERADMIN_USERNAME" \
+  "$SERVICE_NAME" python - <<'PYEOF'
 import os, sys
 from sqlalchemy import create_engine, text
 
 url = os.getenv("GLOBAL_DATABASE_URL") or os.getenv("DATABASE_URL")
 if not url:
-    print("FAIL: no GLOBAL_DATABASE_URL / DATABASE_URL")
+    print("FAIL: no GLOBAL_DATABASE_URL / DATABASE_URL inside the container")
     sys.exit(1)
 
 engine = create_engine(url, pool_pre_ping=True, future=True)
@@ -134,7 +129,6 @@ with engine.connect() as conn:
     print(f"  password_hash   = stored ({row.pwhash_len}-char Argon2 hash; never plaintext)")
     print(f"  is_verified     = {row.verified}")
 
-    # Prove the connection user has grants on other tables, not just `users`.
     print()
     print("  DB-grant sanity check (the Postgres role can read other tables):")
     for tbl in ("cafes", "audit_logs", "user_cafe_map"):
@@ -146,7 +140,7 @@ with engine.connect() as conn:
             print(f"    {tbl:<16} NOT accessible: {msg[:80]}")
 PYEOF
 
-# ---------- 6. Smoke test ----------
+# ---------- 7. Smoke test login (from host — backend exposes port 8000) ----------
 info "Smoke test: $API_BASE/api/internal/auth/login"
 resp_body="$(mktemp)"
 http_code="$(
@@ -161,7 +155,7 @@ if [[ "$http_code" == "200" ]] && grep -q access_token "$resp_body"; then
 else
   warn "Login probe returned HTTP $http_code. Response (first 5 lines):"
   head -5 "$resp_body" || true
-  warn "(If the backend isn't running on $API_BASE, this is expected. Try from your laptop against the public URL.)"
+  warn "(If the backend is reverse-proxied and not on $API_BASE, try the public URL from your laptop.)"
 fi
 rm -f "$resp_body"
 
