@@ -26,14 +26,34 @@ venv/
 env/
 .venv/
 
-# Environment files — NEVER commit. Only the *.example files are tracked.
+# Environment files — NEVER commit. Only the *.example / *.template files are tracked.
 .env
 .env.local
 .env.*.local
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+!env.example
+!env.production.example
+!.env.cashfree.local.example
 .env/
 *.env.bak.*
 
-# Electron / Executables
+# Specific known-leaked patterns — belt-and-suspenders so a stray `git add -f` is harder
+**/.env.cashfree*
+**/.env.production
+**/.env.staging
+!**/env.production.example
+
+# Secret config files loaded by app/config.py:load_from_file
+conf/payments.conf
+conf/oauth.conf
+conf/*.conf
+!conf/*.conf.example
+
+# Electron / Executables / Native binaries — NEVER commit binary blobs to source control.
+# If a binary needs to ship, build it in CI and publish to GitHub Releases / artifact store.
 electron-dist/
 installer-output/
 win-unpacked/
@@ -43,6 +63,30 @@ publish/
 *.asar
 *.msi
 *.cab
+*.pdb
+*.so
+*.dylib
+*.a
+*.lib
+*.bin
+
+# .NET build outputs (Primus C# kiosk) — these were previously tracked by accident.
+# Run scripts/security/untrack_build_artifacts.sh once to clean up the index.
+**/bin/Debug/
+**/bin/Release/
+**/obj/Debug/
+**/obj/Release/
+**/bin/
+**/obj/
+*.deps.json
+*.runtimeconfig*.json
+
+# Specific known-leaked binaries from initial audit — belt-and-suspenders.
+PrimusClient/temp_shell.dll
+PrimusClient/Primus_Setup_*.exe
+PrimusClient/installer-output/
+"Primus C#/installer/output/"
+"Primus C#/app/PrimusClient.exe"
 
 # macOS
 .DS_Store

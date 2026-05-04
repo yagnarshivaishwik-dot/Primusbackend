@@ -85,9 +85,25 @@ async def ws_pc(websocket: WebSocket, pc_id: int):
                 token = (msg.get("payload") or {}).get("token") or ""
                 auth_result = authenticate_ws_token(token)
                 user = auth_result.user
-                if getattr(pc, "cafe_id", None) and auth_result.cafe_id:
-                    if pc.cafe_id != auth_result.cafe_id:
-                        raise WSAuthError("PC not in same cafe")
+
+                # Phase 2 (audit BE-C3): the previous version only enforced
+                # cafe match when BOTH pc.cafe_id AND auth_result.cafe_id were
+                # truthy. A malformed JWT with a NULL/missing cafe_id (or a
+                # legacy user record without one) bypassed the check entirely.
+                # Fail-closed now: superadmin is allowed across cafes; every
+                # other caller MUST have a cafe_id and it MUST match the PC.
+                pc_cafe = getattr(pc, "cafe_id", None)
+                token_cafe = auth_result.cafe_id
+                role = getattr(auth_result, "role", "") or ""
+                is_superadmin = role.lower() == "superadmin"
+
+                if not is_superadmin:
+                    if token_cafe is None:
+                        raise WSAuthError("Token has no cafe_id; cannot bind PC")
+                    if pc_cafe is None:
+                        raise WSAuthError("PC has no cafe_id assignment")
+                    if pc_cafe != token_cafe:
+                        raise WSAuthError("PC not in caller's cafe")
 
                 # Update PC status on JWT reconnection
                 prev_status = pc.status

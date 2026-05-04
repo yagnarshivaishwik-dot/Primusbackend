@@ -7,9 +7,37 @@ to the new entry; the default note is `"Automated rebuild."`.
 
 Format: `YYYY-MM-DD — vX.Y.Z — notes`. Most recent version on top.
 
-## v1.0.6 — 2026-05-04
+## v1.0.14 — 2026-05-04
 
-- fix(realtime): clutchh WS heartbeat event-name (ping->heartbeat with hostname payload) so backend refreshes pc.last_seen and PC stays online
+- fix(realtime): WS heartbeat alias (ping->heartbeat), Redis cluster presence, defensive admin button gating + clear stuck restarting status
+
+## v1.0.13 — 2026-05-01
+
+- rebuild against latest ClutcHH-1; verified heartbeat HMAC + restart command + online presence
+
+## v1.0.12 — 2026-04-28
+
+- Revert virtual host to primus.local; switch Google sign-in to redirect flow (avoids WebView2 DNS conflict + Cloud Console origin restrictions)
+
+## v1.0.11 — 2026-04-28
+
+- Wire Google OAuth: virtual host kiosk.primustech.in + client 737653343711
+
+## v1.0.9 — 2026-04-24
+
+- cashfree sdk checkout, payment_session_id driven
+
+## v1.0.8 — 2026-04-24
+
+- empty-state home, stale-user fix, installed inspector, shop 400 fix
+
+## v1.0.7 — 2026-04-24
+
+- signup form-encoding fix
+
+## v1.0.6 — 2026-04-24
+
+- real OTP + empty-field validation + cashfree multi-scheme verifier
 
 ## v1.0.5 — 2026-04-24
 
