@@ -580,6 +580,9 @@ class User(Base):
     # Email verification
     is_email_verified = Column(Boolean, default=False)
     email_verification_sent_at = Column(DateTime, nullable=True)
+    # Profile picture (centralized — Azure Blob URL; persists across cafes/devices)
+    profile_picture_url = Column(String, nullable=True)
+    profile_picture_updated_at = Column(DateTime, nullable=True)
     # pcs = relationship("ClientPC", back_populates="cafe")
 
 

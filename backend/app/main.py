@@ -46,6 +46,7 @@ from app.api.endpoints import (
     pc_ban,
     pc_group,
     prize,
+    profile,
     quests,
     remote_command,
     reports,
@@ -337,6 +338,7 @@ app.include_router(offer.router, prefix="/api/offer", tags=["offer"])
 app.include_router(user_group.router, prefix="/api/usergroup", tags=["usergroup"])
 app.include_router(payment.router, prefix="/api/payment", tags=["payment"])
 app.include_router(prize.router, prefix="/api/prize", tags=["prize"])
+app.include_router(profile.router, prefix="/api/profile", tags=["profile"])
 app.include_router(user.router, prefix="/api/user", tags=["user"])
 app.include_router(leaderboard.router, prefix="/api/leaderboard", tags=["leaderboard"])
 app.include_router(event.router, prefix="/api/event", tags=["event"])

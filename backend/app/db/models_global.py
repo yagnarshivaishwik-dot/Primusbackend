@@ -51,6 +51,9 @@ class UserGlobal(GlobalBase):
     two_factor_recovery_codes = Column(JSON, nullable=True)  # hashed one-time recovery codes
     is_email_verified = Column(Boolean, default=False)
     email_verification_sent_at = Column(DateTime, nullable=True)
+    # Profile picture (Azure Blob URL — centralized, syncs across cafes & devices)
+    profile_picture_url = Column(String, nullable=True)
+    profile_picture_updated_at = Column(DateTime, nullable=True)
     # Legacy field - kept for backward compat during migration
     cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True)
     # Legacy wallet - kept for backward compat, real wallet in cafe DB

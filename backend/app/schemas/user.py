@@ -28,6 +28,8 @@ class UserOut(UserBase):
     phone: str | None = None
     tos_accepted: bool | None = None
     is_email_verified: bool | None = None
+    profile_picture_url: str | None = None
+    profile_picture_updated_at: datetime | None = None
     model_config = ConfigDict(from_attributes=True)
 
 

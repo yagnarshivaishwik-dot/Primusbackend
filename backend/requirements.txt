@@ -89,6 +89,9 @@ gunicorn>=21.2.0
 # Image Processing (Optional)
 pillow>=10.0.0
 
+# Azure Blob Storage (profile pictures + future blob uploads)
+azure-storage-blob>=12.19.0
+
 # =============================================================================
 # UBUNTU-SPECIFIC SYSTEM DEPENDENCIES (install via apt)
 # =============================================================================
