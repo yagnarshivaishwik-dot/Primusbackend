@@ -175,47 +175,88 @@ app = FastAPI(lifespan=lifespan)
 #   3. Returns a JSON 500 with explicit Access-Control-Allow-* headers
 #      mirrored from the request, so the browser shows a real network
 #      error instead of a CORS error.
+def _origin_cors_headers(request: Request) -> dict:
+    """Mirror Access-Control-Allow-* headers for primus origins.
+
+    Used by the exception handlers below so error responses still satisfy
+    the browser's CORS check (otherwise the browser hides the real status
+    + body behind a misleading "blocked by CORS policy" message).
+    """
+    import re
+    origin = request.headers.get("origin", "")
+    if not origin:
+        return {}
+    if re.match(
+        r"^https://(www\.)?(primustech|primusadmin|primusinfotech)\.(in|com)$",
+        origin,
+    ) or origin in {
+        "http://localhost:5173", "http://127.0.0.1:5173",
+        "http://localhost:3000", "http://127.0.0.1:3000",
+    }:
+        return {
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+            "Vary": "Origin",
+        }
+    return {}
+
+
+# HTTPException handler — domain errors (401, 403, 423, 429, etc.) raised
+# on purpose by route code. We MUST render these ourselves with proper
+# CORS headers attached, otherwise:
+#   1. The Exception handler below caught them, re-raised them, and uvicorn
+#      turned the re-raise into a 500. Every "Invalid credentials" 401 was
+#      surfacing to the browser as a 500 — that's why the SuperAdmin
+#      login showed `500 {detail: 'Internal Server Error'}` even on
+#      genuinely-bad credentials.
+#   2. FastAPI's default HTTPException handler doesn't go through
+#      CORSMiddleware so the response had no Access-Control-Allow-Origin
+#      header, which is what kicked off this whole CORS-error-on-everything
+#      saga in the first place.
+@app.exception_handler(_HTTPException_class := __import__("fastapi").HTTPException)
+async def _http_exception_handler(request: Request, exc):
+    from fastapi.responses import JSONResponse
+
+    headers = dict(getattr(exc, "headers", None) or {})
+    headers.update(_origin_cors_headers(request))
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=headers,
+    )
+
+
+@app.exception_handler(__import__("starlette").exceptions.HTTPException)
+async def _starlette_http_exception_handler(request: Request, exc):
+    # Starlette's HTTPException is what bare `Response(status_code=...)` /
+    # framework-internal raises produce. Same shape as FastAPI's, just a
+    # different class hierarchy on some endpoints.
+    from fastapi.responses import JSONResponse
+
+    headers = dict(getattr(exc, "headers", None) or {})
+    headers.update(_origin_cors_headers(request))
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=headers,
+    )
+
+
 @app.exception_handler(Exception)
 async def _unhandled_exception_handler(request: Request, exc: Exception):
+    """Catch-all for anything not handled above. Logs + returns 500 with CORS."""
     import traceback
-    from fastapi import HTTPException as _HTTPException
     from fastapi.responses import JSONResponse
-    from starlette.exceptions import HTTPException as _StarletteHTTPException
-
-    # HTTPException / Starlette HTTPException are domain errors raised on
-    # purpose — let FastAPI's built-in handlers render them.
-    if isinstance(exc, (_HTTPException, _StarletteHTTPException)):
-        raise exc
 
     logging.getLogger("primus.unhandled").error(
         "Unhandled exception on %s %s: %s\n%s",
         request.method, request.url.path, exc, traceback.format_exc(),
     )
 
-    origin = request.headers.get("origin", "")
-    cors_headers = {}
-    if origin:
-        # Mirror the origin so credentialed requests don't get blocked by
-        # the browser's CORS check on this 500 response. The same regex
-        # CORSMiddleware uses (primus domains) gates which origins we
-        # mirror — anything else gets a same-origin response and the
-        # browser CORS check rejects it cleanly.
-        import re
-        if re.match(
-            r"^https://(www\.)?(primustech|primusadmin|primusinfotech)\.(in|com)$",
-            origin,
-        ) or origin in {
-            "http://localhost:5173", "http://127.0.0.1:5173",
-            "http://localhost:3000", "http://127.0.0.1:3000",
-        }:
-            cors_headers["Access-Control-Allow-Origin"] = origin
-            cors_headers["Access-Control-Allow-Credentials"] = "true"
-            cors_headers["Vary"] = "Origin"
-
     return JSONResponse(
         status_code=500,
         content={"detail": "Internal Server Error"},
-        headers=cors_headers,
+        headers=_origin_cors_headers(request),
     )
 
 
