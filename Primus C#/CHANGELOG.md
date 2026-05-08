@@ -7,6 +7,10 @@ to the new entry; the default note is `"Automated rebuild."`.
 
 Format: `YYYY-MM-DD — vX.Y.Z — notes`. Most recent version on top.
 
+## v1.0.21 — 2026-05-08
+
+- rebuild against backend ace8f35 (Bug 14/15/16/17 fixes) — kiosk sends X-License-Key on every API call so customer signups see the cafe's time packs immediately
+
 ## v1.0.20 — 2026-05-08
 
 - fix(auth+shop): kiosk sends X-License-Key on every API call so cafe-scoped endpoints (shop client packs etc.) resolve cafe_id even when customer JWT lacks one (Bug 14)
