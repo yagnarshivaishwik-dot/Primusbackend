@@ -15,7 +15,17 @@ from app.api.endpoints.auth import (
 )
 from app.auth.context import AuthContext, get_auth_context
 from app.auth.tenant import scoped_query, enforce_cafe_ownership
-from app.db.dependencies import get_cafe_db as get_db
+# User table lives in the GLOBAL database (always — even with
+# MULTI_DB_ENABLED=true, per-cafe DBs do NOT have a users table; cf.
+# app/db/models_cafe.py has no User class). Previously this module used
+# get_cafe_db, which made every Users-page operation crash:
+#   - GET  /api/user/        → "Failed to load users" (relation missing)
+#   - POST /api/user/create  → "Unable to add Users manually"
+#   - POST /api/user/import  → "Unable to add users via Import"
+# Switch to get_global_db so the queries hit the right database. The
+# scoped_query() WHERE-cafe_id filter still runs because User has the
+# cafe_id column in the legacy/global schema.
+from app.db.dependencies import get_global_db as get_db
 from app.models import User
 
 router = APIRouter()
@@ -32,9 +42,17 @@ def list_users(
     users = scoped_query(db, User, ctx).order_by(User.id.asc()).all()
     out = []
     for u in users:
-        # Calculate total hours remaining from UserOffers
-        offers = db.query(UserOffer).filter_by(user_id=u.id).all()
-        total_hours = sum(max(0.0, uo.hours_remaining or 0.0) for uo in offers)
+        # Calculate total hours remaining from UserOffers.
+        # In MULTI_DB_ENABLED mode UserOffers actually live in the per-cafe
+        # DB, not the global DB this session is bound to. Wrap the query so
+        # missing rows / missing table just yields zero hours instead of
+        # 500-ing the whole users list. Proper per-cafe lookup is a
+        # follow-up cleanup, not a deploy-blocker.
+        try:
+            offers = db.query(UserOffer).filter_by(user_id=u.id).all()
+            total_hours = sum(max(0.0, uo.hours_remaining or 0.0) for uo in offers)
+        except Exception:
+            total_hours = 0.0
         
         out.append(
             {

@@ -43,7 +43,7 @@ class AuthContext:
         return user_level >= required_level
 
 
-def get_auth_context(
+async def get_auth_context(
     request: Request,
     db: DBSession = Depends(get_db),
 ) -> AuthContext:
@@ -51,20 +51,22 @@ def get_auth_context(
 
     Supports both new enriched tokens (with cafe_id, device_id, role)
     and legacy tokens (with only sub=email). Falls back gracefully.
-    """
-    from app.auth.tokens import decode_access_token
 
-    # Import here to avoid circular dependency with legacy auth
-    from app.api.endpoints.auth import get_token
+    Phase 1: this is now async so we can consult the Redis-backed jti
+    revocation store. The revocation check rejects tokens that have been
+    explicitly killed by force-logout even if they would otherwise be
+    valid by signature + exp.
+    """
+    from app.auth.tokens import decode_access_token_async
+    from app.utils.jwt_revocation import is_revoked as _jti_is_revoked
 
     # Get raw token
-    # We need to call get_token synchronously for the dependency chain
     token = _extract_token(request)
     if token is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    # Try enriched token first
-    claims = decode_access_token(token)
+    # Try enriched token first (this also checks jti revocation).
+    claims = await decode_access_token_async(token)
     if claims and claims.get("user_id"):
         user = db.query(User).filter(User.id == claims["user_id"]).first()
         if user is None:
@@ -84,6 +86,21 @@ def get_auth_context(
             if mapping:
                 resolved_cafe_id = mapping.cafe_id
 
+        # Last-resort fallback: kiosk-side license_key. Customers signing
+        # up at a kiosk often don't have cafe_id set on their User record
+        # yet (the public /register endpoint can't know which cafe they're
+        # at). The React clutchh client sends X-License-Key on every
+        # request, and the License table maps key -> cafe_id. Without this
+        # fallback, /api/v1/shop/client/packs and similar customer-facing
+        # endpoints return empty because ctx.cafe_id is None.
+        if resolved_cafe_id is None:
+            license_key = request.headers.get("X-License-Key")
+            if license_key:
+                from app.models import License
+                lic = db.query(License).filter_by(key=license_key).first()
+                if lic and lic.cafe_id is not None:
+                    resolved_cafe_id = int(lic.cafe_id)
+
         ctx = AuthContext(
             user=user,
             user_id=user.id,
@@ -98,18 +115,23 @@ def get_auth_context(
         request.state.cafe_id = ctx.cafe_id
         return ctx
 
-    # Fallback: legacy token with just "sub" (email)
-    import jwt as pyjwt
-    from jwt.exceptions import PyJWTError as JWTError
-    from app.config import JWT_SECRET, ALGORITHM
+    # Fallback: legacy token with just "sub" (email). These are tokens minted
+    # before Phase 1 added jti claims. Honor JWT_SECRET_PREVIOUS so the soft
+    # rotation grace window also covers legacy tokens.
+    from app.auth.tokens import _decode_with_keys  # internal helper
 
-    try:
-        payload = pyjwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM])
-        email = payload.get("sub")
-        if email is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
-    except JWTError:
+    payload = _decode_with_keys(token)
+    if payload is None:
         raise HTTPException(status_code=401, detail="Could not validate credentials")
+    email = payload.get("sub")
+    if email is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    # Even legacy tokens can have a jti if they were re-issued during rolling
+    # deploy. Check revocation defensively.
+    legacy_jti = payload.get("jti")
+    if legacy_jti and await _jti_is_revoked(legacy_jti):
+        raise HTTPException(status_code=401, detail="Token revoked")
 
     user = db.query(User).filter(User.email == email).first()
     if user is None:
@@ -130,6 +152,15 @@ def get_auth_context(
         if mapping:
             resolved_cafe_id = mapping.cafe_id
             resolved_role = mapping.role or resolved_role
+
+    # Same X-License-Key fallback as the enriched-token branch above.
+    if resolved_cafe_id is None:
+        license_key = request.headers.get("X-License-Key")
+        if license_key:
+            from app.models import License
+            lic = db.query(License).filter_by(key=license_key).first()
+            if lic and lic.cafe_id is not None:
+                resolved_cafe_id = int(lic.cafe_id)
 
     ctx = AuthContext(
         user=user,
@@ -174,9 +205,11 @@ def require_role(*roles: str):
         @router.get("/staff-or-admin")
         def staff_or_admin(ctx: AuthContext = Depends(require_role("staff", "admin"))):
             ...
+
+    Phase 1: now async because get_auth_context is async (jti revocation check).
     """
 
-    def role_checker(ctx: AuthContext = Depends(get_auth_context)) -> AuthContext:
+    async def role_checker(ctx: AuthContext = Depends(get_auth_context)) -> AuthContext:
         # Superadmin bypasses all role checks
         if ctx.is_superadmin:
             return ctx

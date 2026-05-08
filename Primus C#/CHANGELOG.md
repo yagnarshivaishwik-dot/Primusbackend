@@ -7,6 +7,14 @@ to the new entry; the default note is `"Automated rebuild."`.
 
 Format: `YYYY-MM-DD — vX.Y.Z — notes`. Most recent version on top.
 
+## v1.0.20 — 2026-05-08
+
+- fix(auth+shop): kiosk sends X-License-Key on every API call so cafe-scoped endpoints (shop client packs etc.) resolve cafe_id even when customer JWT lacks one (Bug 14)
+
+## v1.0.19 — 2026-05-06
+
+- Automated rebuild.
+
 ## v1.0.18 — 2026-05-04
 
 - fix(auth): friendly error rendering on Reset/Forgot pages — no more [object Object] when backend returns object/array detail (e.g. 429 / 422)
