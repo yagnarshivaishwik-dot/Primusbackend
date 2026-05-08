@@ -124,25 +124,44 @@ def create_refresh_token(
     ip_address: str | None = None,
     access_jti: str | None = None,
 ) -> str:
-    """Create a refresh token, store its hash + bound access_jti, return raw token."""
+    """Create a refresh token, store its hash + bound access_jti, return raw token.
+
+    Phase 1 added several columns to ``refresh_tokens`` (device_id, cafe_id,
+    ip_address, access_jti). Production DBs that haven't run the matching
+    migrations yet are missing these columns, so passing them blindly to
+    ``RefreshToken(...)`` then committing raises:
+
+        psycopg2.errors.UndefinedColumn: column refresh_tokens.cafe_id
+        does not exist
+
+    This was the actual cause of the SuperAdmin login 500 (visible in the
+    docker logs as "primus.unhandled" once the global handler from ab8b5ed
+    is deployed). Fix: only set columns that exist on the ORM model. The
+    hasattr() guard mirrors what we already do for access_jti.
+    """
     raw_token = secrets.token_urlsafe(64)
     token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
 
+    # Required core columns — these have always existed on refresh_tokens.
     rt_kwargs: dict = dict(
         user_id=user_id,
         token_hash=token_hash,
-        device_id=device_id,
-        cafe_id=cafe_id,
         issued_at=datetime.now(UTC),
         expires_at=datetime.now(UTC) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
-        ip_address=ip_address,
     )
 
-    # access_jti is added by migration 007. If running on an older schema, the
-    # ORM model will not have the attribute yet — guard so this still works
-    # during the rolling deploy.
-    if access_jti is not None and hasattr(RefreshToken, "access_jti"):
-        rt_kwargs["access_jti"] = access_jti
+    # Optional columns added by later migrations. Only attach when the ORM
+    # model declares them, so this still works during the rolling deploy
+    # window where some replicas have the migration and some don't.
+    _optional_cols = {
+        "device_id": device_id,
+        "cafe_id": cafe_id,
+        "ip_address": ip_address,
+        "access_jti": access_jti,
+    }
+    for col, val in _optional_cols.items():
+        if val is not None and hasattr(RefreshToken, col):
+            rt_kwargs[col] = val
 
     rt = RefreshToken(**rt_kwargs)
     db.add(rt)
