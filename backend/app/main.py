@@ -69,6 +69,7 @@ from app.api.endpoints import (
     webhook,
 )
 from app.middleware.csrf import CSRFProtectionMiddleware
+from app.middleware.metrics_guard import MetricsGuardMiddleware
 from app.middleware.security import (
     RateLimitMiddleware,
     RedisRateLimitMiddleware,
@@ -155,13 +156,84 @@ else:
 
 app = FastAPI(lifespan=lifespan)
 
+
+# ---- Global exception handler ----------------------------------------------
+# FastAPI's default handler for unhandled exceptions returns a 500 WITHOUT
+# going through CORSMiddleware, so the browser sees:
+#
+#   "blocked by CORS policy: No 'Access-Control-Allow-Origin' header is
+#    present on the requested resource"
+#
+# while the real problem is server-side. We hit this repeatedly on
+# /api/auth/login, /api/coupon/, /api/campaign/, etc. — operators see
+# a CORS error and waste time debugging origins instead of looking at
+# the actual traceback.
+#
+# This handler:
+#   1. Lets HTTPException pass through (FastAPI handles those fine).
+#   2. Logs the full traceback for ops with the request URL + method.
+#   3. Returns a JSON 500 with explicit Access-Control-Allow-* headers
+#      mirrored from the request, so the browser shows a real network
+#      error instead of a CORS error.
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception):
+    import traceback
+    from fastapi import HTTPException as _HTTPException
+    from fastapi.responses import JSONResponse
+    from starlette.exceptions import HTTPException as _StarletteHTTPException
+
+    # HTTPException / Starlette HTTPException are domain errors raised on
+    # purpose — let FastAPI's built-in handlers render them.
+    if isinstance(exc, (_HTTPException, _StarletteHTTPException)):
+        raise exc
+
+    logging.getLogger("primus.unhandled").error(
+        "Unhandled exception on %s %s: %s\n%s",
+        request.method, request.url.path, exc, traceback.format_exc(),
+    )
+
+    origin = request.headers.get("origin", "")
+    cors_headers = {}
+    if origin:
+        # Mirror the origin so credentialed requests don't get blocked by
+        # the browser's CORS check on this 500 response. The same regex
+        # CORSMiddleware uses (primus domains) gates which origins we
+        # mirror — anything else gets a same-origin response and the
+        # browser CORS check rejects it cleanly.
+        import re
+        if re.match(
+            r"^https://(www\.)?(primustech|primusadmin|primusinfotech)\.(in|com)$",
+            origin,
+        ) or origin in {
+            "http://localhost:5173", "http://127.0.0.1:5173",
+            "http://localhost:3000", "http://127.0.0.1:3000",
+        }:
+            cors_headers["Access-Control-Allow-Origin"] = origin
+            cors_headers["Access-Control-Allow-Credentials"] = "true"
+            cors_headers["Vary"] = "Origin"
+
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error"},
+        headers=cors_headers,
+    )
+
+
 # OpenTelemetry distributed tracing (if enabled)
 from app.core.tracing import setup_tracing
 
 setup_tracing(app)
 
-# CSRF protection middleware (applied first, before other middleware)
-csrf_enabled = os.getenv("ENABLE_CSRF_PROTECTION", "true").lower() == "true"
+# CSRF protection middleware (applied first, before other middleware).
+#
+# Phase 1: CSRF is now MANDATORY in production. The legacy
+# ENABLE_CSRF_PROTECTION env flag is honored only outside production (for
+# automated tests that need to fire form posts directly). Setting it to
+# "false" in production is a configuration error and is rejected by
+# app.core.startup_guards.
+from app.config import IS_PRODUCTION as _IS_PROD
+_csrf_env = os.getenv("ENABLE_CSRF_PROTECTION", "true").lower()
+csrf_enabled = True if _IS_PROD else (_csrf_env != "false")
 app.add_middleware(CSRFProtectionMiddleware, enabled=csrf_enabled)
 
 # Security headers middleware (applied to all responses)
@@ -180,6 +252,11 @@ app.add_middleware(
 # Request size limit middleware
 max_request_size = int(os.getenv("MAX_REQUEST_SIZE_BYTES", str(10 * 1024 * 1024)))  # 10MB default
 app.add_middleware(RequestSizeLimitMiddleware, max_size_bytes=max_request_size)
+
+# Phase 0 containment: gate /metrics behind IP allowlist + optional shared
+# bearer token. Defense-in-depth — nginx already restricts internally, but
+# this protects when nginx is bypassed (debug, future ingress changes).
+app.add_middleware(MetricsGuardMiddleware)
 
 # CORS configuration
 origins = [
