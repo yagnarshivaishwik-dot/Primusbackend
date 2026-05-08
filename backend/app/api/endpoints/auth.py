@@ -338,12 +338,31 @@ async def login(
 
     clear_login_attempts(email)
 
-    # Audit Log
+    # Audit Log + trial-license activation. Both wrapped in try/except so
+    # a non-critical failure here doesn't break login. CRITICAL: if either
+    # write raises, SQLAlchemy leaves the session in an "aborted
+    # transaction" state, and EVERY subsequent query/commit on this same
+    # session — including create_refresh_token below — fails with
+    # InvalidRequestError or PendingRollbackError. That was the
+    # "Internal Server Error" on the SuperAdmin login: log_action or the
+    # trial-license commit raised (e.g. column drift, schema mismatch),
+    # the except: pass swallowed it silently, then refresh-token commit
+    # blew up minutes later with a confusing traceback that pointed at
+    # tokens.py instead of the real culprit.
+    #
+    # Fix: rollback() inside the except so the session goes back to a
+    # clean state before the rest of login runs. Also log the swallowed
+    # exception so operators can see what's failing in audit/license
+    # without it being an outage.
     try:
         from app.api.endpoints.audit import log_action
         log_action(db, user.id, "login_success", f"Email:{email}", client_ip)
-        
-        # Trial logic
+    except Exception as exc:
+        db.rollback()
+        logger.warning("login: audit log_action failed (non-fatal): %s", exc)
+
+    try:
+        # Trial logic — only when admin, on first activation.
         if user.role == "admin" and user.cafe_id:
             from app.models import License
             license_obj = db.query(License).filter_by(cafe_id=user.cafe_id).first()
@@ -352,8 +371,9 @@ async def login(
                 license_obj.expires_at = license_obj.activated_at + timedelta(days=30)
                 db.add(license_obj)
                 db.commit()
-    except Exception:
-        pass
+    except Exception as exc:
+        db.rollback()
+        logger.warning("login: trial-license activation failed (non-fatal): %s", exc)
 
     # ---- Device-based cafe resolution ----
     from app.auth.tokens import (

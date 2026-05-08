@@ -165,7 +165,24 @@ def create_refresh_token(
 
     rt = RefreshToken(**rt_kwargs)
     db.add(rt)
-    db.commit()
+    try:
+        db.commit()
+    except Exception as exc:
+        # Defensive: if the session was already in a poisoned state from an
+        # earlier swallowed exception (audit/trial-license writes in login
+        # used to do this), commit raises InvalidRequestError or
+        # PendingRollbackError pointing at a misleading line. Rollback and
+        # retry so a transient session-state issue doesn't kill login.
+        db.rollback()
+        rt = RefreshToken(**rt_kwargs)
+        db.add(rt)
+        db.commit()
+        # Don't swallow the original exc info — log it so we can see what
+        # got us into this state on the first attempt.
+        import logging
+        logging.getLogger("primus.auth.tokens").warning(
+            "create_refresh_token: first commit failed, retried after rollback: %s", exc,
+        )
     return raw_token
 
 
