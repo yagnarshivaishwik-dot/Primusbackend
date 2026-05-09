@@ -26,10 +26,17 @@ export default function PrimusLogin({ onLogin, allowedRoles }) {
       const params = new URLSearchParams();
       params.append("username", username);
       params.append("password", password);
-      const res = await axios.post(url, params, { headers: { "Content-Type": "application/x-www-form-urlencoded" }, timeout: 15000 });
+      const res = await axios.post(url, params, { headers: { "Content-Type": "application/x-www-form-urlencoded" }, timeout: 15000, withCredentials: true });
       const token = res?.data?.access_token;
+      const refreshTok = res?.data?.refresh_token;
       if (!token) throw new Error("Invalid response from server");
       localStorage.setItem("primus_jwt", token);
+      if (refreshTok) {
+        // Persist refresh token so api.js axios interceptor can rotate
+        // the access token automatically on 401 (no more forced 20-min
+        // relogins).
+        localStorage.setItem("primus_refresh", refreshTok);
+      }
       // Optional role enforcement
       if (Array.isArray(allowedRoles) && allowedRoles.length > 0) {
         try {

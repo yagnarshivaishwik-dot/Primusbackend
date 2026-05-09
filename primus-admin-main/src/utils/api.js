@@ -66,6 +66,99 @@ export function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+// ── JWT auto-refresh interceptor ───────────────────────────────────
+//
+// Backend access tokens expire (default 60 min). When the SPA gets a 401,
+// we POST the stored refresh_token to /api/auth/refresh, persist the new
+// access_token, and retry the original request. Only retry once per
+// request to avoid infinite loops if the refresh itself 401s.
+//
+// Refresh-token storage:
+//   localStorage["primus_refresh"] is set by Login.jsx after the login
+//   response (which now returns refresh_token in the body too — see
+//   backend auth.py /login). The httpOnly cookie path is also kept on
+//   the backend for the same-origin path, but cross-origin SPAs need
+//   the body+localStorage path because samesite=lax cookies don't
+//   travel from primusadmin.in → api.primustech.in reliably.
+//
+// Side-effect import: simply importing this module installs the
+// interceptor on the global axios singleton. Per-page imports of
+// `axios` then automatically benefit from it.
+import axiosLib from "axios";
+
+let _refreshInFlight = null;
+
+async function _refreshAccessToken() {
+  if (_refreshInFlight) return _refreshInFlight;
+  const stored = localStorage.getItem("primus_refresh");
+  if (!stored) {
+    return Promise.reject(new Error("no_refresh_token"));
+  }
+  _refreshInFlight = (async () => {
+    try {
+      const base = ENV_BASE.replace(/\/$/, "");
+      const res = await fetch(`${base}/api/auth/refresh`, {
+        method: "POST",
+        credentials: "include", // also send cookie if present
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: stored }),
+      });
+      if (!res.ok) throw new Error(`refresh_failed_${res.status}`);
+      const data = await res.json();
+      if (data?.access_token) {
+        localStorage.setItem("primus_jwt", data.access_token);
+      }
+      if (data?.refresh_token) {
+        // Refresh tokens rotate — persist the new one or future
+        // refreshes will fail with the old (now-revoked) value.
+        localStorage.setItem("primus_refresh", data.refresh_token);
+      }
+      return data?.access_token;
+    } finally {
+      _refreshInFlight = null;
+    }
+  })();
+  return _refreshInFlight;
+}
+
+axiosLib.interceptors.response.use(
+  (resp) => resp,
+  async (err) => {
+    const original = err?.config;
+    const status = err?.response?.status;
+    if (
+      status === 401 &&
+      original &&
+      !original.__primus_retried &&
+      // Don't loop on the refresh endpoint itself.
+      !(original.url || "").includes("/api/auth/refresh") &&
+      // Don't loop on the login endpoint.
+      !(original.url || "").includes("/api/auth/login")
+    ) {
+      original.__primus_retried = true;
+      try {
+        const newToken = await _refreshAccessToken();
+        if (newToken) {
+          original.headers = original.headers || {};
+          original.headers.Authorization = `Bearer ${newToken}`;
+          return axiosLib(original);
+        }
+      } catch {
+        // Refresh failed → drop the user back to login. The Login
+        // component listens to storage changes and Auth context will
+        // pick this up on next render.
+        try {
+          localStorage.removeItem("primus_jwt");
+          localStorage.removeItem("primus_refresh");
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    return Promise.reject(err);
+  },
+);
+
 // Centralized toast
 export function showToast(message) {
   const rootId = 'primus-toast-root';

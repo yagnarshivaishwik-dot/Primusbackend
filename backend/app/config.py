@@ -100,9 +100,11 @@ APP_SECRET = _require_env_var(
 # JWT Configuration
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")  # Default to HS256, can be overridden
 ACCESS_TOKEN_EXPIRE_MINUTES = int(
-    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "20")
-)  # 20 minutes default (short-lived for security)
-REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60")
+)  # 60 minutes default — paired with frontend axios auto-refresh on 401.
+# Refresh tokens last 30 days so a cafe operator can leave a session
+# parked overnight without being kicked out next morning.
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))
 
 # Optional OIDC settings for Keycloak or other providers
 OIDC_ISSUER = os.getenv("OIDC_ISSUER", "")
@@ -134,6 +136,7 @@ load_from_file(os.path.join(base_dir, "conf", "oauth.conf"))
 
 # Payment gateways
 STRIPE_SECRET = os.getenv("STRIPE_SECRET", "")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_CURRENCY = os.getenv("STRIPE_CURRENCY", "usd")
 STRIPE_SUCCESS_URL = os.getenv("STRIPE_SUCCESS_URL", "https://example.com/success")
 STRIPE_CANCEL_URL = os.getenv("STRIPE_CANCEL_URL", "https://example.com/cancel")

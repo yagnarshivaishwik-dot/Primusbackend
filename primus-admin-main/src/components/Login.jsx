@@ -18,10 +18,18 @@ const Login = ({ onLoginSuccess }) => {
             formData.append('username', email);
             formData.append('password', password);
 
-            const response = await axios.post(`${base}/api/auth/login`, formData);
-            const { access_token } = response.data;
+            const response = await axios.post(`${base}/api/auth/login`, formData, {
+                withCredentials: true,
+            });
+            const { access_token, refresh_token } = response.data;
 
             localStorage.setItem('primus_jwt', access_token);
+            if (refresh_token) {
+                // Stored alongside the access token so the api.js axios
+                // interceptor can auto-refresh on 401 (no more 20-minute
+                // forced relogins).
+                localStorage.setItem('primus_refresh', refresh_token);
+            }
             onLoginSuccess();
         } catch (err) {
             console.error('[Login] Error:', err.response?.status, err.response?.data || err.message);

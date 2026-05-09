@@ -224,6 +224,7 @@ const App = () => {
         } catch (e) {
             if (e.response?.status === 401) {
                 localStorage.removeItem('primus_jwt');
+                localStorage.removeItem('primus_refresh');
                 setIsLoggedIn(false);
             }
         }
@@ -248,6 +249,7 @@ const App = () => {
             cafeInfo={cafeInfo}
             onLogout={() => {
                 localStorage.removeItem('primus_jwt');
+                localStorage.removeItem('primus_refresh');
                 setIsLoggedIn(false);
             }}
         />

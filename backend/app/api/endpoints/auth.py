@@ -490,8 +490,14 @@ async def login(
         path="/api/auth/refresh",
     )
 
+    # Return refresh_token in body too so the SPA can store it in
+    # localStorage and send it in body on /refresh — avoids the
+    # cross-origin httpOnly-cookie dance for primusadmin.in calling
+    # api.primustech.in (different origins, samesite=lax cookies don't
+    # always cross). The cookie is still set for callers that prefer it.
     return {
         "access_token": access_token,
+        "refresh_token": refresh_token,
         "token_type": "bearer",
         "cafe_id": resolved_cafe_id,
         "role": resolved_role,
@@ -515,9 +521,24 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     return {"ok": True}
 
 
+class RefreshIn(BaseModel):
+    refresh_token: str | None = None
+
+
 @router.post("/refresh")
-def refresh_tokens(request: Request, response: Response, db: Session = Depends(get_db)):
-    """Rotate refresh token and issue new access + refresh token pair."""
+async def refresh_tokens(
+    request: Request,
+    response: Response,
+    body: RefreshIn | None = None,
+    db: Session = Depends(get_db),
+):
+    """Rotate refresh token and issue new access + refresh token pair.
+
+    Accepts the refresh token from EITHER the httpOnly cookie OR the
+    request body. The body path lets cross-origin SPAs (admin web app
+    on primusadmin.in calling api.primustech.in) trigger refresh from
+    an axios interceptor without depending on third-party cookies.
+    """
     from app.auth.tokens import (
         create_access_token as create_enriched_token,
         create_refresh_token,
@@ -525,8 +546,18 @@ def refresh_tokens(request: Request, response: Response, db: Session = Depends(g
         revoke_refresh_token,
     )
 
-    # Get refresh token from cookie or body
     raw_token = request.cookies.get("refresh_token")
+    if not raw_token and body is not None:
+        raw_token = body.refresh_token
+    if not raw_token:
+        # Final fallback: parse the JSON body manually if FastAPI didn't
+        # bind it (e.g. content-type missing on the client side).
+        try:
+            data = await request.json()
+            if isinstance(data, dict):
+                raw_token = data.get("refresh_token")
+        except Exception:
+            raw_token = None
     if not raw_token:
         raise HTTPException(status_code=401, detail="Refresh token missing")
 
@@ -595,7 +626,11 @@ def refresh_tokens(request: Request, response: Response, db: Session = Depends(g
         path="/api/auth/refresh",
     )
 
-    return {"access_token": new_access, "token_type": "bearer"}
+    return {
+        "access_token": new_access,
+        "refresh_token": new_refresh,  # also returned in body for SPA storage
+        "token_type": "bearer",
+    }
 
 
 # ---- Simple Registration (no OTP) ----
