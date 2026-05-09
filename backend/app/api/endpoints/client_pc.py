@@ -534,6 +534,73 @@ async def delete_pc(
     return {"status": "deleted"}
 
 
+@router.post("/self-deregister")
+async def self_deregister(
+    request: Request,
+    db: Session = Depends(get_db),
+    pc: ClientPC = Depends(get_current_device),
+):
+    """
+    Kiosk-driven removal of THIS PC from the cafe registry.
+
+    Called by `PrimusClient.exe --uninstall-cleanup`, which Inno Setup
+    invokes from the uninstaller's "Delete application data and unlink
+    from cafe" prompt. Authentication is the standard device HMAC
+    (X-PC-ID + X-Device-Signature + X-Device-Timestamp + X-Device-Nonce)
+    so the kiosk can deregister itself without an admin JWT.
+
+    Cascade matches the admin DELETE /{pc_id} path:
+      - System events for this PC are deleted
+      - Remote commands for this PC are deleted
+      - PC sessions retain a NULL pc_id pointer (preserve financial history)
+      - The ClientPC row is removed
+    After this call the kiosk will fail license enforcement on next
+    register-attempt with the same hardware fingerprint, which is the
+    intended decommission semantics.
+    """
+    # Same conditional cafe-scoped import as delete_pc above.
+    if MULTI_DB_ENABLED:
+        from app.db.models_cafe import RemoteCommand
+        from app.db.models_cafe import Session as PCSession
+        from app.db.models_cafe import SystemEvent as _SystemEvent
+    else:
+        from app.models import RemoteCommand
+        from app.models import Session as PCSession  # noqa: F811
+        from app.models import SystemEvent as _SystemEvent  # noqa: F811
+    SystemEvent = _SystemEvent  # noqa: F811
+
+    pc_id = pc.id
+
+    db.query(SystemEvent).filter(SystemEvent.pc_id == pc_id).delete()
+    db.query(RemoteCommand).filter(RemoteCommand.pc_id == pc_id).delete()
+
+    if MULTI_DB_ENABLED:
+        db.query(PCSession).filter(PCSession.pc_id == pc_id).update(
+            {PCSession.pc_id: None}
+        )
+    else:
+        db.query(PCSession).filter(PCSession.client_pc_id == pc_id).update(
+            {PCSession.client_pc_id: None}
+        )
+
+    db.delete(pc)
+    db.commit()
+
+    try:
+        await publish_invalidation(
+            {
+                "scope": "client_pc",
+                "items": [{"type": "client_pc_list", "id": "*"}],
+            }
+        )
+    except Exception:
+        # Cache-invalidation is best-effort — we already committed the
+        # delete and the kiosk is about to wipe its own credentials.
+        pass
+
+    return {"status": "deregistered", "pc_id": pc_id}
+
+
 def enforce_license(license_obj: License, db: Session):
     if not license_obj.is_active:
         raise HTTPException(status_code=403, detail="License is revoked")
