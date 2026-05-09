@@ -55,14 +55,23 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 f"max-age={max_age}; includeSubDomains; preload"
             )
 
-        csp = os.getenv(
-            "CONTENT_SECURITY_POLICY",
-            "default-src 'self'; script-src 'self'; style-src 'self'; "
-            "img-src 'self' data: https:; font-src 'self' data:; "
-            "connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; "
-            "form-action 'self'",
-        )
-        response.headers["Content-Security-Policy"] = csp
+        # Don't clobber a CSP a route handler already set on the
+        # response. The Cashfree launcher at
+        # /api/v1/payment/cashfree/checkout needs a permissive CSP so
+        # the v3 SDK can load from sdk.cashfree.com and run inline
+        # <style>/<script>; the route sets that header itself, so
+        # honour it here. Any other route gets the strict default.
+        if "content-security-policy" not in (
+            k.lower() for k in response.headers.keys()
+        ):
+            csp = os.getenv(
+                "CONTENT_SECURITY_POLICY",
+                "default-src 'self'; script-src 'self'; style-src 'self'; "
+                "img-src 'self' data: https:; font-src 'self' data:; "
+                "connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; "
+                "form-action 'self'",
+            )
+            response.headers["Content-Security-Policy"] = csp
 
         return response
 

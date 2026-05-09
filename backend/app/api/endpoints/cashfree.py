@@ -221,7 +221,26 @@ async def cashfree_checkout_launcher(
         "</script>"
         "</body></html>"
     )
-    return HTMLResponse(content=body)
+    # Route-specific permissive CSP — required so the Cashfree v3 SDK
+    # can load from its CDN and run. The SecurityHeadersMiddleware
+    # respects this and doesn't overwrite. Everything else stays under
+    # the strict default.
+    csp = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://sdk.cashfree.com https://*.cashfree.com; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: https:; "
+        "font-src 'self' data: https:; "
+        "connect-src 'self' https://*.cashfree.com https://api.cashfree.com https://payments.cashfree.com https://payments-test.cashfree.com; "
+        "frame-src https://*.cashfree.com https://payments.cashfree.com https://payments-test.cashfree.com; "
+        "form-action 'self' https://*.cashfree.com; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'"
+    )
+    return HTMLResponse(
+        content=body,
+        headers={"Content-Security-Policy": csp},
+    )
 
 
 @router.get("/return", response_class=HTMLResponse)
