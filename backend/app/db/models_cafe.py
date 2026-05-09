@@ -24,6 +24,7 @@ from sqlalchemy import (
     Index,
     Integer,
     Numeric,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
@@ -123,10 +124,52 @@ class PricingRule(CafeBase):
     description = Column(String, nullable=True)
 
 
+class TimeSlotPricingRule(CafeBase):
+    """
+    Time-slot pricing rules for a café.
+
+    Each rule applies to a weekday (or all days if day_of_week is None)
+    within a [start_minute, end_minute) window (minutes since 00:00 local),
+    optionally scoped to a pc_class (None = applies to all PCs).
+
+    On overlap, the rule with the highest `priority` wins; ties are broken
+    by most-specific (day_of_week set, pc_class set).
+
+    Money is stored as integer paise (currency minor units).
+    """
+    __tablename__ = "time_slot_pricing_rules"
+    __table_args__ = (
+        Index("ix_tspr_cafe_id", "cafe_id"),
+        Index("ix_tspr_cafe_dow", "cafe_id", "day_of_week"),
+        CheckConstraint("start_minute >= 0 AND start_minute < 1440", name="ck_tspr_start_minute"),
+        CheckConstraint("end_minute > 0 AND end_minute <= 1440", name="ck_tspr_end_minute"),
+        CheckConstraint("end_minute > start_minute", name="ck_tspr_window"),
+        CheckConstraint(
+            "day_of_week IS NULL OR (day_of_week >= 0 AND day_of_week <= 6)",
+            name="ck_tspr_day_of_week",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    cafe_id = Column(Integer, nullable=False, index=True)  # global cafe id (no FK; lives in global DB)
+    day_of_week = Column(SmallInteger, nullable=True)  # 0=Mon..6=Sun; None=all days
+    start_minute = Column(Integer, nullable=False)  # inclusive, 0..1439
+    end_minute = Column(Integer, nullable=False)    # exclusive, 1..1440
+    price_per_hour_paise = Column(Integer, nullable=False)
+    pc_class = Column(String, nullable=True)  # e.g. 'standard' | 'gaming' | 'vr'; None=all
+    currency = Column(String, nullable=False, default="INR")
+    priority = Column(Integer, nullable=False, default=0)
+    active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
+
 # ---- Offers & Memberships ----
 
 class Offer(CafeBase):
-    """Time packages purchasable by users."""
+    """Time packages purchasable by users (cafe-scoped DB — no cafe_id column)."""
     __tablename__ = "offers"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -135,6 +178,15 @@ class Offer(CafeBase):
     price = Column(Numeric(12, 2), nullable=False)
     hours_minutes = Column(Integer, nullable=False)  # duration in minutes
     active = Column(Boolean, default=True)
+    # Inventory v2 (Cashfree dynamic packages):
+    thumbnail_url = Column(String, nullable=True)
+    bonus_minutes = Column(Integer, default=0, nullable=False)
+    discount_percent = Column(Float, default=0.0, nullable=False)
+    tax_percent = Column(Float, default=0.0, nullable=False)
+    display_order = Column(Integer, default=0, nullable=False, index=True)
+    is_happy_hour_only = Column(Boolean, default=False, nullable=False)
+    happy_hour_start = Column(String(5), nullable=True)  # "HH:MM"
+    happy_hour_end = Column(String(5), nullable=True)    # "HH:MM"
 
 
 class UserOffer(CafeBase):
@@ -652,6 +704,7 @@ class Booking(CafeBase):
     __table_args__ = (
         Index("ix_booking_pc_times", "pc_id", "start_time", "end_time"),
         Index("ix_booking_status", "status"),
+        Index("ix_booking_squad", "squad_booking_id"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -661,6 +714,36 @@ class Booking(CafeBase):
     end_time = Column(DateTime, nullable=False)
     status = Column(String, default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)
+    # Squad booking parent (multi-PC coordinated booking). NULL for solo bookings.
+    squad_booking_id = Column(
+        Integer, ForeignKey("squad_bookings.id"), nullable=True
+    )
+
+
+class SquadBooking(CafeBase):
+    """Parent row for a coordinated multi-PC (squad) booking.
+
+    See ``app/models.py:SquadBooking`` for the single-DB mirror. The same
+    row shape holds on both sides so the endpoint can import from either.
+    """
+
+    __tablename__ = "squad_bookings"
+    __table_args__ = (
+        Index("ix_squad_captain_created", "captain_id", "created_at"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    captain_id = Column(
+        Integer, ForeignKey("users.id"), nullable=False, index=True
+    )
+    cafe_id = Column(Integer, nullable=False, index=True)
+    status = Column(String, default="pending", nullable=False)
+    # pending | confirmed | partial | cancelled
+    payment_split = Column(String, default="captain", nullable=False)
+    # captain | equal | each
+    total_amount_paise = Column(Integer, default=0, nullable=False)
+    currency = Column(String, default="INR", nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class BackupEntry(CafeBase):

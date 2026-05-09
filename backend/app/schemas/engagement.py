@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 # Prizes
@@ -104,12 +104,61 @@ class EventProgressOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+_HHMM_RE = r"^([01]\d|2[0-3]):[0-5]\d$"
+
+
+def _validate_hhmm(v: str | None) -> str | None:
+    if v is None or v == "":
+        return None
+    import re as _re
+    if not _re.match(_HHMM_RE, v):
+        raise ValueError("must be HH:MM (00:00..23:59)")
+    return v
+
+
 # Offers
 class OfferIn(BaseModel):
     name: str
     description: str | None = None
     price: float
     hours_minutes: int
+    # Inventory v2 — all optional with safe defaults so existing callers keep
+    # working without changes.
+    thumbnail_url: str | None = None
+    bonus_minutes: int = 0
+    discount_percent: float = 0.0
+    tax_percent: float = 0.0
+    display_order: int = 0
+    is_happy_hour_only: bool = False
+    happy_hour_start: str | None = None  # "HH:MM"
+    happy_hour_end: str | None = None    # "HH:MM"
+
+    @field_validator("happy_hour_start", "happy_hour_end")
+    @classmethod
+    def _hhmm(cls, v: str | None) -> str | None:
+        return _validate_hhmm(v)
+
+
+class OfferUpdate(BaseModel):
+    """All fields optional — PATCH semantics."""
+    name: str | None = None
+    description: str | None = None
+    price: float | None = None
+    hours_minutes: int | None = None
+    thumbnail_url: str | None = None
+    bonus_minutes: int | None = None
+    discount_percent: float | None = None
+    tax_percent: float | None = None
+    display_order: int | None = None
+    is_happy_hour_only: bool | None = None
+    happy_hour_start: str | None = None
+    happy_hour_end: str | None = None
+    active: bool | None = None
+
+    @field_validator("happy_hour_start", "happy_hour_end")
+    @classmethod
+    def _hhmm(cls, v: str | None) -> str | None:
+        return _validate_hhmm(v)
 
 
 class OfferOut(OfferIn):
@@ -118,10 +167,15 @@ class OfferOut(OfferIn):
     model_config = ConfigDict(from_attributes=True)
 
 
+class OfferReorderItem(BaseModel):
+    id: int
+    display_order: int
+
+
 class UserOfferOut(BaseModel):
     id: int
     user_id: int
-    offer_id: int
+    offer_id: int | None = None
     purchased_at: datetime
     minutes_remaining: int
     model_config = ConfigDict(from_attributes=True)

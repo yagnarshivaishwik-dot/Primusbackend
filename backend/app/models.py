@@ -314,6 +314,15 @@ class Offer(Base):
     price = Column(Float)
     hours_minutes = Column(Integer)  # Duration in minutes (more precise than float hours)
     active = Column(Boolean, default=True)
+    # Inventory v2 (Cashfree dynamic packages):
+    thumbnail_url = Column(String, nullable=True)
+    bonus_minutes = Column(Integer, default=0, nullable=False)
+    discount_percent = Column(Float, default=0.0, nullable=False)
+    tax_percent = Column(Float, default=0.0, nullable=False)
+    display_order = Column(Integer, default=0, nullable=False, index=True)
+    is_happy_hour_only = Column(Boolean, default=False, nullable=False)
+    happy_hour_start = Column(String(5), nullable=True)  # "HH:MM"
+    happy_hour_end = Column(String(5), nullable=True)    # "HH:MM"
 
 
 class UserOffer(Base):
