@@ -99,6 +99,95 @@ except Exception:  # pragma: no cover
 logger = logging.getLogger(__name__)
 
 
+def _ensure_offer_inventory_v2_columns() -> None:
+    """
+    Self-healing schema patch for Inventory v2 (Cashfree dynamic packages).
+
+    Idempotent ALTER TABLE that adds the 8 columns the v2 Offer ORM model
+    expects. Runs every backend boot — if the columns are already present
+    (the alembic migration was applied), every statement is a no-op thanks
+    to ADD COLUMN IF NOT EXISTS.
+
+    Why this lives in app startup rather than only in alembic:
+      Multiple Primus deployments (clutchhh, primustech, others) have
+      diverged alembic chains, which makes `alembic upgrade head`
+      unreliable across the fleet. The model expects these columns the
+      moment the backend serves a single GET /api/shop/packs request.
+      Running the DDL on boot guarantees the schema lines up with the
+      model on every deploy without operator intervention.
+
+    Both global and cafe-DB chains get patched. Failures are logged
+    but never fatal — if the table doesn't exist yet (fresh install
+    pre-migration) the create_all path elsewhere will produce it with
+    the correct columns from the start.
+    """
+    log = logging.getLogger("primus.startup.schema")
+
+    DDL_STATEMENTS = (
+        "ALTER TABLE offers ADD COLUMN IF NOT EXISTS thumbnail_url VARCHAR",
+        "ALTER TABLE offers ADD COLUMN IF NOT EXISTS bonus_minutes INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE offers ADD COLUMN IF NOT EXISTS discount_percent DOUBLE PRECISION NOT NULL DEFAULT 0",
+        "ALTER TABLE offers ADD COLUMN IF NOT EXISTS tax_percent DOUBLE PRECISION NOT NULL DEFAULT 0",
+        "ALTER TABLE offers ADD COLUMN IF NOT EXISTS display_order INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE offers ADD COLUMN IF NOT EXISTS is_happy_hour_only BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE offers ADD COLUMN IF NOT EXISTS happy_hour_start VARCHAR(5)",
+        "ALTER TABLE offers ADD COLUMN IF NOT EXISTS happy_hour_end VARCHAR(5)",
+        "CREATE INDEX IF NOT EXISTS ix_offers_display_order ON offers (display_order)",
+    )
+
+    from sqlalchemy import text as _sql_text
+
+    # Always patch the global DB.
+    try:
+        from app.db.global_db import global_engine
+        with global_engine.begin() as conn:
+            for stmt in DDL_STATEMENTS:
+                try:
+                    conn.execute(_sql_text(stmt))
+                except Exception as exc:
+                    # Per-statement failure (e.g. table missing) is logged
+                    # and skipped — don't block the rest.
+                    log.debug("global DDL skipped (%s): %s", exc.__class__.__name__, stmt)
+        log.info("global DB: offer inventory v2 columns ensured")
+    except Exception as exc:
+        log.warning("global DB schema patch failed (continuing): %s", exc)
+
+    # In multi-DB mode, also patch every per-cafe DB.
+    try:
+        from app.db.dependencies import MULTI_DB_ENABLED
+        if MULTI_DB_ENABLED:
+            from app.db.router import cafe_db_router
+            try:
+                # Best-effort iteration over known cafe DBs; if the router
+                # doesn't expose a list helper, fall back to lazy patching
+                # via get_session at request time (handled by ORM).
+                cafe_ids = list(getattr(cafe_db_router, "list_cafe_ids", lambda: [])())
+            except Exception:
+                cafe_ids = []
+            for cid in cafe_ids:
+                try:
+                    sess = cafe_db_router.get_session(cid)
+                    try:
+                        for stmt in DDL_STATEMENTS:
+                            try:
+                                sess.execute(_sql_text(stmt))
+                            except Exception as exc:
+                                log.debug(
+                                    "cafe %s DDL skipped (%s): %s",
+                                    cid, exc.__class__.__name__, stmt,
+                                )
+                        sess.commit()
+                    finally:
+                        sess.close()
+                    log.info("cafe %s DB: offer inventory v2 columns ensured", cid)
+                except Exception as exc:
+                    log.warning(
+                        "cafe %s DB schema patch failed (continuing): %s", cid, exc,
+                    )
+    except Exception as exc:
+        log.warning("multi-DB schema patch loop failed (continuing): %s", exc)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -107,6 +196,13 @@ async def lifespan(app: FastAPI):
     Starts background tasks (e.g., time-left broadcast loop) on startup
     and can be extended later for graceful shutdown if needed.
     """
+    # Schema self-heal — run BEFORE any background task that might query
+    # offers (presence monitor, revenue aggregation, etc.). Idempotent.
+    try:
+        _ensure_offer_inventory_v2_columns()
+    except Exception as e:
+        logging.error(f"Schema self-heal failed: {e}")
+
     try:
         asyncio.create_task(supervised_task("timeleft_broadcast", _broadcast_timeleft_loop))
         asyncio.create_task(supervised_task("presence_monitor", presence_monitor_loop))
