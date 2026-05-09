@@ -36,6 +36,7 @@ from app.api.endpoints import (
     internal_dashboard,
     internal_health,
     leaderboard,
+    legal,
     license,
     membership,
     notification,
@@ -529,6 +530,12 @@ async def json_logging_middleware(request: Request, call_next):
 from app.api.v1 import v1_router
 
 app.include_router(v1_router)
+
+# Public compliance pages required by Cashfree to whitelist this
+# domain for SDK use (Contact / Terms / Refunds / Privacy / Products).
+# Mounted at root with NO prefix so URLs are /contact-us, /terms, etc.
+# Override page contents via PRIMUS_BUSINESS_* env vars; see legal.py.
+app.include_router(legal.router, tags=["legal"])
 
 # ── Legacy /api/* routes (backward compat — will be deprecated) ────────
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
