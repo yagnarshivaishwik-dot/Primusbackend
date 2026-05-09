@@ -30,6 +30,7 @@ import {
     ShoppingCart,
     Calendar,
     Megaphone,
+    Package,
 } from 'lucide-react';
 
 import { getApiBase, authHeaders } from '../utils/api';
@@ -45,6 +46,7 @@ import PCManagement from '../pages/PCManagement';
 import GameManagement from '../pages/GameManagement';
 import Financials from '../pages/Financials';
 import ShopPage from '../pages/Shop/ShopPage';
+import PackagesPage from '../pages/Packages/PackagesPage';
 import CouponsPage from '../pages/Coupons/CouponsPage';
 import CampaignsPage from '../pages/Campaigns/CampaignsPage';
 import UsersPage from '../pages/Users/UsersPage';
@@ -94,6 +96,8 @@ const AdminUI = ({ cafeInfo, onLogout }) => {
                 return <Financials />;
             case 'Shop':
                 return <ShopPage cafeInfo={cafeInfo} />;
+            case 'Packages':
+                return <PackagesPage cafeInfo={cafeInfo} />;
             case 'Coupons':
                 return <CouponsPage cafeInfo={cafeInfo} />;
             case 'Campaigns':
@@ -132,6 +136,7 @@ const AdminUI = ({ cafeInfo, onLogout }) => {
                             <NavItem pageName="Dashboard" icon={<BarChart size={20} />}>Dashboard</NavItem>
                             <NavItem pageName="PC list" icon={<Monitor size={20} />}>PC list</NavItem>
                             <NavItem pageName="Shop" icon={<ShoppingCart size={20} />}>Shop</NavItem>
+                            <NavItem pageName="Packages" icon={<Package size={20} />}>Packages</NavItem>
                             <NavItem pageName="Coupons" icon={<Ticket size={20} />}>Coupons</NavItem>
                             <NavItem pageName="Campaigns" icon={<Megaphone size={20} />}>Campaigns</NavItem>
                             <NavItem pageName="Orders" icon={<Ticket size={20} />}>Orders</NavItem>
