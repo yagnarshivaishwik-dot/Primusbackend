@@ -64,7 +64,7 @@ BUSINESS_HOURS = os.getenv(
 BUSINESS_WEBSITE = os.getenv("PRIMUS_BUSINESS_WEBSITE", "https://primustech.in")
 GRIEVANCE_OFFICER_NAME = os.getenv("PRIMUS_GRIEVANCE_NAME", "Grievance Officer")
 GRIEVANCE_OFFICER_EMAIL = os.getenv(
-    "PRIMUS_GRIEVANCE_EMAIL", "grievance@primusadmin.in"
+    "PRIMUS_GRIEVANCE_EMAIL", "support@primusadmin.in"
 )
 
 # Legal entity that holds the Cashfree merchant account (KYC). Cashfree's
