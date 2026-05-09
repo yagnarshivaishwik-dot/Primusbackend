@@ -25,7 +25,8 @@ from datetime import UTC, datetime
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from app.api.endpoints.auth import get_current_user
@@ -66,6 +67,13 @@ class CreateOrderOut(BaseModel):
     # render the in-app checkout (including the UPI-QR pane). Kiosk calls
     # cashfree.checkout({paymentSessionId}) with this.
     payment_session_id: str
+    # NEW (hosted-checkout flow): direct URL to Cashfree's own checkout page
+    # for this session. The kiosk's child WebView2 navigates here directly,
+    # bypassing the JS SDK entirely (and the parent-origin verification
+    # that rejected kiosk.primustech.in). Origin becomes
+    # payments.cashfree.com — Cashfree's own domain — so no merchant-side
+    # whitelist is needed.
+    payment_link: str
     # Optional server-generated QR data (legacy path; Cashfree no longer
     # returns a usable QR from /orders/sessions for most accounts). Kept
     # for forwards-compat if Cashfree re-enables it.
@@ -128,10 +136,64 @@ async def create_order(
     return CreateOrderOut(
         order_id=order_id,
         payment_session_id=session_id,
+        payment_link=cf.hosted_checkout_url(session_id),
         environment=environment,
         amount=body.amount,
         status=order.get("order_status", "ACTIVE"),
     )
+
+
+@router.get("/return", response_class=HTMLResponse)
+async def payment_return(
+    order_id: str = Query(..., min_length=1, max_length=64),
+    cf_payment_id: str | None = Query(default=None),
+    cf_order_status: str | None = Query(default=None),
+):
+    """
+    Cashfree-facing return page. The kiosk's child WebView2 navigates here
+    after payment completes; its NavigationStarting handler intercepts the
+    request BEFORE the page actually loads, closes the payment window, and
+    posts a `payment_completed` event back to the main React app.
+
+    Even so, we serve a real HTML page here as a safety net for any path
+    that doesn't intercept (e.g. a Cashfree dashboard test, or a payment
+    completed in a regular browser the user opened by mistake). The page
+    immediately attempts to bounce back to the kiosk via the virtual host.
+
+    NOTE: This endpoint is intentionally PUBLIC — Cashfree must be able
+    to redirect to it without a JWT. It contains no sensitive state; the
+    actual money side is handled by the signed webhook.
+    """
+    safe_order_id = "".join(c for c in order_id if c.isalnum() or c in "_-")
+    body = (
+        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+        "<title>Payment complete · Primus</title>"
+        "<meta http-equiv=\"refresh\" content=\"1;url=https://kiosk.primustech.in/?paid=1&order_id="
+        + safe_order_id
+        + "\">"
+        "<style>"
+        "html,body{margin:0;background:#0a0d14;color:#e5e7eb;font-family:system-ui,sans-serif;"
+        "height:100%;display:flex;align-items:center;justify-content:center;text-align:center}"
+        ".card{padding:40px;border-radius:24px;background:#111823;border:1px solid #1f2937;max-width:420px}"
+        ".tick{font-size:64px;line-height:1;margin-bottom:8px}"
+        ".sub{color:#9ca3af;font-size:13px;margin-top:6px}"
+        "</style></head><body><div class=\"card\">"
+        "<div class=\"tick\">✅</div>"
+        "<div style=\"font-size:18px;font-weight:700\">Payment received</div>"
+        "<div class=\"sub\">Returning to Primus kiosk…</div>"
+        "</div>"
+        "<script>"
+        "try{if(window.chrome&&window.chrome.webview){"
+        "window.chrome.webview.postMessage(JSON.stringify({"
+        "type:'payment_return',order_id:'" + safe_order_id + "'}));"
+        "}}catch(e){}"
+        "setTimeout(function(){"
+        "location.replace('https://kiosk.primustech.in/?paid=1&order_id=" + safe_order_id + "');"
+        "},800);"
+        "</script>"
+        "</body></html>"
+    )
+    return HTMLResponse(content=body)
 
 
 @router.get("/order/{order_id}")
@@ -157,14 +219,74 @@ async def get_order_status(
 
 @router.post("/webhook", status_code=status.HTTP_200_OK)
 async def webhook(request: Request):
-    import logging as _log_for_webhook  # local import, keeps module top tidy
+    import ipaddress
+    import logging as _log_for_webhook
+    import os as _os
+    import time as _time
+
     _log = _log_for_webhook.getLogger("cashfree.webhook")
     """
     Cashfree push notification.
+
+    Phase 4 hardening (audit M16):
+      - Source IP allowlist (CASHFREE_WEBHOOK_ALLOWED_CIDRS, comma-sep)
+      - Timestamp ± window check (CASHFREE_WEBHOOK_MAX_SKEW_SEC, default 300)
+      - HMAC verification (already present)
+      - Idempotency (already present)
+      - All four checks must pass; any one alone is a known bypass
+
     Verifies HMAC signature (header `x-webhook-signature`, `x-webhook-timestamp`)
     and, on PAYMENT_SUCCESS, credits the user's wallet + broadcasts live events.
     Idempotent: a repeat webhook for the same order does nothing.
     """
+    # ------- Defense-in-depth #1: source IP allowlist -------
+    # Resolve the remote IP, honoring nginx X-Forwarded-For only when the
+    # direct peer is in our trusted-proxy CIDRs. The same logic powers
+    # rate_limit.py — keep them in sync.
+    _PROXY_CIDRS = ("127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
+    peer = request.client.host if request.client else "0.0.0.0"
+    try:
+        peer_addr = ipaddress.ip_address(peer)
+        proxy_trusted = any(peer_addr in ipaddress.ip_network(c) for c in _PROXY_CIDRS)
+    except ValueError:
+        proxy_trusted = False
+    client_ip = peer
+    if proxy_trusted:
+        xff = request.headers.get("x-forwarded-for", "")
+        if xff:
+            first = xff.split(",")[0].strip()
+            try:
+                ipaddress.ip_address(first)
+                client_ip = first
+            except ValueError:
+                pass
+
+    allowed_raw = (_os.getenv("CASHFREE_WEBHOOK_ALLOWED_CIDRS") or "").strip()
+    if allowed_raw:
+        # Cashfree publishes its production egress ranges; operators set them
+        # via env. Empty value means "no IP allowlist" — discouraged in prod
+        # and warned about by app.core.startup_guards in a future Phase 5.
+        nets: list[ipaddress._BaseNetwork] = []
+        for token in allowed_raw.split(","):
+            token = token.strip()
+            if not token:
+                continue
+            try:
+                nets.append(ipaddress.ip_network(token, strict=False))
+            except ValueError:
+                _log.warning("cashfree webhook: ignoring invalid allowlist CIDR %r", token)
+        try:
+            ip_obj = ipaddress.ip_address(client_ip)
+            allowed = any(ip_obj in n for n in nets)
+        except ValueError:
+            allowed = False
+        if not allowed:
+            _log.warning(
+                "cashfree webhook: source IP %s not in allowlist (raw=%r); rejecting",
+                client_ip, allowed_raw,
+            )
+            raise HTTPException(status_code=403, detail="Webhook source IP not permitted")
+
     raw = await request.body()
     # Cashfree has shipped 3+ header conventions over the years. Accept all
     # variants so a dashboard upgrade doesn't silently break us.
@@ -207,6 +329,25 @@ async def webhook(request: Request):
         raise HTTPException(
             status_code=401, detail="Missing webhook signature headers"
         )
+
+    # ------- Defense-in-depth #2: replay window check -------
+    # Cashfree timestamps are unix-epoch seconds. Reject anything more than
+    # MAX_SKEW seconds away from now. This prevents an attacker who once
+    # captured a valid (sig, ts, body) triple from replaying it days later.
+    max_skew = int(_os.getenv("CASHFREE_WEBHOOK_MAX_SKEW_SEC", "300"))
+    try:
+        ts_int = int(str(timestamp).strip())
+    except (TypeError, ValueError):
+        _log.warning("cashfree webhook: non-numeric timestamp header %r; rejecting", timestamp)
+        raise HTTPException(status_code=400, detail="Invalid timestamp header")
+    now_ts = int(_time.time())
+    skew = abs(now_ts - ts_int)
+    if skew > max_skew:
+        _log.warning(
+            "cashfree webhook: timestamp skew %ds exceeds limit %ds (now=%d, ts=%d); rejecting",
+            skew, max_skew, now_ts, ts_int,
+        )
+        raise HTTPException(status_code=401, detail="Webhook timestamp outside permitted window")
 
     if not cf.verify_webhook_signature(
         raw_body=raw, timestamp=timestamp, received_signature=signature

@@ -73,10 +73,17 @@ async def create_order(
     customer_phone: str,
     customer_email: str,
     notes: dict | None = None,
+    return_url: str | None = None,
 ) -> dict[str, Any]:
     """
-    Create a PG order. Returns the full response including `payment_session_id`
-    (needed for SDK-less QR initiation below).
+    Create a PG order. Returns the full response including `payment_session_id`.
+
+    `return_url` is the URL Cashfree redirects to after the user finishes
+    payment (success / cancel / dropped). For the kiosk hosted-checkout
+    flow this MUST be a real public HTTPS URL — Cashfree's dashboard
+    rejects virtual hosts like kiosk.primustech.in. Default points at the
+    backend's own /return endpoint, which the kiosk's WebView2 then
+    intercepts via NavigationStarting.
     """
     body = {
         "order_id": order_id,
@@ -90,6 +97,11 @@ async def create_order(
         "order_meta": {
             "notify_url": _env("CASHFREE_NOTIFY_URL", "")
             or "https://api.primustech.in/api/v1/payment/cashfree/webhook",
+            "return_url": (
+                return_url
+                or _env("CASHFREE_RETURN_URL", "")
+                or "https://api.primustech.in/api/v1/payment/cashfree/return?order_id={order_id}"
+            ),
         },
         "order_note": (notes or {}).get("note") or "Primus kiosk top-up",
         "order_tags": notes or {},
@@ -100,6 +112,30 @@ async def create_order(
         )
         resp.raise_for_status()
         return resp.json()
+
+
+def hosted_checkout_url(payment_session_id: str) -> str:
+    """
+    Return the hosted-checkout URL the kiosk's child WebView2 should
+    navigate to. This bypasses the SDK entirely (and therefore the
+    parent-origin verification that rejects virtual hosts like
+    kiosk.primustech.in).
+
+    URL pattern is the redirect target Cashfree's own JS SDK uses
+    internally when invoked with `redirectTarget: '_self'`. It accepts
+    the payment_session_id directly and renders the full Cashfree-hosted
+    payment page (UPI, card, netbanking, wallets) on payments.cashfree.com.
+
+    Pinned to v3 of Cashfree's PG. If Cashfree changes the URL pattern in
+    a future major version, this is the only place to update.
+    """
+    env = (_env("CASHFREE_ENV", "sandbox") or "sandbox").lower()
+    host = (
+        "payments.cashfree.com"
+        if env == "production"
+        else "payments-test.cashfree.com"
+    )
+    return f"https://{host}/pg/view/sessions/checkout/web/{payment_session_id}"
 
 
 async def initiate_upi_qr(*, payment_session_id: str) -> dict[str, Any]:
