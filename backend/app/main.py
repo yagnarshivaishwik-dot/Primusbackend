@@ -152,31 +152,45 @@ def _ensure_offer_inventory_v2_columns() -> None:
     except Exception as exc:
         log.warning("global DB schema patch failed (continuing): %s", exc)
 
-    # In multi-DB mode, also patch every per-cafe DB.
+    # In multi-DB mode, also patch every per-cafe DB. The router doesn't
+    # expose a list helper, so we read cafe IDs directly from the global
+    # `cafes` table and route a fresh session through cafe_db_router for
+    # each one. This is what /api/shop/packs and /api/offer/ actually
+    # query, so missing the cafe DBs leaves the model/schema mismatch
+    # fully exposed to clients.
     try:
         from app.db.dependencies import MULTI_DB_ENABLED
         if MULTI_DB_ENABLED:
+            from app.db.global_db import global_engine as _g_engine
             from app.db.router import cafe_db_router
+
+            # Discover cafe IDs from the global DB. We avoid importing the
+            # ORM model to dodge any pre-init mapper issues; raw SQL is
+            # enough for an integer list.
+            cafe_ids: list[int] = []
             try:
-                # Best-effort iteration over known cafe DBs; if the router
-                # doesn't expose a list helper, fall back to lazy patching
-                # via get_session at request time (handled by ORM).
-                cafe_ids = list(getattr(cafe_db_router, "list_cafe_ids", lambda: [])())
-            except Exception:
-                cafe_ids = []
+                with _g_engine.connect() as conn:
+                    rows = conn.execute(_sql_text("SELECT id FROM cafes")).all()
+                cafe_ids = [int(r[0]) for r in rows]
+            except Exception as exc:
+                log.warning("could not enumerate cafe IDs from global DB: %s", exc)
+
             for cid in cafe_ids:
                 try:
                     sess = cafe_db_router.get_session(cid)
                     try:
+                        # Each ALTER runs in its own transaction so a
+                        # failure on one column doesn't poison the others.
                         for stmt in DDL_STATEMENTS:
                             try:
                                 sess.execute(_sql_text(stmt))
+                                sess.commit()
                             except Exception as exc:
+                                sess.rollback()
                                 log.debug(
                                     "cafe %s DDL skipped (%s): %s",
                                     cid, exc.__class__.__name__, stmt,
                                 )
-                        sess.commit()
                     finally:
                         sess.close()
                     log.info("cafe %s DB: offer inventory v2 columns ensured", cid)
