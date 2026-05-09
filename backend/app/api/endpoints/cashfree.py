@@ -143,6 +143,87 @@ async def create_order(
     )
 
 
+@router.get("/checkout", response_class=HTMLResponse)
+async def cashfree_checkout_launcher(
+    session_id: str = Query(..., min_length=1, max_length=256),
+):
+    """
+    Tiny launcher page that loads the Cashfree v3 SDK and starts the
+    hosted checkout. Served from our own public origin
+    (api.primustech.in) so the SDK's parent-origin check passes — the
+    kiosk's virtual host kiosk.primustech.in is never the parent here.
+
+    Flow:
+      1. Kiosk child WebView2 navigates to
+         GET /api/v1/payment/cashfree/checkout?session_id=<sid>
+      2. This endpoint returns HTML that loads sdk.cashfree.com/js/v3
+         and calls cashfree.checkout({paymentSessionId, redirectTarget: '_self'})
+      3. Cashfree SDK full-page-redirects the WebView to its hosted
+         payment page (payments.cashfree.com / payments-test.cashfree.com)
+      4. After payment, Cashfree redirects to the return_url from
+         order_meta — i.e. /api/v1/payment/cashfree/return — which the
+         kiosk WebView's NavigationStarting handler intercepts to close
+         the payment window.
+
+    Public, no auth — the session_id is itself the auth (it's a
+    Cashfree-signed token tied to a specific order). Stale or invalid
+    session_ids are rejected by Cashfree, not by us.
+    """
+    import os as _os
+
+    # session_id format: alphanumeric + underscore + dash, ~140 chars
+    safe_sid = "".join(c for c in session_id if c.isalnum() or c in "_-.")
+    env = (
+        _os.getenv("CASHFREE_ENV", "production").strip().lower()
+        or "production"
+    )
+    if env not in ("sandbox", "production"):
+        env = "production"
+
+    body = (
+        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+        "<title>Primus payment</title>"
+        "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+        "<style>"
+        "html,body{margin:0;background:#0a0d14;color:#e5e7eb;"
+        "font-family:system-ui,sans-serif;height:100%;"
+        "display:flex;align-items:center;justify-content:center;text-align:center}"
+        ".card{padding:40px;border-radius:24px;background:#111823;"
+        "border:1px solid #1f2937;max-width:420px}"
+        ".spin{width:44px;height:44px;border:4px solid #3ABEFF;"
+        "border-top-color:transparent;border-radius:50%;"
+        "animation:spin 0.8s linear infinite;margin:0 auto 18px}"
+        "@keyframes spin{to{transform:rotate(360deg)}}"
+        ".title{font-size:18px;font-weight:700;margin-bottom:6px}"
+        ".sub{color:#9ca3af;font-size:13px}"
+        ".err{color:#fca5a5;font-size:13px;margin-top:14px}"
+        "</style></head><body>"
+        "<div class=\"card\">"
+        "<div class=\"spin\"></div>"
+        "<div class=\"title\">Connecting to secure payment</div>"
+        "<div class=\"sub\">Cashfree is loading. Do not close this window.</div>"
+        "<div id=\"err\" class=\"err\"></div>"
+        "</div>"
+        "<script src=\"https://sdk.cashfree.com/js/v3/cashfree.js\"></script>"
+        "<script>"
+        "(function(){"
+        "var sid=" + json.dumps(safe_sid) + ";"
+        "var mode=" + json.dumps(env) + ";"
+        "function fail(m){document.getElementById('err').textContent=m||'Payment failed to start.';}"
+        "if(typeof window.Cashfree!=='function'){fail('Cashfree SDK could not load. Check connectivity.');return;}"
+        "try{"
+        "var cf=window.Cashfree({mode:mode});"
+        "cf.checkout({paymentSessionId:sid,redirectTarget:'_self'}).then(function(r){"
+        "if(r&&r.error){fail(r.error.message||'Payment cancelled.');}"
+        "}).catch(function(e){fail((e&&e.message)||'Payment error.');});"
+        "}catch(e){fail((e&&e.message)||'Could not initialise Cashfree.');}"
+        "})();"
+        "</script>"
+        "</body></html>"
+    )
+    return HTMLResponse(content=body)
+
+
 @router.get("/return", response_class=HTMLResponse)
 async def payment_return(
     order_id: str = Query(..., min_length=1, max_length=64),

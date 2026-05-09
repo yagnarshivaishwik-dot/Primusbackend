@@ -116,26 +116,37 @@ async def create_order(
 
 def hosted_checkout_url(payment_session_id: str) -> str:
     """
-    Return the hosted-checkout URL the kiosk's child WebView2 should
-    navigate to. This bypasses the SDK entirely (and therefore the
-    parent-origin verification that rejects virtual hosts like
-    kiosk.primustech.in).
+    Return the launcher URL the kiosk's child WebView2 should navigate
+    to in order to start a Cashfree checkout.
 
-    URL pattern is the redirect target Cashfree's own JS SDK uses
-    internally when invoked with `redirectTarget: '_self'`. It accepts
-    the payment_session_id directly and renders the full Cashfree-hosted
-    payment page (UPI, card, netbanking, wallets) on payments.cashfree.com.
+    Why a launcher and not a direct Cashfree URL:
+      Cashfree v3 doesn't publish a stable hosted-checkout URL pattern —
+      the JS SDK constructs the redirect target internally. So we serve
+      a tiny HTML page from our OWN public domain (api.primustech.in)
+      that loads sdk.cashfree.com/js/v3/cashfree.js and calls
+      cashfree.checkout({paymentSessionId, redirectTarget: '_self'}).
+      The SDK then full-page-redirects the WebView to Cashfree's hosted
+      page, which handles UPI / card / netbanking / wallets.
 
-    Pinned to v3 of Cashfree's PG. If Cashfree changes the URL pattern in
-    a future major version, this is the only place to update.
+      Origin check: the launcher page is served from api.primustech.in —
+      Cashfree already trusts this origin for webhook delivery, and the
+      SDK happily renders. The kiosk's virtual host
+      kiosk.primustech.in is not involved at all (which is the whole
+      point — it's not whitelistable).
+
+      The Cashfree-side return_url config still flows back to
+      api.primustech.in/.../return where the kiosk's NavigationStarting
+      handler intercepts and closes the payment window.
+
+    The launcher endpoint lives at
+    GET /api/v1/payment/cashfree/checkout?session_id=...  (see
+    endpoints/cashfree.py). Override the public host with the
+    PRIMUS_PUBLIC_API_URL env var if your deployment serves the
+    backend on a non-default domain.
     """
-    env = (_env("CASHFREE_ENV", "sandbox") or "sandbox").lower()
-    host = (
-        "payments.cashfree.com"
-        if env == "production"
-        else "payments-test.cashfree.com"
-    )
-    return f"https://{host}/pg/view/sessions/checkout/web/{payment_session_id}"
+    base = (_env("PRIMUS_PUBLIC_API_URL", "")
+            or "https://api.primustech.in").rstrip("/")
+    return f"{base}/api/v1/payment/cashfree/checkout?session_id={payment_session_id}"
 
 
 async def initiate_upi_qr(*, payment_session_id: str) -> dict[str, Any]:
