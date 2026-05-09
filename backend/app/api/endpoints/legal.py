@@ -48,7 +48,7 @@ BUSINESS_TAGLINE = os.getenv(
     "PRIMUS_BUSINESS_TAGLINE",
     "Self-service kiosks, dynamic inventory, and instant payments for India's gaming cafés.",
 )
-BUSINESS_EMAIL = os.getenv("PRIMUS_BUSINESS_EMAIL", "support@primustech.in")
+BUSINESS_EMAIL = os.getenv("PRIMUS_BUSINESS_EMAIL", "support@primusadmin.in")
 BUSINESS_PHONE = os.getenv("PRIMUS_BUSINESS_PHONE", "+91-XXXXXXXXXX")  # ← REPLACE
 BUSINESS_ADDRESS = os.getenv(
     "PRIMUS_BUSINESS_ADDRESS",
