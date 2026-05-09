@@ -43,16 +43,17 @@ router = APIRouter()
 
 # ── Edit before submitting whitelist (or override via env) ───────────
 
-BUSINESS_NAME = os.getenv("PRIMUS_BUSINESS_NAME", "Primus Technologies")
+# Public-facing brand (the "Primus" name users see).
+BUSINESS_NAME = os.getenv("PRIMUS_BUSINESS_NAME", "Primus Infotech")
 BUSINESS_TAGLINE = os.getenv(
     "PRIMUS_BUSINESS_TAGLINE",
     "Self-service kiosks, dynamic inventory, and instant payments for India's gaming cafés.",
 )
 BUSINESS_EMAIL = os.getenv("PRIMUS_BUSINESS_EMAIL", "support@primusadmin.in")
-BUSINESS_PHONE = os.getenv("PRIMUS_BUSINESS_PHONE", "+91-XXXXXXXXXX")  # ← REPLACE
+BUSINESS_PHONE = os.getenv("PRIMUS_BUSINESS_PHONE", "+91-9392777989")
 BUSINESS_ADDRESS = os.getenv(
     "PRIMUS_BUSINESS_ADDRESS",
-    "Hyderabad, Telangana, India",  # ← REPLACE with full registered address
+    "4th Floor, Block 3, Hitech City Rd, Patrika Nagar, Madhapur, Hyderabad, Telangana 500081",
 )
 BUSINESS_CITY = os.getenv("PRIMUS_BUSINESS_CITY", "Hyderabad")
 BUSINESS_GSTIN = os.getenv("PRIMUS_BUSINESS_GSTIN", "")  # optional
@@ -63,7 +64,35 @@ BUSINESS_HOURS = os.getenv(
 BUSINESS_WEBSITE = os.getenv("PRIMUS_BUSINESS_WEBSITE", "https://primustech.in")
 GRIEVANCE_OFFICER_NAME = os.getenv("PRIMUS_GRIEVANCE_NAME", "Grievance Officer")
 GRIEVANCE_OFFICER_EMAIL = os.getenv(
-    "PRIMUS_GRIEVANCE_EMAIL", "grievance@primustech.in"
+    "PRIMUS_GRIEVANCE_EMAIL", "grievance@primusadmin.in"
+)
+
+# Legal entity that holds the Cashfree merchant account (KYC). Cashfree's
+# reviewer will cross-check the website against this exact name + CIN +
+# registered address — they MUST match what's on file. "Primus" is the
+# operating brand of this entity.
+LEGAL_ENTITY_NAME = os.getenv(
+    "PRIMUS_LEGAL_ENTITY", "HYDRAS SPORTS NETWORK PRIVATE LIMITED"
+)
+LEGAL_ENTITY_TYPE = os.getenv(
+    "PRIMUS_LEGAL_ENTITY_TYPE", "Private Limited Company"
+)
+LEGAL_ENTITY_CIN = os.getenv(
+    "PRIMUS_LEGAL_ENTITY_CIN", "U92490TG2021PTC150427"
+)
+LEGAL_ENTITY_ADDRESS = os.getenv(
+    "PRIMUS_LEGAL_ENTITY_ADDRESS",
+    "10-3-782, 253/3RT, Vijay Nagar Colony, Hyderabad, Telangana, India - 500057",
+)
+LEGAL_ENTITY_DESCRIPTION = os.getenv(
+    "PRIMUS_LEGAL_ENTITY_DESCRIPTION",
+    "HYDRAS SPORTS NETWORK PRIVATE LIMITED is a digital entertainment and esports "
+    "company focused on building and scaling the gaming ecosystem in India. "
+    "The company operates across competitive esports, creator growth, and digital "
+    "content infrastructure — including talent management, influencer marketing, "
+    "content production, monetization solutions for creators and gaming communities, "
+    "and technology platforms that power campus esports programs, gaming cafés, "
+    "and digital media properties.",
 )
 
 
@@ -455,7 +484,12 @@ def _footer() -> str:
         '<div>'
         f'<div class="brand" style="margin-bottom:14px"><span class="brand-mark"></span>'
         f'<span>{BUSINESS_NAME}</span></div>'
-        f'<p style="color:var(--text-muted);font-size:14px;margin:0;max-width:30ch">{BUSINESS_TAGLINE}</p>'
+        f'<p style="color:var(--text-muted);font-size:14px;margin:0 0 14px;max-width:30ch">{BUSINESS_TAGLINE}</p>'
+        f'<p style="color:var(--text-muted);font-size:12px;margin:0;line-height:1.5">'
+        f'{BUSINESS_NAME} is the operating brand of<br>'
+        f'<strong style="color:var(--text-dim)">{LEGAL_ENTITY_NAME}</strong><br>'
+        f'<span style="font-family:\'JetBrains Mono\',monospace">CIN {LEGAL_ENTITY_CIN}</span>'
+        '</p>'
         '</div>'
         '<div><h5>Product</h5><ul>'
         '<li><a href="/products">Packages</a></li>'
@@ -474,7 +508,7 @@ def _footer() -> str:
         '</ul></div>'
         '</div>'
         '<div class="footer-foot">'
-        f'<div>© {year} {BUSINESS_NAME}. All rights reserved.</div>'
+        f'<div>© {year} {LEGAL_ENTITY_NAME}. All rights reserved.</div>'
         f'<div>Made in {BUSINESS_CITY}.</div>'
         '</div>'
         '</div></footer>'
@@ -587,25 +621,28 @@ async def about_us():
         '<section class="section wrap">'
         '<div class="grid grid-2" style="gap:48px;align-items:start">'
         '<div class="reveal prose">'
-        '<div class="section-eyebrow">Our story</div>'
-        '<h2 class="display">Started with one café. Stayed with the operators.</h2>'
-        '<p>We watched café owners juggle three open laptops, four Excel sheets, and a UPI QR '
-        'taped to the counter. Time slipping out one machine, money slipping out another, '
-        'and no two days reconciling.</p>'
-        '<p>Primus started as a weekend project to fix that single flow — sell time, credit '
-        'time, reconcile time — and grew into a multi-tenant platform serving cafés across '
-        'multiple cities.</p>'
-        '<p>We&rsquo;re still small. We still take support calls personally. We&rsquo;re '
-        'okay with that.</p>'
+        '<div class="section-eyebrow">The parent company</div>'
+        f'<h2 class="display">A brand of <em>{LEGAL_ENTITY_NAME.title()}</em>.</h2>'
+        f'<p>{LEGAL_ENTITY_DESCRIPTION}</p>'
+        f'<p><strong>{BUSINESS_NAME}</strong> is the technology platform within '
+        f'this group that builds and operates the kiosk software, payment '
+        f'infrastructure, and dynamic-inventory tooling for partner cafés.</p>'
+        '<p>If you&rsquo;re a Cashfree reviewer, an auditor, or a partner doing '
+        'KYC: the registered name on file is '
+        f'<strong>{LEGAL_ENTITY_NAME}</strong>, CIN <code>{LEGAL_ENTITY_CIN}</code>, '
+        f'office at {LEGAL_ENTITY_ADDRESS}.</p>'
         '</div>'
         '<div class="reveal">'
         '<div class="card" style="padding:36px">'
+        '<div class="section-eyebrow" style="margin-bottom:18px">Company snapshot</div>'
         '<dl class="kv">'
-        '<dt>Founded</dt><dd>Hyderabad, 2024</dd>'
-        '<dt>Headquarters</dt><dd>' + BUSINESS_CITY + ', India</dd>'
-        '<dt>Cafés served</dt><dd>Growing</dd>'
-        '<dt>Sessions logged</dt><dd>Tens of thousands and counting</dd>'
-        '<dt>Payment partner</dt><dd>Cashfree Payments</dd>'
+        f'<dt>Legal name</dt><dd>{LEGAL_ENTITY_NAME}</dd>'
+        f'<dt>Operating brand</dt><dd>{BUSINESS_NAME}</dd>'
+        f'<dt>Company type</dt><dd>{LEGAL_ENTITY_TYPE}</dd>'
+        f'<dt>CIN</dt><dd><code style="font-family:\'JetBrains Mono\',monospace;font-size:12px">{LEGAL_ENTITY_CIN}</code></dd>'
+        f'<dt>Registered office</dt><dd>{LEGAL_ENTITY_ADDRESS}</dd>'
+        f'<dt>Operations</dt><dd>{BUSINESS_CITY}, India</dd>'
+        '<dt>Payment partner</dt><dd>Cashfree Payments India Pvt Ltd</dd>'
         '<dt>Compliance</dt><dd>DPDP Act 2023, IT Rules 2011, GST</dd>'
         '</dl>'
         '</div>'
@@ -734,6 +771,23 @@ async def contact_us():
         '</section>'
 
         '<section class="section wrap" style="padding-top:0">'
+
+        # Legal entity card — top of page, full width, so Cashfree's
+        # reviewer (and any auditor) sees it before anything else.
+        '<div class="reveal" style="margin-bottom:32px">'
+        '<div class="card" style="padding:40px">'
+        '<div class="section-eyebrow" style="margin-bottom:24px">Legal entity</div>'
+        '<dl class="kv">'
+        f'<dt>Registered name</dt><dd><strong>{LEGAL_ENTITY_NAME}</strong></dd>'
+        f'<dt>Operating brand</dt><dd>{BUSINESS_NAME}</dd>'
+        f'<dt>Company type</dt><dd>{LEGAL_ENTITY_TYPE}</dd>'
+        f'<dt>CIN</dt><dd><code style="font-family:\'JetBrains Mono\',monospace;background:rgba(255,255,255,.04);padding:3px 10px;border-radius:6px;font-size:13px">{LEGAL_ENTITY_CIN}</code></dd>'
+        f'<dt>Registered office</dt><dd>{LEGAL_ENTITY_ADDRESS}</dd>'
+        f'{gstin_row}'
+        '</dl>'
+        '</div>'
+        '</div>'
+
         '<div class="grid grid-2" style="gap:32px;align-items:start">'
 
         '<div class="reveal">'
@@ -743,9 +797,8 @@ async def contact_us():
         f'<dt>Business name</dt><dd>{BUSINESS_NAME}</dd>'
         f'<dt>Email</dt><dd><a class="link" href="mailto:{BUSINESS_EMAIL}">{BUSINESS_EMAIL}</a></dd>'
         f'<dt>Phone</dt><dd>{BUSINESS_PHONE}</dd>'
-        f'<dt>Registered office</dt><dd>{BUSINESS_ADDRESS}</dd>'
+        f'<dt>Operations office</dt><dd>{BUSINESS_ADDRESS}</dd>'
         f'<dt>Operating hours</dt><dd>{BUSINESS_HOURS}</dd>'
-        f'{gstin_row}'
         '</dl>'
         '</div>'
         '</div>'
@@ -810,9 +863,12 @@ async def terms():
         f'<p class="meta">Last updated · {today}</p>'
 
         '<h3>1. Definitions</h3>'
-        '<p>&ldquo;Primus&rdquo;, &ldquo;we&rdquo;, &ldquo;our&rdquo; refers to '
-        f'{BUSINESS_NAME}, a business registered in India with its office at '
-        f'{BUSINESS_ADDRESS}. &ldquo;Platform&rdquo; means the Primus kiosk '
+        f'<p>&ldquo;{BUSINESS_NAME}&rdquo;, &ldquo;Primus&rdquo;, &ldquo;we&rdquo;, &ldquo;our&rdquo; refers to '
+        f'<strong>{LEGAL_ENTITY_NAME}</strong>, a {LEGAL_ENTITY_TYPE} incorporated '
+        f'in India under CIN <code>{LEGAL_ENTITY_CIN}</code>, with its registered '
+        f'office at {LEGAL_ENTITY_ADDRESS}, and operations office at '
+        f'{BUSINESS_ADDRESS}. {BUSINESS_NAME} is the consumer-facing brand under '
+        'which we operate. &ldquo;Platform&rdquo; means the Primus kiosk '
         'application, admin web portal, and supporting backend services. '
         '&ldquo;User&rdquo;, &ldquo;you&rdquo; means any individual who creates a '
         'Primus account or completes a transaction through the platform. '
@@ -1055,9 +1111,13 @@ async def privacy_policy():
         f'<p class="meta">Last updated · {today}</p>'
 
         '<h3>1. Who this policy applies to</h3>'
-        '<p>This policy applies to any individual who creates a Primus account, signs '
-        'in to the kiosk app, or completes a payment through the platform operated by '
-        f'{BUSINESS_NAME} at {BUSINESS_ADDRESS}.</p>'
+        '<p>This policy applies to any individual who creates a Primus account, '
+        'signs in to the kiosk app, or completes a payment through the platform '
+        f'operated by <strong>{LEGAL_ENTITY_NAME}</strong> '
+        f'(CIN <code>{LEGAL_ENTITY_CIN}</code>), under the brand '
+        f'<strong>{BUSINESS_NAME}</strong>. The legal entity is the data fiduciary '
+        f'under the DPDP Act, 2023; its registered office is at '
+        f'{LEGAL_ENTITY_ADDRESS}.</p>'
 
         '<h3>2. Information we collect</h3>'
 

@@ -23,7 +23,7 @@
 set -euo pipefail
 
 # ── Defaults (current production values) ───────────────────────────
-PRIMUS_BUSINESS_NAME="${PRIMUS_BUSINESS_NAME:-Primus Technologies}"
+PRIMUS_BUSINESS_NAME="${PRIMUS_BUSINESS_NAME:-Primus Infotech}"
 PRIMUS_BUSINESS_EMAIL="${PRIMUS_BUSINESS_EMAIL:-support@primusadmin.in}"
 PRIMUS_BUSINESS_PHONE="${PRIMUS_BUSINESS_PHONE:-+91-9392777989}"
 PRIMUS_BUSINESS_ADDRESS="${PRIMUS_BUSINESS_ADDRESS:-4th Floor, Block 3, Hitech City Rd, Patrika Nagar, Madhapur, Hyderabad, Telangana 500081}"
@@ -38,7 +38,13 @@ PRIMUS_BUSINESS_CITY="${PRIMUS_BUSINESS_CITY:-Hyderabad}"
 PRIMUS_BUSINESS_WEBSITE="${PRIMUS_BUSINESS_WEBSITE:-https://primustech.in}"
 PRIMUS_BUSINESS_GSTIN="${PRIMUS_BUSINESS_GSTIN:-}"
 PRIMUS_GRIEVANCE_NAME="${PRIMUS_GRIEVANCE_NAME:-Grievance Officer}"
-PRIMUS_GRIEVANCE_EMAIL="${PRIMUS_GRIEVANCE_EMAIL:-grievance@primustech.in}"
+PRIMUS_GRIEVANCE_EMAIL="${PRIMUS_GRIEVANCE_EMAIL:-grievance@primusadmin.in}"
+
+# Legal entity (Cashfree merchant KYC must match these EXACTLY).
+PRIMUS_LEGAL_ENTITY="${PRIMUS_LEGAL_ENTITY:-HYDRAS SPORTS NETWORK PRIVATE LIMITED}"
+PRIMUS_LEGAL_ENTITY_TYPE="${PRIMUS_LEGAL_ENTITY_TYPE:-Private Limited Company}"
+PRIMUS_LEGAL_ENTITY_CIN="${PRIMUS_LEGAL_ENTITY_CIN:-U92490TG2021PTC150427}"
+PRIMUS_LEGAL_ENTITY_ADDRESS="${PRIMUS_LEGAL_ENTITY_ADDRESS:-10-3-782, 253/3RT, Vijay Nagar Colony, Hyderabad, Telangana, India - 500057}"
 
 # ── Sanity ─────────────────────────────────────────────────────────
 if [[ ! -f docker-compose.yml ]]; then
@@ -78,6 +84,10 @@ services:
       PRIMUS_BUSINESS_GSTIN: "$(yaml_q "$PRIMUS_BUSINESS_GSTIN")"
       PRIMUS_GRIEVANCE_NAME: "$(yaml_q "$PRIMUS_GRIEVANCE_NAME")"
       PRIMUS_GRIEVANCE_EMAIL: "$(yaml_q "$PRIMUS_GRIEVANCE_EMAIL")"
+      PRIMUS_LEGAL_ENTITY: "$(yaml_q "$PRIMUS_LEGAL_ENTITY")"
+      PRIMUS_LEGAL_ENTITY_TYPE: "$(yaml_q "$PRIMUS_LEGAL_ENTITY_TYPE")"
+      PRIMUS_LEGAL_ENTITY_CIN: "$(yaml_q "$PRIMUS_LEGAL_ENTITY_CIN")"
+      PRIMUS_LEGAL_ENTITY_ADDRESS: "$(yaml_q "$PRIMUS_LEGAL_ENTITY_ADDRESS")"
 EOF
 
 echo "→ wrote $OVERRIDE"
