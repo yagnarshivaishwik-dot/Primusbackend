@@ -27,7 +27,12 @@ PRIMUS_BUSINESS_NAME="${PRIMUS_BUSINESS_NAME:-Primus Technologies}"
 PRIMUS_BUSINESS_EMAIL="${PRIMUS_BUSINESS_EMAIL:-support@primusadmin.in}"
 PRIMUS_BUSINESS_PHONE="${PRIMUS_BUSINESS_PHONE:-+91-9392777989}"
 PRIMUS_BUSINESS_ADDRESS="${PRIMUS_BUSINESS_ADDRESS:-4th Floor, Block 3, Hitech City Rd, Patrika Nagar, Madhapur, Hyderabad, Telangana 500081}"
-PRIMUS_BUSINESS_TAGLINE="${PRIMUS_BUSINESS_TAGLINE:-Self-service kiosks, dynamic inventory, and instant payments for India's gaming cafés.}"
+# Default tagline pulled out separately because bash's ${VAR:-default}
+# default-clause parses single-quotes; an apostrophe inside it (e.g.
+# "India's") opens an unbalanced single-quote string and breaks the
+# whole script. Single-quoted literal + concat-escape the apostrophe.
+_DEFAULT_TAGLINE='Self-service kiosks, dynamic inventory, and instant payments for India'\''s gaming cafés.'
+PRIMUS_BUSINESS_TAGLINE="${PRIMUS_BUSINESS_TAGLINE:-$_DEFAULT_TAGLINE}"
 PRIMUS_BUSINESS_HOURS="${PRIMUS_BUSINESS_HOURS:-Monday – Saturday · 10:00 – 19:00 IST}"
 PRIMUS_BUSINESS_CITY="${PRIMUS_BUSINESS_CITY:-Hyderabad}"
 PRIMUS_BUSINESS_WEBSITE="${PRIMUS_BUSINESS_WEBSITE:-https://primustech.in}"
