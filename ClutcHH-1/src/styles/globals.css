@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'PPNeueYork-CondensedExtrabold';
+  src: url('../components/fonts/PPNeueYork-CondensedExtrabold.woff') format('woff')
+}
+@font-face {
+  font-family: 'PPNeueYork-CondensedExtraboldItalic';
+  src: url('../components/fonts/PPNeueYork-CondensedExtraboldItalic.woff') format('woff')
+}
+@font-face {
+  font-family: 'PPNeueYork-CondensedLight';
+  src: url('../components/fonts/PPNeueYork-CondensedLight.woff') format('woff')
+}
+@font-face {
+  font-family: 'PPNeueYork-CondensedLightItalic';
+  src: url('../components/fonts/PPNeueYork-CondensedLightItalic.woff') format('woff')
+}
+@font-face {
+  font-family: 'PPNeueYork-CondensedMedium';
+  src: url('../components/fonts/PPNeueYork-CondensedMedium.woff') format('woff')
+}
+@font-face {
+  font-family: 'PPNeueYork-CondensedMediumItalic';
+  src: url('../components/fonts/PPNeueYork-CondensedMediumItalic.woff') format('woff')
+}
+@font-face {
+  font-family: 'PPNeueYork-NarrowExtrabold';
+  src: url('../components/fonts/PPNeueYork-NarrowExtrabold.otf') format('woff')
+}
+@font-face {
+  font-family: 'PPNeueYork-NarrowExtraboldItalic';
+  src: url('../components/fonts/PPNeueYork-NarrowExtraboldItalic.otf') format('woff')
+}
+@font-face {
+  font-family: 'PPNeueYork-NarrowLight';
+  src: url('../components/fonts/PPNeueYork-NarrowLight.otf') format('woff')
+}
+@font-face {
+  font-family: 'PPNeueYork-NarrowLightItalic';
+  src: url('../components/fonts/PPNeueYork-NarrowLightItalic.otf') format('woff')
+}
+@font-face {
+  font-family: 'PPNeueYork-NarrowMedium';
+  src: url('../components/fonts/PPNeueYork-NarrowMedium.woff') format('woff')
+}
+@font-face {
+  font-family: 'PPNeueYork-NarrowMediumItalic';
+  src: url('../components/fonts/PPNeueYork-NarrowMediumItalic.woff') format('woff')
+}
+@font-face {
+  font-family: 'PPNeueYork-NormalExtrabold';
+  src: url('../components/fonts/PPNeueYork-NormalExtrabold.woff') format('woff')
+}
+@font-face {
+  font-family: 'PPNeueYork-NormalExtraboldItalic';
+  src: url('../components/fonts/PPNeueYork-NormalExtraboldItalic.woff') format('woff')
+}
+@font-face {
+  font-family: 'PPNeueYork-NormalLight';
+  src: url('../components/fonts/PPNeueYork-NormalLight.woff') format('woff')
+}
+@font-face {
+  font-family: 'PPNeueYork-NormalLightItalic';
+  src: url('../components/fonts/PPNeueYork-NormalLightItalic.woff') format('woff')
+}
+@font-face {
+  font-family: 'PPNeueYork-NormalMedium';
+  src: url('../components/fonts/PPNeueYork-NormalMedium.woff') format('woff')
+}
+@font-face {
+  font-family: 'PPNeueYork-NormalMediumItalic';
+  src: url('../components/fonts/PPNeueYork-NormalMediumItalic.woff') format('woff')
+}
