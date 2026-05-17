@@ -117,12 +117,14 @@ export default function Navbar() {
         className="navbar__logo"
         href="#"
         aria-label="NoLag home"
+        aria-label="ClutcHH home"
         onClick={(e) => { e.preventDefault(); navigate(ROUTES.home); }}
       >
         <span className="navbar__logo-mark">
           <LogoMark />
         </span>
         <span className="navbar__logo-text">NoLag</span>
+        <span className="navbar__logo-text">ClutcHH</span>
       </a>
 
       <div className="navbar__menu" role="menubar">

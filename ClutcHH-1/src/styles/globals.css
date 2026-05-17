@@ -80,7 +80,6 @@
    Appended 2026-05-16 during ClutcHH-1 → NoLag merge.
    These power Pavan's shop page (uses var(--PrimaryOrange),
    .glassyfinish, etc.).
-============================================================ */
 
 :root {
     --glassgradient: linear-gradient(180deg,

@@ -286,6 +286,7 @@ export default function GamesAndAppsPage() {
               <>
                 <GameSection
                   title="Most played at NoLag"
+                  title="Most played at ClutcHH"
                   games={topGames}
                   onLaunch={handleLaunch}
                   launchingId={launchingId}

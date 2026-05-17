@@ -9,6 +9,7 @@ import useSessionStore from '@/app/store/useSessionStore';
  * `deviceSetupState = 'ready'` and the normal auth flow takes over.
  *
  * Ported from PrimusClient SetupScreen.tsx; re-themed for NoLag.
+ * Ported from PrimusClient SetupScreen.tsx; re-themed for ClutcHH.
  */
 export default function SetupPage({ onComplete }) {
   const [adminEmail, setAdminEmail] = useState('');
@@ -79,6 +80,7 @@ export default function SetupPage({ onComplete }) {
             </span>
           </div>
           <h1 className="text-3xl font-extrabold text-white tracking-tight">NOLAG</h1>
+          <h1 className="text-3xl font-extrabold text-white tracking-tight">CLUTCHH</h1>
           <p className="text-slate-400 mt-1 text-sm">Initial device setup &amp; onboarding</p>
         </header>
 

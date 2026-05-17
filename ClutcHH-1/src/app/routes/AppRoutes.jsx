@@ -75,10 +75,15 @@ export default function AppRoutes() {
 
       {/* Main layout (shell) — other pages keep the shared Navbar. */}
       <Route element={<MainLayout />}>
+      {/* Main layout (shell) */}
+      <Route element={<MainLayout />}>
+        <Route path={ROUTES.home} element={<HomePage />} />
+
         <Route path={ROUTES.mainGames} element={<GamesPage />} />
         <Route path={ROUTES.mainApps} element={<AppsPage />} />
         <Route path={ROUTES.mainArcade} element={<ArcadePage />} />
 
+        <Route path={ROUTES.mainShop} element={<ShopPage />} />
         <Route path={ROUTES.mainPrizeVault} element={<PrizeVaultPage />} />
         <Route path={ROUTES.mainProfile} element={<ProfilePage />} />
 

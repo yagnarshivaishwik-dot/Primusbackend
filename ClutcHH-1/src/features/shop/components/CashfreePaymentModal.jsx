@@ -94,6 +94,36 @@ export default function CashfreePaymentModal({
   //    We render it inline below — no bridge invoke, no redirect.
   //    Customer scans with phone, completes UPI payment out-of-band,
   //    polling + WebSocket pick up the SUCCESS event.
+  // 2. Once we have the link, open the C# child WebView (or full-page
+  //    redirect when the bridge is absent).
+  useEffect(() => {
+    if (phase !== 'awaiting' || !order?.payment_link) return undefined;
+    if (checkoutOpenedRef.current) return undefined;
+    checkoutOpenedRef.current = true;
+
+    if (!hasBridge()) {
+      // Outside kiosk (dev / browser preview) — full-page redirect.
+      audit('payment.cashfree.fallback_redirect', {
+        order_id: order.order_id,
+      });
+      window.location.href = order.payment_link;
+      return undefined;
+    }
+
+    invoke('payment_open', {
+      payment_link: order.payment_link,
+      order_id: order.order_id,
+    }).catch((err) => {
+      audit('payment.cashfree.bridge_error', {
+        order_id: order.order_id,
+        message: err?.message,
+      });
+      setError(err?.message || 'Could not launch payment terminal.');
+      setPhase('error');
+    });
+
+    return undefined;
+  }, [phase, order]);
 
   // 3. Listen for the bridge's payment_completed event (fired when the
   //    child WebView intercepts Cashfree's return URL).
@@ -321,6 +351,7 @@ export default function CashfreePaymentModal({
               }}
             >
               Scan the QR with any UPI app
+              Complete payment in the secure window
             </div>
             <div
               style={{
@@ -357,6 +388,9 @@ export default function CashfreePaymentModal({
               </>
             )}
 
+              Choose UPI / card / netbanking · Order #{order.order_id}
+            </div>
+            <Spinner subtle />
             <div
               style={{
                 marginTop: 22,

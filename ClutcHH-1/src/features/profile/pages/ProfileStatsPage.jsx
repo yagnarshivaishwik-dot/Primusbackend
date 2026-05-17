@@ -6,6 +6,7 @@ export default function ProfileStatsPage() {
     <ComingSoonPage
       title="Stats"
       subtitle="Your performance at NoLag"
+      subtitle="Your performance at ClutcHH"
       backTo={ROUTES.mainProfile}
       summary="Per-user play stats aren't aggregated server-side yet. Once the analytics pipeline exposes a per-user view, hours/K-D/win-rate will appear here automatically."
       bullets={[

@@ -1,5 +1,6 @@
 /**
  * Cashfree payment client for NoLag kiosk.
+ * Cashfree payment client for ClutcHH kiosk.
  *
  * Inventory v2 (Phase 4) — switched from SDK iframe to hosted-checkout
  * URL opened in a child WebView2 to bypass Cashfree's parent-origin

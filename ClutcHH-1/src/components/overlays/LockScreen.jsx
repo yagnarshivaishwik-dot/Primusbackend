@@ -2,6 +2,7 @@
  * Full-screen lock overlay rendered when the backend sends a `lock` command.
  * Shown above every route and every interactive element; nothing in the
  * NoLag UI is reachable until the admin issues `unlock`.
+ * ClutcHH UI is reachable until the admin issues `unlock`.
  *
  * We block pointer + keyboard events at the overlay level; the native
  * KioskOrchestrator still has the low-level keyboard hook running so
@@ -80,6 +81,7 @@ export default function LockScreen({ message }) {
           }}
         >
           NoLag · Primus Kiosk
+          ClutcHH · Primus Kiosk
         </div>
       </div>
     </div>
