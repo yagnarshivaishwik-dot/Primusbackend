@@ -29,6 +29,14 @@ MULTI_DB_ENABLED = os.getenv("MULTI_DB_ENABLED", "false").lower() == "true"
 _license_cafe_cache: dict[str, tuple[int, float]] = {}
 _LICENSE_CAFE_CACHE_TTL = 300.0  # 5 minutes
 
+# Same idea for X-PC-ID → cafe_id. We resolve this from client_pcs.cafe_id
+# whenever a device-authenticated request lacks X-License-Key (e.g. the kiosk's
+# device.bin was provisioned before license_key was added to the schema, or the
+# file was partially corrupted / re-imaged). Without this fallback the cafe DB
+# router 400s with "cafe_id is required" and the kiosk is permanently stuck.
+_pc_cafe_cache: dict[int, tuple[int, float]] = {}
+_PC_CAFE_CACHE_TTL = 300.0  # 5 minutes
+
 
 def _resolve_cafe_id_from_license(license_key: str) -> Optional[int]:
     """Look up cafe_id for a license_key in the global DB, with TTL caching."""
@@ -54,6 +62,45 @@ def _resolve_cafe_id_from_license(license_key: str) -> Optional[int]:
             db.close()
     except Exception:
         logger.exception("Failed to resolve cafe_id from license_key")
+    return None
+
+
+def _resolve_cafe_id_from_pc_id(pc_id: int) -> Optional[int]:
+    """
+    Look up cafe_id for a registered client PC (X-PC-ID header), with TTL caching.
+
+    Used as a fallback when a device-authenticated request lacks X-License-Key.
+    This is safe because:
+
+      1. It only decides which cafe DB to open. Auth (HMAC signature) is still
+         verified by the route dependency (get_current_device) before any
+         side effects, so a forged X-PC-ID gets rejected at the endpoint.
+      2. The mapping pc_id → cafe_id is set at PC registration time and is
+         immutable for the PC's lifetime, so caching it is correct.
+      3. We hit a small indexed table (client_pcs.id is PK) on cache miss
+         only — same cost profile as the existing license cache.
+    """
+    now = time.time()
+    cached = _pc_cafe_cache.get(pc_id)
+    if cached and cached[1] > now:
+        return cached[0]
+
+    try:
+        from app.models import ClientPC
+
+        db = global_session_factory()
+        try:
+            pc = db.query(ClientPC).filter_by(id=pc_id).first()
+            if pc and pc.cafe_id is not None:
+                _pc_cafe_cache[pc_id] = (
+                    int(pc.cafe_id),
+                    now + _PC_CAFE_CACHE_TTL,
+                )
+                return int(pc.cafe_id)
+        finally:
+            db.close()
+    except Exception:
+        logger.exception("Failed to resolve cafe_id from pc_id")
     return None
 
 
@@ -270,6 +317,31 @@ def _extract_cafe_id(request: Optional[Request]) -> Optional[int]:
             except Exception:
                 pass
             return cafe_id_from_license
+
+    # 5. Final fallback for HMAC-signed device requests that have a valid
+    #    X-PC-ID but no X-License-Key. This happens in practice when:
+    #      - device.bin was provisioned before the license_key column existed
+    #      - the file was partially corrupted / re-imaged
+    #      - a license was rotated and the kiosk has not yet been re-handshaked
+    #    Without this fallback the kiosk is permanently stuck on 400 errors
+    #    even though the pc_id → cafe_id mapping is well-defined in client_pcs.
+    #    The X-PC-ID itself is unverified at this point — the route's HMAC
+    #    dependency (get_current_device) still rejects forged requests before
+    #    any side effect, so this is purely a routing convenience.
+    pc_id_header = request.headers.get("X-PC-ID")
+    if pc_id_header:
+        try:
+            pc_id_int = int(pc_id_header)
+        except (ValueError, TypeError):
+            pc_id_int = None
+        if pc_id_int is not None:
+            cafe_id_from_pc = _resolve_cafe_id_from_pc_id(pc_id_int)
+            if cafe_id_from_pc is not None:
+                try:
+                    request.state.cafe_id = cafe_id_from_pc
+                except Exception:
+                    pass
+                return cafe_id_from_pc
 
     return None
 

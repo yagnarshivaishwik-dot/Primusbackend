@@ -39,6 +39,8 @@ services:
       - ./uploads:/app/uploads
       - ./logs:/app/logs
       - ./backups:/app/backups
+      - ./app:/app/app                 # dev hot-reload: edits in app/ reach the container
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
     extra_hosts:
@@ -68,16 +70,17 @@ services:
       - backend
     restart: unless-stopped
 
-  # Cloudflare Tunnel
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: clutchhh_cloudflared
-    restart: unless-stopped
-    environment:
-      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
-    command: tunnel --no-autoupdate run
-    depends_on:
-      - nginx
+  # Cloudflare Tunnel — DISABLED for local dev (no token yet).
+  # Uncomment when CLOUDFLARE_TUNNEL_TOKEN is set in .env.
+  # cloudflared:
+  #   image: cloudflare/cloudflared:latest
+  #   container_name: clutchhh_cloudflared
+  #   restart: unless-stopped
+  #   environment:
+  #     - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+  #   command: tunnel --no-autoupdate run
+  #   depends_on:
+  #     - nginx
 
   # Celery Worker — Background task processing
   celery-worker:

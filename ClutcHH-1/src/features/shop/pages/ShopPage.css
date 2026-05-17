@@ -1,0 +1,295 @@
+.ShopContainer {
+    width: 75%;
+    margin: 0rem auto;
+    padding: 1rem 0;
+}
+
+.cartheader {
+    margin-bottom: 1rem;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    height: 60px;
+    border-radius: 25px;
+    box-shadow:
+        0px 20px 48px -12px rgba(0, 0, 0, 0.5),
+        0px 1px 0.5px 0px rgba(255, 255, 255, 0.45) inset;
+}
+
+.sessionbadge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: #fff;
+}
+
+.sessionbadge .indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--PrimaryOrange);
+    box-shadow: var(--PrimaryOrange);
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+}
+
+.sessionbadge p {
+    color: rgba(127, 127, 127, 1);
+}
+
+.sessionbadge span {
+    color: #fff;
+    font-size: 14px;
+}
+
+.shoplogo {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.shoplogo span {
+    color: var(--PrimaryOrange);
+}
+
+.headerright {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.iconbtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.15s ease;
+    outline: none;
+}
+
+.iconbtn:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.iconbtn:focus-visible {
+    box-shadow: 0 0 0 2px var(--PrimaryOrange);
+}
+
+.iconbtn:active {
+    transform: scale(0.94);
+}
+
+.iconbtn svg {
+    width: 22px;
+    height: 22px;
+    color: #fff;
+    cursor: pointer;
+}
+
+.useravatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff3c3c, #ff8c00);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.2s ease;
+    outline: none;
+}
+
+.useravatar:hover {
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18);
+}
+
+.useravatar:focus-visible {
+    box-shadow: 0 0 0 2px var(--PrimaryOrange);
+}
+
+.useravatar:active {
+    transform: scale(0.94);
+}
+
+.cartpannel {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    /* Was 85vh — replaced by natural flow so the page can scroll and
+       the right panel can stick correctly. */
+}
+
+.cartleft {
+    width: 75%;
+}
+
+.cartright {
+    width: 25%;
+    /* Sticky on scroll: payment info always visible no matter how far
+       the user scrolls down (e.g. to Snacks & Drinks). */
+    position: sticky;
+    top: 16px;
+    align-self: flex-start;
+    /* If content gets very tall, the panel itself scrolls internally */
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+}
+
+.cartright .walletcard * {
+    padding-bottom: 0.5rem;
+}
+
+.cartright .walletcard {
+    padding: 1rem;
+    border-radius: 20px;
+    color: #fff;
+}
+
+.cartright .walletcard .wallettitle {
+    font-size: 16px;
+}
+
+.cartright .walletcard .walletamount {
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+}
+
+.cartright .walletcard .walletamount span,
+.cartright .walletcard .walletamount span svg {
+    padding-bottom: 0;
+}
+
+.cartright .walletcard .walletsubtitle {
+    font-size: 12px;
+    color: rgba(107, 107, 120, 1);
+}
+
+.cartright .walletcard .walletadd {
+    border-radius: 18px;
+    border: 1px solid rgba(255, 72, 72, 0.35);
+    background: rgba(255, 255, 255, 0.03);
+    color: #ff5252;
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: 0.3s;
+    width: 100%;
+    padding: 12px 0;
+}
+
+.cartright .cartcard {
+    border-radius: 20px;
+    padding: 1rem;
+    margin-top: 1rem;
+    color: #fff;
+}
+
+.cartright .cartcard .carttop {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 1rem;
+}
+
+.cartright .cartcard .carttop .cratheading {
+    font-size: 16px;
+}
+
+.cartright .cartcard .carttop .cartquantity {
+    font-size: 12px;
+    color: rgba(107, 107, 120, 1);
+}
+
+.cartright .cartcard .cartlistitem {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+
+}
+
+.cartright .cartcard .cartlistitem .cartlistitemleft {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.cartright .cartcard .cartlistitem .cartlistimg img {
+    width: 50px;
+    height: 50px;
+    border-radius: 4px;
+}
+
+.cartright .cartcard .cartlistitem .cartlistname p {
+    display: flex;
+    align-items: center;
+    color: rgba(245, 185, 66, 1);
+
+}
+
+.cartright .cartcard .cartlistitem .listquantity {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cartright .cartcard .cartlistitem .listquantity span {
+    box-shadow: 0px 1px 0px 1px rgba(255, 255, 255, 0.04) inset;
+    backdrop-filter: blur(12px);
+    height: max-content;
+    padding: 5px;
+    border-radius: 50%;
+    font-size: 20px;
+    line-height: 9px;
+}
+
+.cartright .cartcard .cartcheckout .totalcost {
+    padding: 1rem 0;
+    display: flex;
+    justify-content: space-between;
+}
+
+.cartright .cartcard .cartcheckout button {
+    background: rgba(232, 54, 78, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    width: 100%;
+}

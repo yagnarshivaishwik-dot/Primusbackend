@@ -1,0 +1,936 @@
+
+:root {
+  --color-bg:             #080a0f;
+  --color-surface:        rgba(12, 14, 22, 0.72);
+  --color-surface-hover:  rgba(20, 24, 36, 0.88);
+  --color-border:         rgba(255, 255, 255, 0.07);
+  --color-border-bright:  rgba(255, 255, 255, 0.14);
+
+  --color-accent:         #e8293a;
+  --color-accent-dim:     rgba(232, 41, 58, 0.14);
+  --color-accent-glow:    rgba(232, 41, 58, 0.38);
+
+  --color-green:          #22c55e;
+  --color-green-dim:      rgba(34, 197, 94, 0.14);
+  --color-green-border:   rgba(34, 197, 94, 0.28);
+
+  --color-orange:         #f97316;
+  --color-orange-dim:     rgba(249, 115, 22, 0.14);
+  --color-orange-border:  rgba(249, 115, 22, 0.28);
+
+  --color-purple:         #8b5cf6;
+  --color-purple-dim:     rgba(139, 92, 246, 0.14);
+  --color-purple-border:  rgba(139, 92, 246, 0.28);
+
+  --color-text:           #eef0f8;
+  --color-text-sub:       #7e8fa6;
+  --color-text-muted:     #3d4a5c;
+
+  /* --font-display:         'Barlow Condensed', sans-serif;
+  --font-body:            'Barlow', sans-serif;
+  --font-mono:            'Rajdhani', sans-serif; */
+
+  --radius-xs:  8px;
+  --radius-sm:  12px;
+  --radius-md:  16px;
+  --radius-lg:  22px;
+
+  --ease-out:     cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out:  cubic-bezier(0.4, 0, 0.2, 1);
+  --duration:     0.22s;
+
+  --glass-blur:     blur(20px);
+  --sidebar-width:  350px;
+}
+
+/* ═══════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════ */
+/* *, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+} */
+
+/* html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+} */
+
+body {
+  font-family: 'PPNeueYork-NormalLight';
+  background: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+.home-page button {
+  font-family: 'PPNeueYork-NormalLight';
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+.home-page a { text-decoration: none; color: inherit; }
+
+/* ═══════════════════════════════════════════
+   DASHBOARD SHELL
+═══════════════════════════════════════════ */
+.home-page .dashboard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════
+   BACKGROUND LAYER
+═══════════════════════════════════════════ */
+.home-page .bg-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.home-page .bg-scene {
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center 22%;
+  filter: brightness(0.52) saturate(0.6);
+  transform: scale(1.06);
+  will-change: background-image;
+  transition: background-image 0.9s var(--ease-out);
+}
+
+/* Per-game cinematic backgrounds */
+.home-page .bg-scene[data-game="fortnite"] {
+  background-image: url('../images/Banner1.svg');
+  background-color: #1d0e4a;
+}
+.home-page .bg-scene[data-game="rivals"] {
+  background-image: url('https://cdn.cloudflare.steamstatic.com/steam/apps/2073850/capsule_616x353.jpg');
+  background-color: #0c2e18;
+}
+.home-page .bg-scene[data-game="cs2"] {
+  background-image: url('https://cdn.cloudflare.steamstatic.com/steam/apps/730/capsule_616x353.jpg');
+  background-color: #1a1e28;
+}
+.home-page .bg-scene[data-game="valorant"] {
+  background-image: url('https://cdn.cloudflare.steamstatic.com/steam/apps/2586690/capsule_616x353.jpg');
+  background-color: #2a0c14;
+}
+.home-page .bg-scene[data-game="rocket-league"] {
+  background-image: url('https://cdn.cloudflare.steamstatic.com/steam/apps/252950/capsule_616x353.jpg');
+  background-color: #0a1232;
+}
+
+/* Left-dominant gradient overlay */
+.home-page .bg-overlay {
+  position: absolute;
+  inset: 0;
+  /* background: linear-gradient(
+    108deg,
+    rgba(6, 7, 12, 0.96)  0%,
+    rgba(8, 10, 17, 0.80) 36%,
+    rgba(8, 10, 17, 0.36) 64%,
+    rgba(6, 7, 12, 0.08)  100%
+  ); */
+  background: #00000099;
+  z-index: 1;
+}
+
+/* Bottom vignette */
+.home-page .bg-vignette {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(6, 7, 12, 0.88) 0%, transparent 40%);
+  z-index: 2;
+}
+
+/* ═══════════════════════════════════════════
+   MAIN CONTENT AREA
+═══════════════════════════════════════════ */
+.home-page .main {
+  position: relative;
+  z-index: 10;
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════
+   HERO SECTION
+═══════════════════════════════════════════ */
+.home-page .hero {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 30px 30px 90px;
+}
+
+/* ─── Game Carousel ─────────────────────── */
+.home-page .carousel {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scrollbar-width: none;
+}
+
+.home-page .carousel::-webkit-scrollbar { display: none; }
+
+/* Base tile */
+.home-page .tile {
+  flex-shrink: 0;
+  width: 80px;
+  height: 120px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 2px solid transparent;
+  cursor: pointer;
+  position: relative;
+  background: rgba(255, 255, 255, 0.06);
+  transition:
+    border-color var(--duration) var(--ease-in-out),
+    transform    var(--duration) var(--ease-in-out),
+    box-shadow   var(--duration) var(--ease-in-out);
+}
+
+.home-page .tile:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+  transform: translateY(-3px) scale(1.05);
+}
+
+.home-page .tile--active {
+  border-color: #E8364E;
+  /* box-shadow: 0 0 0 1px var(--color-accent), 0 0 24px var(--color-accent-glow); */
+  box-shadow: 2px 1px 5px 1px #BFA8FF59;
+  transform: translateY(-4px) scale(1.06);
+  height: 140px;
+  width: 100px;
+}
+
+/* Per-game tile images */
+.home-page .tile__cover {
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  transition: transform 0.3s var(--ease-out);
+}
+
+.home-page .tile:hover .tile__cover { transform: scale(1.08); }
+
+.home-page .tile__cover[data-game="fortnite"] {
+  background-image: url('../images/Tile1.svg');
+  background-color: #1d0e4a;
+}
+.home-page .tile__cover[data-game="rivals"] {
+  background-image: url('https://cdn.cloudflare.steamstatic.com/steam/apps/2073850/library_600x900.jpg');
+  background-color: #0c2e18;
+}
+.home-page .tile__cover[data-game="cs2"] {
+  background-image: url('https://cdn.cloudflare.steamstatic.com/steam/apps/730/library_600x900.jpg');
+  background-color: #1a1e28;
+}
+.home-page .tile__cover[data-game="valorant"] {
+  background-image: url('https://cdn.cloudflare.steamstatic.com/steam/apps/2586690/library_600x900.jpg');
+  background-color: #2a0c14;
+}
+.home-page .tile__cover[data-game="rocket-league"] {
+  background-image: url('https://cdn.cloudflare.steamstatic.com/steam/apps/252950/library_600x900.jpg');
+  background-color: #0a1232;
+}
+
+.home-page .tile__label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.84) 0%, transparent 55%);
+  padding: 6px 5px;
+  font-size: 8.5px;
+  font-weight: 800;
+  text-align: center;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+/* "All Games" special tile */
+.home-page .tile--all {
+  border: 2px dashed var(--color-border-bright);
+  background: rgba(255, 255, 255, 0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--color-text-sub);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  overflow: visible;
+}
+
+.home-page .tile--all:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--color-text);
+  box-shadow: none;
+}
+
+/* ─── Hero Bottom ────────────────────────── */
+.home-page .hero__bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.home-page .hero__eyebrow {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--color-accent);
+  text-transform: uppercase;
+  animation: fadeSlideUp 0.5s var(--ease-out) both 0.1s;
+}
+
+.home-page .hero__title {
+  font-family: var(--font-display);
+  font-size: clamp(52px, 9vw, 96px);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 0.86;
+  font-family: 'PPNeueYork-NormalExtrabold';
+  font-size: 64px;
+  color: #fff;
+  text-transform: uppercase;
+  text-shadow: 0 6px 48px rgba(0, 0, 0, 0.55);
+  animation: fadeSlideUp 0.55s var(--ease-out) both 0.18s;
+}
+
+.home-page .hero__meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  animation: fadeSlideUp 0.5s var(--ease-out) both 0.26s;
+}
+
+.home-page .hero__badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-sub);
+}
+
+.home-page .hero__meta-sep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+}
+
+.home-page .hero__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  animation: fadeSlideUp 0.5s var(--ease-out) both 0.34s;
+}
+
+.home-page .btn-launch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 12px 26px;
+  font-family: 'PPNeueYork-NormalExtrabold';
+  font-weight: 800;
+  background: #E8364E;
+  border-radius: 50px;
+  width: 343px;
+  height: 48px;
+  color: #fff;
+  font-size: 16px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  box-shadow: 0 4px 20px var(--color-accent-glow), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition:
+    transform    var(--duration) var(--ease-out),
+    box-shadow   var(--duration) var(--ease-out);
+}
+
+.home-page .btn-launch:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 8px 32px rgba(232, 41, 58, 0.60), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.home-page .btn-launch:active { transform: translateY(0) scale(0.98); }
+
+.home-page .btn-launch__icon {
+  width: 15px;
+  height: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.home-page .hero__links {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  animation: fadeSlideUp 0.5s var(--ease-out) both 0.42s;
+}
+
+.home-page .hero__link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'PPNeueYork-NormalLight';
+font-weight: 600;
+font-size: 16px;
+  color: #9CA3AF;
+  cursor: pointer;
+  transition: color var(--duration) var(--ease-in-out);
+}
+
+.home-page .hero__link:hover { color: rgba(255, 255, 255, 0.90); }
+
+/* ═══════════════════════════════════════════
+   SIDEBAR TOGGLE SLIVER
+═══════════════════════════════════════════ */
+.home-page .sidebar-toggle {
+  position: relative;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+}
+
+.home-page .sidebar-toggle__btn {
+  align-self: center;
+  width: 32px;
+  height: 56px;
+  background: #0000000F;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border-bright);
+  border-right: none;
+  border-radius: var(--radius-xs) 0 0 var(--radius-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--color-text-sub);
+  transition:
+    background var(--duration) var(--ease-in-out),
+    color      var(--duration) var(--ease-in-out);
+}
+
+.home-page .sidebar-toggle__btn:hover {
+  background: rgba(28, 32, 48, 0.92);
+  color: var(--color-text);
+}
+
+/* ═══════════════════════════════════════════
+   RIGHT SIDEBAR
+═══════════════════════════════════════════ */
+.home-page .sidebar {
+  width: var(--sidebar-width);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+  transition:
+    width   0.34s var(--ease-out),
+    opacity 0.28s var(--ease-in-out),
+    padding 0.34s var(--ease-out);
+  flex-shrink: 0;
+  background-color: #2E3033;
+}
+
+.home-page .sidebar::-webkit-scrollbar { width: 3px; }
+.home-page .sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+}
+
+.home-page .sidebar--collapsed {
+  width: 0;
+  opacity: 0;
+  padding-left: 0;
+  padding-right: 0;
+  pointer-events: none;
+}
+
+/* ─── Happy Hour Card ────────────────────── */
+.home-page .hh-card {
+  position: relative;
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  overflow: hidden;
+  /* background: linear-gradient(140deg, #b81020 0%, #e8293a 52%, #ff5a6a 100%); */
+  background: linear-gradient(123.32deg, #DC3545 0%, #FA6237 100%);
+  flex-shrink: 0;
+  animation: slideInRight 0.48s var(--ease-out) both 0.20s;
+}
+
+.home-page .hh-card__bubble-1 {
+  position: absolute;
+  top: -28px;
+  right: -18px;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  /* background: rgba(255, 255, 255, 0.09); */
+  pointer-events: none;
+}
+
+.home-page .hh-card__bubble-2 {
+  position: absolute;
+  bottom: -36px;
+  right: 28px;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  /* background: rgba(255, 255, 255, 0.06); */
+  pointer-events: none;
+}
+
+.home-page .hh-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.home-page .hh-card__title {
+  color: #fff;
+  font-family: 'PPNeueYork-NormalExtrabold';
+font-weight: 800;
+font-size: 18px;
+
+}
+
+.home-page .hh-card__clock-wrap {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  /* background: rgba(255, 255, 255, 0.16); */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.home-page .hh-card__ring-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 5px;
+}
+
+.home-page .hh-card__ring {
+  position: relative;
+  width: 120px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-page .hh-card__ring-svg {
+  position: absolute;
+  inset: 0;
+  transform: rotate(0deg);
+}
+
+.home-page .hh-card__ring-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.2);
+  stroke-width: 5;
+}
+
+.home-page .hh-card__ring-fill {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 188.5;
+  stroke-dashoffset: 75;
+}
+
+.home-page .hh-card__ring-label {
+  position: relative;
+  z-index: 1;
+  font-family: 'PPNeueYork-NormalExtrabold';
+font-weight: 800;
+font-size: 16px;
+  color: #fff;
+  text-align: center;
+  pointer-events: none;
+  top: 20px;
+}
+
+.home-page .hh-card__bonus {
+  display: flex;
+  /* flex-direction: column; */
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  gap: 10px;
+  background: #FFFFFF26;
+  border: 1px solid #FFFFFF33;
+  padding: 6px 14px;
+  margin-bottom: 10px;
+  backdrop-filter: blur(4px);
+}
+
+.home-page .hh-card__bonus-pct {
+  color: #fff;
+  font-family: 'PPNeueYork-NormalExtrabold';
+font-weight: 800;
+font-size: 22px;
+
+}
+
+.home-page .hh-card__bonus-sub {
+    font-family: 'PPNeueYork-NormalMedium';
+  font-size: 12px;
+  font-weight: 500;
+  color: #FFFFFF;
+}
+
+.home-page .hh-card__starts {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #FFFFFF;
+  width: fit-content;
+  background-color: #FFFFFF1A;
+  margin-bottom: 14px;
+    font-family: 'PPNeueYork-NormalMedium';
+    font-weight: 500;
+    text-align: center;
+    position: relative;
+    left: 32%;
+    padding: 3px 10px;
+    border-radius: 20px;
+}
+
+.home-page .hh-card__starts-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  flex-shrink: 0;
+  animation: pulseDot 1.5s ease-in-out infinite;
+}
+
+.home-page .hh-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.home-page .btn-learn {
+  padding: 8px 16px;
+  background: #fff;
+  border-radius: 50px;
+  font-size: 12px;
+  font-family: 'PPNeueYork-NormalMedium';
+    font-weight: 500;
+  color: #DC3545;
+  transition:
+    transform    var(--duration) var(--ease-out),
+    box-shadow   var(--duration) var(--ease-out);
+}
+
+.home-page .btn-learn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+}
+
+.home-page .hh-card__dots {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.home-page .hh-card__dot {
+  height: 6px;
+  width: 6px;
+  border-radius: 4px;
+  background: #FFFFFF59;
+  transition:
+    width      var(--duration) var(--ease-out),
+    background var(--duration) var(--ease-out);
+}
+
+.home-page .hh-card__dot--active {
+  background: #FFFFFFE5;
+  width: 18px;
+}
+
+/* ─── Quest Panel ────────────────────────── */
+.home-page .quest-panel {
+  overflow: hidden;
+  flex-shrink: 0;
+  animation: slideInRight 0.48s var(--ease-out) both 0.32s;
+}
+
+.home-page .quest-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.home-page .quest-panel__title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.home-page .quest-panel__view-all {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--color-accent);
+  cursor: pointer;
+  transition: opacity var(--duration);
+}
+
+.home-page .quest-panel__view-all:hover { opacity: 0.75; }
+
+/* ─── Quest Card ─────────────────────────── */
+.home-page .quest-card {
+  padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: background var(--duration) var(--ease-in-out);
+    background: #46494E;
+    border: 1px solid #4E5056;
+    border-radius: 12px;
+    margin-bottom: 15px;
+}
+
+.home-page .quest-card:last-child { border-bottom: none; }
+
+.home-page .quest-card:hover { background: rgba(255, 255, 255, 0.025); }
+
+.home-page .quest-card__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.home-page .quest-card__icon {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.home-page .quest-card__icon--green {
+  background: var(--color-green-dim);
+  border: 1px solid var(--color-green-border);
+}
+
+.home-page .quest-card__icon--orange {
+  background: var(--color-orange-dim);
+  border: 1px solid var(--color-orange-border);
+}
+
+.home-page .quest-card__icon--purple {
+  background: var(--color-purple-dim);
+  border: 1px solid var(--color-purple-border);
+}
+
+.home-page .quest-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.home-page .quest-card__name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-page .quest-card__sub {
+  font-size: 10.5px;
+  color: var(--color-text-sub);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-page .quest-card__right {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.home-page .quest-card__pct {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.home-page .quest-card__pct--green { color: var(--color-green);  }
+.home-page .quest-card__pct--orange { color: var(--color-orange); }
+.home-page .quest-card__pct--purple { color: var(--color-purple); }
+
+.home-page .quest-card__count {
+  font-size: 10px;
+  color: var(--color-text-sub);
+}
+
+.home-page .btn-claim {
+  padding: 5px 11px;
+  background: var(--color-accent);
+  border-radius: 7px;
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition:
+    background  var(--duration),
+    transform   var(--duration) var(--ease-out);
+}
+
+.home-page .btn-claim:hover {
+  background: #ff3347;
+  transform: scale(1.06);
+}
+
+/* ─── Progress Bar ──────────────────────── */
+.home-page .progress-bar__track {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.home-page .progress-bar__fill {
+  height: 100%;
+  border-radius: 4px;
+}
+
+.home-page .progress-bar__fill--green { background: linear-gradient(90deg, #16a34a, #22c55e); }
+.home-page .progress-bar__fill--orange { background: linear-gradient(90deg, #ea6c10, #f97316); }
+.home-page .progress-bar__fill--purple { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
+
+/* Width utility classes — covers common quest percentages without inline styles */
+.home-page .fill-w-100 { width: 100%; }
+.home-page .fill-w-86 { width: 86%;  }
+.home-page .fill-w-75 { width: 75%;  }
+.home-page .fill-w-60 { width: 60%;  }
+.home-page .fill-w-50 { width: 50%;  }
+.home-page .fill-w-30 { width: 30%;  }
+
+/* ─── Quest Rewards ─────────────────────── */
+.home-page .quest-card__rewards {
+  display: flex;
+  gap: 12px;
+}
+
+.home-page .reward {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text-sub);
+}
+
+.home-page .reward__icon--xp { color: #f5c842; font-size: 9px; }
+.home-page .reward__icon--coin { color: #a78bfa; font-size: 9px; }
+
+/* ═══════════════════════════════════════════
+   KEYFRAME ANIMATIONS
+═══════════════════════════════════════════ */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(22px); }
+  to { opacity: 1; transform: translateY(0);    }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(26px); }
+  to { opacity: 1; transform: translateX(0);    }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-18px); }
+  to { opacity: 1; transform: translateX(0);     }
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1;    transform: scale(1);    }
+  50% { opacity: 0.4; transform: scale(0.62); }
+}
+
+/* Staggered tile entrance */
+.home-page .tile:nth-child(1) { animation: slideInLeft 0.42s var(--ease-out) both 0.04s; }
+.home-page .tile:nth-child(2) { animation: slideInLeft 0.42s var(--ease-out) both 0.09s; }
+.home-page .tile:nth-child(3) { animation: slideInLeft 0.42s var(--ease-out) both 0.14s; }
+.home-page .tile:nth-child(4) { animation: slideInLeft 0.42s var(--ease-out) both 0.19s; }
+.home-page .tile:nth-child(5) { animation: slideInLeft 0.42s var(--ease-out) both 0.24s; }
+.home-page .tile:nth-child(6) { animation: slideInLeft 0.42s var(--ease-out) both 0.29s; }
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .home-page .sidebar, .home-page .sidebar-toggle { display: none; }
+}
+
+@media (max-width: 680px) {
+  .navbar__menu { display: none; }
+  .navbar__profile-name { display: none; }
+  .navbar__timer { font-size: 12px; padding: 4px 8px; }
+  .home-page .hero { padding: 12px 16px 20px; }
+  .home-page .hero__title { font-size: 52px; }
+}
+
+@media (max-width: 420px) {
+  .home-page .hero__title { font-size: 40px; }
+  .home-page .btn-launch { padding: 10px 20px; font-size: 12px; }
+  .home-page .tile { width: 60px; height: 78px; }
+}

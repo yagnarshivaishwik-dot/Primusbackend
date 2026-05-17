@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NoLag</title>
+    <!-- Cashfree checkout SDK — renders the UPI-QR payment pane inside the
+         kiosk WebView2 when the modal calls cashfree.checkout(). Loading from
+         Cashfree's CDN is fine inside our WebView2 kiosk origin (cross-origin
+         fetch is already unblocked via --disable-web-security). -->
+    <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

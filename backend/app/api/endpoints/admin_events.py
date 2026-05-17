@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
 from app.config import ALGORITHM, JWT_SECRET
-from app.db.dependencies import get_global_db as get_db
+from app.db.dependencies import MULTI_DB_ENABLED, get_global_db as get_db
+from app.db.global_db import global_session_factory
 from app.db.models_cafe import SystemEvent
 from app.db.router import cafe_db_router
 from app.models import User
@@ -48,7 +49,13 @@ async def event_stream(
     cafe_id = user.cafe_id
 
     async def event_generator():
-        cafe_db: Session = cafe_db_router.get_session(cafe_id)
+        # In single-DB mode OR for users without a cafe (e.g. superadmin),
+        # SystemEvent lives in the global DB. Otherwise, route to the
+        # user's per-cafe DB. Mirrors the pattern in shop.py::_get_cafe_db.
+        if not MULTI_DB_ENABLED or not cafe_id:
+            cafe_db: Session = global_session_factory()
+        else:
+            cafe_db: Session = cafe_db_router.get_session(cafe_id)
         try:
             # Track position
             cursor = last_event_id or 0

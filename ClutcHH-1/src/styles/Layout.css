@@ -1,0 +1,381 @@
+body {
+  background: #F2F2F4;
+}
+.Container{
+  width: 86%;
+  margin: auto;
+}
+.grid {
+  @include ms-Grid;
+}
+
+.row {
+  @include ms-Grid-row;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.column {
+  @include ms-Grid-col;
+  flex: 0 0 auto;
+}
+
+.colsm12 {
+  @include ms-sm12;
+  flex: 0 0 auto;
+}
+
+.colmd12 {
+  @include ms-md12;
+  flex: 0 0 auto;
+}
+
+.collg12 {
+  @include ms-lg12;
+  flex: 0 0 auto;
+}
+
+.colxl12 {
+  @include ms-xl12;
+  flex: 0 0 auto;
+}
+
+.colxxl12 {
+  @include ms-xxl12;
+  flex: 0 0 auto;
+}
+
+.colxxxl12 {
+  @include ms-xxxl12;
+  flex: 0 0 auto;
+}
+
+.colsm11 {
+  @include ms-sm11;
+  flex: 0 0 auto;
+}
+
+.colmd11 {
+  @include ms-md11;
+  flex: 0 0 auto;
+}
+
+.collg11 {
+  @include ms-lg11;
+  flex: 0 0 auto;
+}
+
+.colxl11 {
+  @include ms-xl8;
+  flex: 0 0 auto;
+}
+
+.colxxl11 {
+  @include ms-xxl11;
+  flex: 0 0 auto;
+}
+
+.colxxxl11 {
+  @include ms-xxxl11;
+  flex: 0 0 auto;
+}
+
+.colsm10 {
+  @include ms-sm10;
+  flex: 0 0 auto;
+}
+
+.colmd10 {
+  @include ms-md10;
+  flex: 0 0 auto;
+}
+
+.collg10 {
+  @include ms-lg10;
+  flex: 0 0 auto;
+}
+
+.colxl10 {
+  @include ms-xl10;
+  flex: 0 0 auto;
+}
+
+.colxxl10 {
+  @include ms-xxl10;
+  flex: 0 0 auto;
+}
+
+.colxxxl10 {
+  @include ms-xxxl10;
+  flex: 0 0 auto;
+}
+
+.colsm9 {
+  @include ms-sm9;
+  flex: 0 0 auto;
+}
+
+.colmd9 {
+  @include ms-md9;
+  flex: 0 0 auto;
+}
+
+.collg9 {
+  @include ms-lg9;
+  flex: 0 0 auto;
+}
+
+.colxl9 {
+  @include ms-xl9;
+  flex: 0 0 auto;
+}
+
+.colxxl9 {
+  @include ms-xxl9;
+  flex: 0 0 auto;
+}
+
+.colxxxl9 {
+  @include ms-xxxl9;
+  flex: 0 0 auto;
+}
+
+.colsm8 {
+  @include ms-sm8;
+  flex: 0 0 auto;
+}
+
+.colmd8 {
+  @include ms-md8;
+  flex: 0 0 auto;
+}
+
+.collg8 {
+  @include ms-lg8;
+  flex: 0 0 auto;
+}
+
+.colxl8 {
+  @include ms-xl8;
+  flex: 0 0 auto;
+}
+
+.colxxl8 {
+  @include ms-xxl8;
+  flex: 0 0 auto;
+}
+
+.colxxxl8 {
+  @include ms-xxxl8;
+  flex: 0 0 auto;
+}
+
+.colsm7 {
+  @include ms-sm7;
+  flex: 0 0 auto;
+}
+
+.colmd7 {
+  @include ms-md7;
+  flex: 0 0 auto;
+}
+
+.collg7 {
+  @include ms-lg7;
+  flex: 0 0 auto;
+}
+
+.colxl7 {
+  @include ms-xl7;
+  flex: 0 0 auto;
+}
+
+.colxxl7 {
+  @include ms-xxl7;
+  flex: 0 0 auto;
+}
+
+.colxxxl7 {
+  @include ms-xxxl7;
+  flex: 0 0 auto;
+}
+
+.colsm6 {
+  @include ms-sm6;
+  flex: 0 0 auto;
+}
+
+.colmd6 {
+  @include ms-md6;
+  flex: 0 0 auto;
+}
+
+.collg6 {
+  @include ms-lg6;
+  flex: 0 0 auto;
+}
+
+.colxl6 {
+  @include ms-xl6;
+  flex: 0 0 auto;
+}
+
+.colxxl6 {
+  @include ms-xxl6;
+  flex: 0 0 auto;
+}
+
+.colxxxl6 {
+  @include ms-xxxl6;
+  flex: 0 0 auto;
+}
+
+.colsm5 {
+  @include ms-sm5;
+  flex: 0 0 auto;
+}
+
+.colmd5 {
+  @include ms-md5;
+  flex: 0 0 auto;
+}
+
+.collg5 {
+  @include ms-lg5;
+  flex: 0 0 auto;
+}
+
+.colxl5 {
+  @include ms-xl5;
+  flex: 0 0 auto;
+}
+
+.colxxl5 {
+  @include ms-xxl5;
+  flex: 0 0 auto;
+}
+
+.colxxxl5 {
+  @include ms-xxxl5;
+  flex: 0 0 auto;
+}
+
+.colsm4 {
+  @include ms-sm4;
+  flex: 0 0 auto;
+}
+
+.colmd4 {
+  @include ms-md4;
+  flex: 0 0 auto;
+}
+
+.collg4 {
+  @include ms-lg4;
+  flex: 0 0 auto;
+}
+
+.colxl4 {
+  @include ms-xl4;
+  flex: 0 0 auto;
+}
+
+.colxxl4 {
+  @include ms-xxl4;
+  flex: 0 0 auto;
+}
+
+.colxxxl4 {
+  @include ms-xxxl4;
+  flex: 0 0 auto;
+}
+
+.colsm3 {
+  @include ms-sm3;
+  flex: 0 0 auto;
+}
+
+.colmd3 {
+  @include ms-md3;
+  flex: 0 0 auto;
+}
+
+.collg3 {
+  @include ms-lg3;
+  flex: 0 0 auto;
+}
+
+.colxl3 {
+  @include ms-xl3;
+  flex: 0 0 auto;
+}
+
+.colxxl3 {
+  @include ms-xxl3;
+  flex: 0 0 auto;
+}
+
+.colxxxl3 {
+  @include ms-xxxl3;
+  flex: 0 0 auto;
+}
+
+.colsm2 {
+  @include ms-sm2;
+  flex: 0 0 auto;
+}
+
+.colmd2 {
+  @include ms-md2;
+  flex: 0 0 auto;
+}
+
+.collg2 {
+  @include ms-lg2;
+  flex: 0 0 auto;
+}
+
+.colxl2 {
+  @include ms-xl2;
+  flex: 0 0 auto;
+}
+
+.colxxl2 {
+  @include ms-xxl2;
+  flex: 0 0 auto;
+}
+
+.colxxxl2 {
+  @include ms-xxxl2;
+  flex: 0 0 auto;
+}
+
+.colsm1 {
+  @include ms-sm1;
+  flex: 0 0 auto;
+}
+
+.colmd1 {
+  @include ms-md1;
+  flex: 0 0 auto;
+}
+
+.collg1 {
+  @include ms-lg1;
+  flex: 0 0 auto;
+}
+
+.colxl1 {
+  @include ms-xl1;
+  flex: 0 0 auto;
+}
+
+.colxxl1 {
+  @include ms-xxl1;
+  flex: 0 0 auto;
+}
+
+.colxxxl1 {
+  @include ms-xxxl1;
+  flex: 0 0 auto;
+}

@@ -1,0 +1,865 @@
+/* ============================================================
+   NeoG Dashboard — styles
+   Premium dark gaming aesthetic, glassmorphism, smooth motion.
+============================================================ */
+
+/* ---------- Design Tokens ---------- */
+:root {
+  /* Surfaces */
+  --bg-0: #05070f;
+  --bg-1: #0a0f1e;
+  --bg-2: #111728;
+
+  /* Glass */
+  --glass-bg: rgba(20, 26, 44, 0.45);
+  --glass-bg-strong: rgba(20, 26, 44, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-soft: rgba(255, 255, 255, 0.05);
+
+  /* Text */
+  --text-1: #f5f6f8;
+  --text-2: rgba(255, 255, 255, 0.72);
+  --text-3: rgba(255, 255, 255, 0.5);
+  --text-4: rgba(255, 255, 255, 0.32);
+
+  /* Brand / Accent */
+  --orange: #ff6b35;
+  --orange-2: #ff8a4d;
+  --orange-deep: #e54a17;
+  --teal: #3FA8B0;
+  --teal-2: #4dbac2;
+
+  /* Effects */
+  --shadow-1: 0 10px 30px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 20px 60px rgba(0, 0, 0, 0.55);
+  --blur: 22px;
+
+  /* Geometry */
+  --r-pill: 999px;
+  --r-lg: 22px;
+  --r-md: 16px;
+  --r-sm: 10px;
+
+  /* Layout */
+  --panel-w: 340px;
+  --topnav-h: 64px;
+  --bottomnav-h: 60px;
+}
+
+/* ---------- Reset (scoped to component root) ---------- */
+.neog-app *,
+.neog-app *::before,
+.neog-app *::after {
+  box-sizing: border-box;
+}
+.neog-app button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.neog-app ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.neog-app img {
+  display: block;
+  max-width: 100%;
+}
+
+/* ---------- Root ---------- */
+.neog-app {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  overflow: hidden;
+  color: var(--text-1);
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: var(--bg-0);
+}
+
+/* Atmospheric background — subtle vignette + grain feel */
+.neog-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 50% at 80% 10%, rgba(255, 107, 53, 0.18), transparent 60%),
+    radial-gradient(70% 60% at 10% 90%, rgba(63, 168, 176, 0.10), transparent 60%),
+    linear-gradient(180deg, #060a16 0%, #03060e 100%);
+  z-index: 0;
+}
+
+/* ---------- Glass utility ---------- */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(140%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-1);
+}
+
+/* ============================================================
+   TOP NAV
+============================================================ */
+.neog-topnav {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  width: min(680px, calc(100% - 40px));
+  height: var(--topnav-h);
+  border-radius: var(--r-pill);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 14px 0 20px;
+}
+
+.neog-topnav__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-2);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+.neog-session-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--orange);
+  box-shadow: 0 0 12px var(--orange);
+  animation: neog-pulse 1.8s ease-in-out infinite;
+}
+@keyframes neog-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.neog-session-label {
+  color: var(--orange);
+  font-weight: 700;
+}
+.neog-session-time {
+  color: var(--text-1);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.neog-topnav__center {
+  display: flex;
+  justify-content: center;
+}
+.neog-logo {
+  font-weight: 900;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #b762ff 0%, var(--orange) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  display: inline-flex;
+  align-items: center;
+}
+.neog-logo__bolt {
+  color: var(--orange);
+  margin: 0 -2px;
+  transform: translateY(1px);
+}
+
+.neog-topnav__right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.neog-iconbtn {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--text-2);
+  transition: background 0.2s, color 0.2s;
+}
+.neog-iconbtn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-1);
+}
+.neog-avatar-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px 3px 3px;
+  border-radius: var(--r-pill);
+  transition: background 0.2s;
+  color: var(--text-3);
+}
+.neog-avatar-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.neog-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+/* ============================================================
+   STAGE / CAROUSEL
+============================================================ */
+.neog-stage {
+  position: relative;
+  z-index: 10;
+  height: 100vh;
+  width: 100%;
+}
+
+.neog-carousel {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 0.5fr 1.15fr;
+  animation: neog-fade 0.5s ease;
+}
+@keyframes neog-fade {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ---- Left side ---- */
+.neog-carousel__left {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 0 0 64px;
+}
+.neog-carousel__left::after {
+  /* Soft fade into the right media */
+  content: "";
+  /* position: absolute;
+  top: 0;
+  right: -120px;
+  width: 220px;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(6, 9, 26, 0) 0%, rgba(6, 9, 26, 0.9) 100%); */
+  pointer-events: none;
+}
+.neog-carousel__left-inner {
+  position: relative;
+  z-index: 2;
+  max-width: 460px;
+  padding: 0 0 80px 0;
+}
+
+.neog-tagrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.neog-pill {
+  padding: 6px 14px;
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--text-1);
+  font-weight: 600;
+}
+.neog-subtitle {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.neog-title {
+  margin: 0 0 36px;
+  font-family: "Inter", system-ui, sans-serif;
+  font-weight: 900;
+  font-size: clamp(64px, 8vw, 112px);
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  color: rgba(255, 255, 255, 0.42);
+  text-transform: uppercase;
+}
+.neog-title__line {
+  display: block;
+}
+
+.neog-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 26px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(135deg, var(--teal), var(--teal-2));
+  color: #051018;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  margin-bottom: 28px;
+  box-shadow: 0 12px 28px rgba(63, 168, 176, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.2s;
+}
+.neog-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 36px rgba(63, 168, 176, 0.45);
+}
+
+.neog-links {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+.neog-links li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  color: var(--text-2);
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.neog-links li:hover {
+  color: var(--text-1);
+}
+
+.neog-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.neog-chip {
+  padding: 7px 14px;
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+/* ---- Right side (media) ---- */
+.neog-carousel__right {
+  position: relative;
+  overflow: hidden;
+}
+.neog-carousel__media {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  transform: scale(1.05);
+  animation: neog-zoom 18s ease-in-out infinite alternate;
+}
+@keyframes neog-zoom {
+  from { transform: scale(1.05); }
+  to { transform: scale(1.12); }
+}
+.neog-carousel__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  padding: 5rem;
+}
+.neog-carousel__media-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(6, 9, 26, 0.55) 0%, transparent 30%, transparent 100%),
+    linear-gradient(180deg, transparent 60%, rgba(6, 9, 26, 0.7) 100%);
+}
+.neog-watch-trailer {
+  position: absolute;
+  left: 50%;
+  bottom: 110px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-1);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  font-weight: 600;
+}
+.neog-watch-trailer__play {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: grid;
+  place-items: center;
+  transition: background 0.2s, transform 0.15s;
+}
+.neog-watch-trailer:hover .neog-watch-trailer__play {
+  background: rgba(255, 255, 255, 0.22);
+  transform: scale(1.05);
+}
+
+/* ============================================================
+   CAROUSEL CONTROLS (bottom-right) — progress + counter + dots + arrows
+============================================================ */
+.neog-carousel-controls {
+  position: absolute;
+  /* Lifted above the floating BottomNav (bottom: 16px + ~60px tall + 24px gap) */
+  bottom: 100px;
+  right: 28px;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  /* slide left when right panel opens, stays visible */
+  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.neog-app.panel-open .neog-carousel-controls {
+  transform: translateX(calc(-1 * var(--panel-w) - 16px));
+}
+
+/* Auto-advance progress bar */
+.neog-carousel-controls__progress {
+  width: 320px;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  position: relative;
+}
+.neog-carousel-controls__progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--orange-2), var(--orange));
+  border-radius: 2px;
+  transition: width 0.08s linear;
+  box-shadow: 0 0 12px var(--orange);
+}
+
+.neog-carousel-controls__row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Page counter "01 / 03" */
+.neog-pagecount {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding-right: 4px;
+}
+.neog-pagecount__current {
+  font-size: 20px;
+  color: var(--text-1);
+}
+.neog-pagecount__sep {
+  font-size: 14px;
+  color: var(--text-4);
+  margin: 0 2px;
+}
+.neog-pagecount__total {
+  font-size: 14px;
+  color: var(--text-3);
+}
+
+/* Dots */
+.neog-dots {
+  display: flex;
+  gap: 6px;
+}
+.neog-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  /* background: rgba(255, 255, 255, 0.25); */
+  background: #FFFFFF !important;
+  transition: width 0.25s, background 0.25s;
+}
+.neog-dot.is-active {
+  width: 22px;
+  border-radius: 4px;
+  background: var(--orange) !important;
+}
+
+/* Arrow pill */
+.neog-carousel-arrows {
+  display: flex;
+  align-items: center;
+  border-radius: var(--r-pill);
+  padding: 4px;
+}
+.neog-arrowbtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--text-1);
+  transition: background 0.2s, color 0.2s;
+}
+.neog-arrowbtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--orange-2);
+}
+.neog-arrowdiv {
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ============================================================
+   RIGHT PANEL
+============================================================ */
+.neog-rightpanel {
+  position: absolute;
+  top: 100px;
+  right: 18px;
+  bottom: 18px;
+  width: var(--panel-w);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+              opacity 0.3s ease;
+}
+.neog-rightpanel.is-closed {
+  transform: translateX(calc(100% + 24px));
+  opacity: 0;
+  pointer-events: none;
+}
+.neog-rightpanel.is-open {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+/* Scrollbar */
+.neog-rightpanel::-webkit-scrollbar { width: 6px; }
+.neog-rightpanel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+}
+
+/* ---- Happy Hour card ---- */
+.neog-hh {
+  position: relative;
+  border-radius: var(--r-md);
+  padding: 18px;
+  color: #fff;
+  background:
+    radial-gradient(120% 80% at 30% 0%, #ff9a4a 0%, var(--orange) 45%, #d63a13 100%);
+  box-shadow: 0 16px 40px rgba(255, 75, 20, 0.3);
+  overflow: hidden;
+}
+.neog-hh::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 40%);
+  pointer-events: none;
+}
+.neog-hh__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  position: relative;
+}
+.neog-hh__title {
+  font-weight: 700;
+  font-size: 14px;
+}
+.neog-hh__clock {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.neog-hh__arc {
+  position: relative;
+  margin: 4px auto 8px;
+  width: 200px;
+  height: 96px;
+}
+.neog-hh__arc-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.neog-hh__arc-label {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+}
+
+.neog-hh__pct {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, 0.16);
+  margin-bottom: 10px;
+}
+.neog-hh__pct-num {
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+.neog-hh__pct-text {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+.neog-hh__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--r-pill);
+  background: rgba(0, 0, 0, 0.2);
+  font-size: 11px;
+  margin-bottom: 14px;
+}
+.neog-hh__meta-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.neog-hh__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.neog-hh__btn {
+  padding: 9px 18px;
+  border-radius: var(--r-pill);
+  background: #fff;
+  color: var(--orange-deep);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  transition: transform 0.15s;
+}
+.neog-hh__btn:hover { transform: translateY(-1px); }
+
+.neog-hh__dots {
+  display: flex;
+  gap: 5px;
+}
+.neog-hh__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+}
+.neog-hh__dot.is-active { background: #fff; width: 16px; border-radius: 4px; }
+
+/* ---- Section title ---- */
+.neog-section-title {
+  margin: 4px 4px -4px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-1);
+  letter-spacing: -0.01em;
+}
+
+/* ---- Quest cards ---- */
+.neog-quests {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.neog-quest {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.2s, transform 0.15s;
+}
+.neog-quest:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.neog-quest__icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+}
+.neog-quest__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+.neog-quest__title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-1);
+}
+.neog-quest__pct {
+  font-size: 12px;
+  color: var(--text-2);
+  font-weight: 600;
+}
+.neog-quest__claim {
+  padding: 4px 12px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(135deg, var(--orange), var(--orange-deep));
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: 0 6px 16px rgba(255, 107, 53, 0.4);
+}
+.neog-quest__desc {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-bottom: 8px;
+}
+.neog-quest__rewards {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text-2);
+  font-weight: 600;
+}
+.neog-reward {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.neog-quest__progress {
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+/* ============================================================
+   PANEL TOGGLE (edge arrow)
+============================================================ */
+.neog-paneltoggle {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  right: calc(var(--panel-w) + 18px - 8px);
+  width: 26px;
+  height: 48px;
+  border-radius: 12px 0 0 12px;
+  background: linear-gradient(135deg, var(--orange), var(--orange-deep));
+  color: #fff;
+  display: grid;
+  place-items: center;
+  z-index: 25;
+  box-shadow: 0 10px 28px rgba(255, 75, 20, 0.4);
+  transition: right 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+              transform 0.2s;
+}
+.neog-paneltoggle:not(.is-open) {
+  right: 0;
+  border-radius: 12px 0 0 12px;
+}
+.neog-paneltoggle:hover {
+  transform: translateY(-50%) scale(1.04);
+}
+
+/* ============================================================
+   BOTTOM NAV
+============================================================ */
+.neog-bottomnav {
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  border-radius: var(--r-pill);
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.neog-app.panel-open .neog-bottomnav {
+  transform: translateX(calc(-50% - (var(--panel-w) + 18px) / 2));
+}
+
+.neog-bottomnav__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--r-pill);
+  color: var(--text-3);
+  font-size: 13px;
+  font-weight: 600;
+  transition: color 0.2s, background 0.2s;
+}
+.neog-bottomnav__item:hover {
+  color: var(--text-1);
+}
+.neog-bottomnav__item.is-active {
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.22), rgba(255, 107, 53, 0.08));
+  color: #ffb691;
+  border: 1px solid rgba(255, 107, 53, 0.28);
+}
+
+/* ============================================================
+   RESPONSIVE
+============================================================ */
+@media (max-width: 1100px) {
+  :root { --panel-w: 320px; }
+  .neog-carousel__left { padding-left: 36px; }
+  .neog-title { font-size: clamp(56px, 9vw, 96px); }
+}
+
+@media (max-width: 860px) {
+  .neog-carousel {
+    grid-template-columns: 1fr;
+  }
+  .neog-carousel__left::after { display: none; }
+  .neog-carousel__right { display: none; }
+  .neog-rightpanel { width: calc(100% - 36px); }
+  .neog-carousel-controls__progress { width: 220px; }
+  .neog-app.panel-open .neog-bottomnav {
+    transform: translateX(-50%);
+  }
+  .neog-app.panel-open .neog-carousel-controls {
+    transform: translateX(0);
+  }
+}

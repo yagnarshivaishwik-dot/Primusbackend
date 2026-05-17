@@ -105,3 +105,13 @@ Super-Admin/
 
 # Primus Client build output (C# app + Inno Setup installer artifacts — permanent location)
 Primus C#/
+
+# ---- Local-only scratch / safety dirs (NEVER ship) ----
+ClutcHH-1.backup-before-merge/
+NoLag-Guna/
+NoLag-Pavan/
+
+# ---- Local-only scratch / safety dirs (NEVER ship) ----
+ClutcHH-1.backup-before-merge/
+NoLag-Guna/
+NoLag-Pavan/

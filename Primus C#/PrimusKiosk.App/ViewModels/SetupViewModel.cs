@@ -94,7 +94,12 @@ public sealed partial class SetupViewModel : ObservableObject
                 Name = PcName,
                 LicenseKey = LicenseKey,
                 HardwareFingerprint = fingerprint,
-                Capabilities = new[] { "screenshot", "commands", "heartbeat" },
+                Capabilities = new Dictionary<string, object>
+                {
+                    ["screenshot"] = true,
+                    ["commands"] = true,
+                    ["heartbeat"] = true,
+                },
             }, cancellationToken).ConfigureAwait(false);
 
             if (!creds.IsValid())

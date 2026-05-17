@@ -204,7 +204,14 @@ def verify_refresh_token(
     if rt is None:
         return None
 
-    if rt.expires_at < datetime.now(UTC):
+    # The column is a naive DateTime in PostgreSQL, so SQLAlchemy gives us
+    # back a naive datetime even though we write aware datetimes. Normalize
+    # to UTC-aware before comparing or we crash with "can't compare
+    # offset-naive and offset-aware datetimes".
+    expires_at = rt.expires_at
+    if expires_at is not None and expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=UTC)
+    if expires_at < datetime.now(UTC):
         return None
 
     if rt.device_id and device_id and rt.device_id != device_id:

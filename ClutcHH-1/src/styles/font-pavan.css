@@ -1,0 +1,191 @@
+/* =========================================
+   PP Neue York - Condensed
+========================================= */
+
+@font-face {
+    font-family: 'PPNeueYorkCondensed';
+    src:
+        url('../assets/font/PPNeueYork-CondensedLight.woff') format('woff'),
+        url('../assets/fonts/PPNeueYork-CondensedLight.otf') format('opentype');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'PPNeueYorkCondensed';
+    src:
+        url('../assets/fonts/PPNeueYork-CondensedLightItalic.woff') format('woff'),
+        url('../assets/fonts/PPNeueYork-CondensedLightItalic.otf') format('opentype');
+    font-weight: 300;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'PPNeueYorkCondensed';
+    src:
+        url('../assets/fonts/PPNeueYork-CondensedMedium.woff') format('woff'),
+        url('../assets/fonts/PPNeueYork-CondensedMedium.otf') format('opentype');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'PPNeueYorkCondensed';
+    src:
+        url('../assets/fonts/PPNeueYork-CondensedMediumItalic.woff') format('woff'),
+        url('../assets/fonts/PPNeueYork-CondensedMediumItalic.otf') format('opentype');
+    font-weight: 500;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'PPNeueYorkCondensed';
+    src:
+        url('../assets/fonts/PPNeueYork-CondensedExtrabold.woff') format('woff'),
+        url('../assets/fonts/PPNeueYork-CondensedExtrabold.otf') format('opentype');
+    font-weight: 800;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'PPNeueYorkCondensed';
+    src:
+        url('../assets/fonts/PPNeueYork-CondensedExtraboldItalic.woff') format('woff'),
+        url('../assets/fonts/PPNeueYork-CondensedExtraboldItalic.otf') format('opentype');
+    font-weight: 800;
+    font-style: italic;
+    font-display: swap;
+}
+
+/* =========================================
+   PP Neue York - Narrow
+========================================= */
+
+@font-face {
+    font-family: 'PPNeueYorkNarrow';
+    src:
+        url('../assets/fonts/PPNeueYork-NarrowLight.woff') format('woff'),
+        url('../assets/fonts/PPNeueYork-NarrowLight.otf') format('opentype');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'PPNeueYorkNarrow';
+    src:
+        url('../assets/fonts/PPNeueYork-NarrowLightItalic.woff') format('woff'),
+        url('../assets/fonts/PPNeueYork-NarrowLightItalic.otf') format('opentype');
+    font-weight: 300;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'PPNeueYorkNarrow';
+    src:
+        url('../assets/fonts/PPNeueYork-NarrowMedium.woff') format('woff'),
+        url('../assets/fonts/PPNeueYork-NarrowMedium.otf') format('opentype');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'PPNeueYorkNarrow';
+    src:
+        url('../assets/fonts/PPNeueYork-NarrowMediumItalic.woff') format('woff'),
+        url('../assets/fonts/PPNeueYork-NarrowMediumItalic.otf') format('opentype');
+    font-weight: 500;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'PPNeueYorkNarrow';
+    src:
+        url('../assets/fonts/PPNeueYork-NarrowExtrabold.woff') format('woff'),
+        url('../assets/fonts/PPNeueYork-NarrowExtrabold.otf') format('opentype');
+    font-weight: 800;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'PPNeueYorkNarrow';
+    src:
+        url('../assets/fonts/PPNeueYork-NarrowExtraboldItalic.woff') format('woff'),
+        url('../assets/fonts/PPNeueYork-NarrowExtraboldItalic.otf') format('opentype');
+    font-weight: 800;
+    font-style: italic;
+    font-display: swap;
+}
+
+/* =========================================
+   PP Neue York - Normal
+========================================= */
+
+@font-face {
+    font-family: 'PPNeueYork';
+    src:
+        url('../assets/fonts/PPNeueYork-NormalLight.woff') format('woff'),
+        url('../assets/fonts/PPNeueYork-NormalLight.otf') format('opentype');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'PPNeueYork';
+    src:
+        url('../assets/fonts/PPNeueYork-NormalLightItalic.woff') format('woff'),
+        url('../assets/fonts/PPNeueYork-NormalLightItalic.otf') format('opentype');
+    font-weight: 300;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'PPNeueYork';
+    src:
+        url('../assets/fonts/PPNeueYork-NormalMedium.woff') format('woff'),
+        url('../assets/fonts/PPNeueYork-NormalMedium.otf') format('opentype');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'PPNeueYork';
+    src:
+        url('../assets/fonts/PPNeueYork-NormalMediumItalic.woff') format('woff'),
+        url('../assets/fonts/PPNeueYork-NormalMediumItalic.otf') format('opentype');
+    font-weight: 500;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'PPNeueYork';
+    src:
+        url('../assets/fonts/PPNeueYork-NormalExtrabold.woff') format('woff'),
+        url('../assets/fonts/PPNeueYork-NormalExtrabold.otf') format('opentype');
+    font-weight: 800;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'PPNeueYork';
+    src:
+        url('../assets/fonts/PPNeueYork-NormalExtraboldItalic.woff') format('woff'),
+        url('../assets/fonts/PPNeueYork-NormalExtraboldItalic.otf') format('opentype');
+    font-weight: 800;
+    font-style: italic;
+    font-display: swap;
+}

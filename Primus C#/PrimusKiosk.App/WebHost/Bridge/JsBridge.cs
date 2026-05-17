@@ -616,7 +616,12 @@ public sealed class JsBridge : IDisposable
             Name                = pcName,
             LicenseKey          = licenseKey,
             HardwareFingerprint = fingerprint,
-            Capabilities        = new[] { "screenshot", "heartbeat", "command" },
+            Capabilities        = new Dictionary<string, object>
+            {
+                ["screenshot"] = true,
+                ["heartbeat"]  = true,
+                ["command"]    = true,
+            },
         };
 
         var creds = await api.RegisterPcAsync(request, CancellationToken.None).ConfigureAwait(false);
