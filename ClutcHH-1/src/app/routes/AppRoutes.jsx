@@ -3,6 +3,7 @@ import { ROUTES } from '@/app/routes/paths';
 
 import AuthLayout from '@/layouts/AuthLayout';
 import MainLayout from '@/layouts/MainLayout';
+import FullScreenLayout from '@/layouts/FullScreenLayout';
 
 import InitializingPage from '@/features/auth/pages/InitializingPage';
 import LoginPage from '@/features/auth/pages/LoginPage';
@@ -65,6 +66,15 @@ export default function AppRoutes() {
         <Route path={ROUTES.resetPassword} element={<ResetPasswordPage />} />
       </Route>
 
+      {/* FullScreenLayout — Guna's NoLag home + Pavan's NoLag shop bring
+          their own internal nav, so we render them without the shared Navbar. */}
+      <Route element={<FullScreenLayout />}>
+        <Route path={ROUTES.home} element={<HomePage />} />
+        <Route path={ROUTES.mainShop} element={<ShopPage />} />
+      </Route>
+
+      {/* Main layout (shell) — other pages keep the shared Navbar. */}
+      <Route element={<MainLayout />}>
       {/* Main layout (shell) */}
       <Route element={<MainLayout />}>
         <Route path={ROUTES.home} element={<HomePage />} />

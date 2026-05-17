@@ -100,6 +100,44 @@ async def get_games_count(
     return {"count": count}
 
 
+@router.get("/popular", response_model=list[GameSchema])
+async def list_popular_games(
+    limit: int = Query(10, ge=1, le=100),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
+    """Return up to `limit` enabled games for the kiosk home page hero/rows (cached).
+
+    The `Game` model does not currently have an explicit popularity column, so
+    we simply surface enabled games ordered by id. When a play-count / featured
+    flag is added to the model this query can be refined.
+    """
+
+    cache_id = f"limit={limit}"
+
+    async def _compute() -> list[GameSchema]:
+        def _query():
+            return (
+                scoped_query(db, GameModel, ctx)
+                .filter(GameModel.enabled.is_(True))
+                .order_by(GameModel.id.asc())
+                .limit(limit)
+                .all()
+            )
+
+        return await run_in_threadpool(_query)
+
+    return await get_or_set(
+        "game_popular",
+        cache_id,
+        "game_catalog",
+        _compute,
+        ttl=600,
+        version="v1",
+        stampede_key=cache_id,
+    )
+
+
 @router.post("", response_model=GameSchema)
 async def create_game(
     game: GameCreate,

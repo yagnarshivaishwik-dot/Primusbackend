@@ -23,6 +23,7 @@ export default function NotFoundPage() {
         This page doesn't exist
       </h1>
       <p style={{ color: '#9CA3AF', maxWidth: 440, margin: 0 }}>
+        The URL you tried isn't part of NoLag. Head back home or check the sidebar.
         The URL you tried isn't part of ClutcHH. Head back home or check the sidebar.
       </p>
       <Link to={ROUTES.home} style={{ textDecoration: 'none' }}>

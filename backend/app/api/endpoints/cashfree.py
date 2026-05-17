@@ -34,7 +34,23 @@ from app.auth.context import AuthContext, get_auth_context
 from app.db.dependencies import MULTI_DB_ENABLED
 from app.db.global_db import global_session_factory
 from app.db.router import cafe_db_router
-from app.models import Offer, User, UserOffer, WalletTransaction
+from app.models import Offer, User, UserOffer
+
+# WalletTransaction lives in TWO model files:
+#   - app/models.py             — legacy, has `cafe_id` column (single-DB schema)
+#   - app/db/models_cafe.py     — per-cafe schema, NO cafe_id (the cafe is
+#                                 implicit in which DB you're connected to)
+# In multi-DB mode the webhook writes to the per-cafe Postgres instance,
+# whose `wallet_transactions` table doesn't have cafe_id. Using the legacy
+# model causes SQLAlchemy to emit INSERT INTO wallet_transactions
+# (..., cafe_id, ...) and Postgres rejects with UndefinedColumn — same
+# pattern as the chat.py / chat_messages fix. Without this swap, real
+# Cashfree payments lock up: money clears at Cashfree, webhook 500s, and
+# the customer's wallet never credits.
+if MULTI_DB_ENABLED:
+    from app.db.models_cafe import WalletTransaction
+else:
+    from app.models import WalletTransaction  # legacy: has cafe_id
 from app.services import cashfree_service as cf
 from app.ws.auth import build_event
 from app.ws import pc as ws_pc, admin as ws_admin
@@ -121,11 +137,29 @@ async def create_order(
     if not session_id:
         raise HTTPException(status_code=502, detail="Cashfree returned no payment_session_id")
 
-    # Cashfree's /orders/sessions endpoint only returns a usable QR when
-    # called from their JS SDK (the server-side call exists but returns an
-    # SDK-side challenge, not a QR image). We therefore don't try it here —
-    # the kiosk receives payment_session_id and invokes cashfree.checkout()
-    # which handles UPI-QR, card, netbanking, wallet rendering inline.
+    # Try the server-side UPI-QR generation. The original code skipped this
+    # because an older Cashfree behaviour returned an SDK challenge instead
+    # of a QR image. Verified against sandbox 2026-05-14: the call DOES
+    # return a usable base64 PNG QR, so we attempt it and fall back to the
+    # hosted-checkout flow if Cashfree refuses (e.g. some prod accounts).
+    qr_data_uri: str | None = None
+    upi_link: str | None = None
+    try:
+        qr_resp = await cf.initiate_upi_qr(payment_session_id=session_id)
+        payload = (qr_resp or {}).get("data", {}).get("payload", {}) or {}
+        qr_data_uri = payload.get("qrcode") or None
+        upi_link = payload.get("upi_link") or payload.get("upi") or None
+    except Exception:
+        # Non-fatal — kiosk can still use payment_link / payment_session_id
+        # via the Cashfree hosted checkout. Logged at debug level so we
+        # don't spam logs in environments where this is expected to fail.
+        import logging
+        logging.getLogger(__name__).debug(
+            "initiate_upi_qr failed for order %s; falling back to hosted checkout",
+            order_id,
+            exc_info=True,
+        )
+
     import os as _os
 
     environment = (
@@ -137,6 +171,8 @@ async def create_order(
         order_id=order_id,
         payment_session_id=session_id,
         payment_link=cf.hosted_checkout_url(session_id),
+        qr_data_uri=qr_data_uri,
+        upi_link=upi_link,
         environment=environment,
         amount=body.amount,
         status=order.get("order_status", "ACTIVE"),
@@ -556,16 +592,20 @@ async def webhook(request: Request):
         # WalletTransaction acts as the audit ledger for the money side even
         # though we don't increment wallet_balance. Keeps reconciliation with
         # Cashfree's settlement reports trivial.
-        db.add(
-            WalletTransaction(
-                user_id=user_id,
-                cafe_id=cafe_id,
-                amount=order_amount,
-                timestamp=datetime.now(UTC),
-                type="pack_purchase",
-                description=f"cashfree:{order_id}:pack:{pack_id_int or 'none'}:mins:{minutes_to_add}",
-            )
+        #
+        # cafe_id only belongs on the legacy single-DB model; per-cafe DBs
+        # have no such column (cafe is implicit in routing). Build kwargs
+        # dynamically so the same call works in both modes.
+        _wt_kwargs = dict(
+            user_id=user_id,
+            amount=order_amount,
+            timestamp=datetime.now(UTC),
+            type="pack_purchase",
+            description=f"cashfree:{order_id}:pack:{pack_id_int or 'none'}:mins:{minutes_to_add}",
         )
+        if not MULTI_DB_ENABLED:
+            _wt_kwargs["cafe_id"] = cafe_id
+        db.add(WalletTransaction(**_wt_kwargs))
         db.commit()
     finally:
         db.close()

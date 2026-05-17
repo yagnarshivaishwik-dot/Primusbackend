@@ -1,4 +1,5 @@
 /**
+ * Cashfree payment client for NoLag kiosk.
  * Cashfree payment client for ClutcHH kiosk.
  *
  * Inventory v2 (Phase 4) — switched from SDK iframe to hosted-checkout

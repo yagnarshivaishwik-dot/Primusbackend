@@ -1,4 +1,5 @@
 /**
+ * API base-URL resolution + auth/CSRF helpers for NoLag.
  * API base-URL resolution + auth/CSRF helpers for ClutcHH.
  *
  * Kept in sync with PrimusClient/src/utils/api.js so the kiosk handshake

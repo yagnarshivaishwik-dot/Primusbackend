@@ -9,6 +9,7 @@ import useSessionStore from '@/app/store/useSessionStore';
 import useNotificationsStore from '@/app/store/useNotificationsStore';
 import { audit } from '@/app/api/audit';
 import LockScreen from '@/components/overlays/LockScreen';
+import ChatWidget from '@/features/chat/components/ChatWidget';
 
 /**
  * App states:
@@ -169,6 +170,9 @@ export default function App() {
       }
     });
     wire('payment_confirmed', () => wallet.hydrate({ pcId }));
+    // chat_message is subscribed by <ChatWidget /> (mounted in App's return)
+    // so it owns its own message list lifecycle. Keep no-op handler removed
+    // here to avoid two-listener confusion.
     wire('chat_message', () => {});
     wire('pc_lock_state', (ev) => {
       const p = ev?.payload || {};
@@ -208,6 +212,7 @@ export default function App() {
       <div className="min-h-screen w-full bg-[#0B0F14] flex items-center justify-center">
         <div className="text-center">
           <div className="w-14 h-14 border-4 border-[#3ABEFF] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-300 text-sm tracking-wide uppercase">Initialising NoLag…</p>
           <p className="text-slate-300 text-sm tracking-wide uppercase">Initialising ClutcHH…</p>
         </div>
       </div>
@@ -215,12 +220,33 @@ export default function App() {
   }
 
   if (setupState === 'setup-required') {
+    return (
+      <SetupPage
+        onComplete={async () => {
+          // After a successful handshake the native host wrote a fresh
+          // device.bin (PcId + DeviceSecret + LicenseKey). Re-read those
+          // creds and set pcId in React state — otherwise the heartbeat /
+          // command-pull loop below (gated on `!pcId`) never starts, and
+          // the kiosk is "bound" on the backend but silent on the wire.
+          try {
+            const creds = await readDeviceCredentials();
+            if (creds?.pc_id) setPcId(creds.pc_id);
+          } catch {
+            /* if this fails the next reload will pick it up */
+          }
+          setSetupState('ready');
+        }}
+      />
+    );
     return <SetupPage onComplete={() => setSetupState('ready')} />;
   }
 
   return (
     <AppProviders>
       <AppRoutes />
+      {/* Customer-side chat widget — floats on every authenticated route.
+          Hides itself if no pcId (un-provisioned) or no user (logged out). */}
+      <ChatWidget pcId={pcId} />
       {lock.locked && <LockScreen message={lock.message} />}
     </AppProviders>
   );

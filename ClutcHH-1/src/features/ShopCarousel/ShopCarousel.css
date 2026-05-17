@@ -1,0 +1,150 @@
+/* ShopCarousel.css */
+
+.shopslider {
+    position: relative;
+    border-radius: 25px;
+    margin-bottom: 1rem;
+    /* box-shadow:
+        0px 20px 48px -12px rgba(0, 0, 0, 0.5),
+        0px 1px 0.5px 0px rgba(255, 255, 255, 0.45) inset; */
+}
+
+/* Swiper wrapper */
+.swiper {
+    position: relative;
+    padding: 1rem;
+}
+
+.shopheader {
+    padding: 10px 1rem;
+    padding-bottom: 0;
+}
+
+/* TITLE */
+.shopheader .lableheading {
+    color: #fff;
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0;
+}
+
+/* NAVIGATION WRAPPER */
+.navbuttons {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Navigation buttons */
+.swiper-button-next,
+.swiper-button-prev {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(10px);
+    color: #fff;
+    transition: 0.3s ease;
+    position: absolute !important;
+    top: 40px !important;
+    z-index: 10;
+    padding: 5px;
+}
+
+/* LEFT ARROW */
+.swiper-button-prev {
+    left: auto !important;
+    right: 50px !important;
+}
+
+/* RIGHT ARROW */
+.swiper-button-next {
+    right: 10px !important;
+}
+
+/* Arrow icon */
+.swiper-button-next::after,
+.swiper-button-prev::after {
+    font-size: 14px;
+    font-weight: bold;
+}
+
+/* Hover */
+.swiper-button-next:hover,
+.swiper-button-prev:hover {
+    background: rgba(255, 255, 255, 0.18);
+}
+
+/* Card */
+.shopcard {
+    height: 365px;
+    border-radius: 20px;
+    color: #fff;
+    font-size: 28px;
+    font-weight: 600;
+}
+
+.shopcard .cardtop {
+    /* height: 175px;
+    background: green; */
+    position: relative;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+}
+
+.shopcard .cardtop img {
+    width: 100%;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+}
+
+.shopcard .badge {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+}
+
+.shopcard .redbadge {
+    background: var(--PrimaryOrange);
+}
+
+.cardbottom {
+    padding: 1rem;
+}
+
+.cardbottom .carddetails h4,
+.cardbottom .carddetails h5 {
+    font-size: 1rem;
+    padding-bottom: 0.5rem;
+
+}
+
+.cardbottom .carddetails h6 {
+    font-size: 12px;
+    padding-bottom: 0.5rem;
+    color: rgba(107, 107, 120, 1);
+}
+
+.cardbottom .carddetails h5 {
+    color: rgba(245, 185, 66, 1);
+}
+
+.cardbottom .cardbutton {
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+
+}
+
+.cardbottom .cardbutton button {
+    font-size: 14px;
+
+}

@@ -285,6 +285,7 @@ export default function GamesAndAppsPage() {
             {!loading && !error && tab === 'Games' && (
               <>
                 <GameSection
+                  title="Most played at NoLag"
                   title="Most played at ClutcHH"
                   games={topGames}
                   onLaunch={handleLaunch}

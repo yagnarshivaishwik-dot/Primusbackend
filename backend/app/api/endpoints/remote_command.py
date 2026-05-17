@@ -52,6 +52,11 @@ ALLOWED_DEVICE_EVENT_TYPES = {
     "pc.status",
     "command.created",
     "command.ack",
+    # Admin→kiosk chat broadcasts. Each customer message stored in the
+    # chat_messages table is mirrored to the target PC over the device
+    # WebSocket so the kiosk's chat widget can render it instantly
+    # instead of waiting for the next history poll.
+    "chat.message",
 }
 
 

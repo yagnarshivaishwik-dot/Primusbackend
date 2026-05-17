@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { performHandshake } from '../services/handshakeService';
 import { getApiBase, setApiBase, presetApiBases } from '@/app/bridge/config';
+import useSessionStore from '@/app/store/useSessionStore';
 
 /**
  * One-time device-registration screen. Shown when the native host has no
  * saved device credentials. On success the caller re-mounts the app with
  * `deviceSetupState = 'ready'` and the normal auth flow takes over.
  *
+ * Ported from PrimusClient SetupScreen.tsx; re-themed for NoLag.
  * Ported from PrimusClient SetupScreen.tsx; re-themed for ClutcHH.
  */
 export default function SetupPage({ onComplete }) {
@@ -24,6 +26,15 @@ export default function SetupPage({ onComplete }) {
     setError(null);
     try {
       await performHandshake(adminEmail.trim(), adminPassword, pcName.trim());
+      // The handshake calls /api/auth/login as the admin to fetch the cafe's
+      // license. That admin JWT must not linger on the kiosk — otherwise the
+      // kiosk lands on the admin's home screen instead of the customer
+      // LoginPage. Clear the session so the next user-facing route is fresh.
+      try {
+        await useSessionStore.getState().signOut();
+      } catch {
+        /* swallow — clearing local state is best-effort */
+      }
       onComplete?.();
     } catch (err) {
       const msg =
@@ -68,6 +79,7 @@ export default function SetupPage({ onComplete }) {
               ⚡
             </span>
           </div>
+          <h1 className="text-3xl font-extrabold text-white tracking-tight">NOLAG</h1>
           <h1 className="text-3xl font-extrabold text-white tracking-tight">CLUTCHH</h1>
           <p className="text-slate-400 mt-1 text-sm">Initial device setup &amp; onboarding</p>
         </header>

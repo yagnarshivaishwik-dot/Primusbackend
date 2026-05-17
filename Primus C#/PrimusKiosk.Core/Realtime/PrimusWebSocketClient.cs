@@ -323,13 +323,40 @@ public sealed class PrimusWebSocketClient : IPrimusRealtimeClient, IAsyncDisposa
                 break;
 
             case "chat.message":
-                ChatMessageReceived?.Invoke(this, new ChatMessageDto
+                // Backend payload shape (see backend/app/api/endpoints/chat.py):
+                //   { message_id, client_id, client_name, user_name,
+                //     text, from, to, ts, from_user_id }
+                // The legacy parser looked for sender/body/from_admin/timestamp
+                // which the backend never sends — every field came back blank
+                // and the React widget rendered an empty grey bubble until the
+                // user manually closed + reopened the panel (which forced a
+                // history refetch). Read the modern shape directly.
                 {
-                    Sender = payload.TryGetProperty("sender", out var s) ? s.GetString() ?? string.Empty : string.Empty,
-                    Body = payload.TryGetProperty("body", out var b) ? b.GetString() ?? string.Empty : string.Empty,
-                    FromAdmin = payload.TryGetProperty("from_admin", out var fa) && fa.GetBoolean(),
-                    TimestampUtc = payload.TryGetProperty("timestamp", out var ts) && ts.TryGetDateTime(out var dt) ? dt : DateTime.UtcNow,
-                });
+                    var msgId   = payload.TryGetProperty("message_id", out var mid) ? mid.GetString() ?? string.Empty : string.Empty;
+                    var clientId = payload.TryGetProperty("client_id", out var cid) && cid.ValueKind == JsonValueKind.Number ? cid.GetInt32() : (int?)null;
+                    var clientName = payload.TryGetProperty("client_name", out var cn) ? cn.GetString() ?? string.Empty : string.Empty;
+                    var userName = payload.TryGetProperty("user_name", out var un) ? un.GetString() ?? string.Empty : string.Empty;
+                    var text    = payload.TryGetProperty("text", out var tx) ? tx.GetString() ?? string.Empty : string.Empty;
+                    var from    = payload.TryGetProperty("from", out var fr) ? fr.GetString() ?? string.Empty : string.Empty;
+                    var to      = payload.TryGetProperty("to",   out var toEl) ? toEl.GetString() ?? string.Empty : string.Empty;
+                    var tsUnix  = payload.TryGetProperty("ts",   out var tsEl) && tsEl.ValueKind == JsonValueKind.Number ? tsEl.GetInt64() : (long?)null;
+                    var fromUid = payload.TryGetProperty("from_user_id", out var fuid) && fuid.ValueKind == JsonValueKind.Number ? fuid.GetInt32() : (int?)null;
+                    var when    = tsUnix.HasValue ? DateTimeOffset.FromUnixTimeSeconds(tsUnix.Value).UtcDateTime : DateTime.UtcNow;
+
+                    ChatMessageReceived?.Invoke(this, new ChatMessageDto
+                    {
+                        MessageId    = msgId,
+                        ClientId     = clientId,
+                        ClientName   = clientName,
+                        UserName     = userName,
+                        Text         = text,
+                        From         = from,
+                        To           = to,
+                        Ts           = tsUnix,
+                        FromUserId   = fromUid,
+                        TimestampUtc = when,
+                    });
+                }
                 break;
 
             case "shop.purchase":

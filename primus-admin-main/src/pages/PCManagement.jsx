@@ -3,6 +3,7 @@ import axios from 'axios';
 import { MessageSquare } from 'lucide-react';
 import { getApiBase, authHeaders, showToast } from '../utils/api';
 import { eventStream } from '../utils/eventStream';
+import { subscribe as subscribeAdminWs } from '../utils/wsAdmin';
 import ChatPanel from '../components/ChatPanel.jsx';
 import Modal from '../components/common/Modal.jsx';
 import Button from '../components/common/Button.jsx';
@@ -16,6 +17,10 @@ const PCManagement = () => {
     const [menuOpenId, setMenuOpenId] = useState(null);
     const [chatPc, setChatPc] = useState(null);
     const [pendingOrders, setPendingOrders] = useState([]);
+    // pc_id -> count of unread client messages. Bumped by the admin WS
+    // subscription below; cleared when the admin opens the ChatPanel for
+    // that PC. Drives the red badge on each Chat button.
+    const [unreadByPc, setUnreadByPc] = useState({});
 
     const fetchPcs = useCallback(async () => {
         try {
@@ -159,6 +164,41 @@ const PCManagement = () => {
             unsubPayment();
         };
     }, [pcs]);
+
+    // Admin WebSocket: bump unread badge when a client sends a chat message
+    // for a PC whose ChatPanel isn't currently open. Toast for the first
+    // unread per PC so the admin notices even if they aren't on this page.
+    useEffect(() => {
+        const unsub = subscribeAdminWs((msg) => {
+            if (!msg || msg.event !== 'chat.message') return;
+            const p = msg.payload || {};
+            if (p.from !== 'client') return;            // only client→admin pings
+            const pcId = p.client_id ?? p.pc_id;
+            if (pcId == null) return;
+            const openPcId = chatPc?.id;
+            if (openPcId === pcId) return;              // panel already open — no badge needed
+            setUnreadByPc((prev) => {
+                const next = { ...prev, [pcId]: (prev[pcId] || 0) + 1 };
+                if (!prev[pcId]) {
+                    // First unread for this PC since last view — surface it.
+                    const pcName = p.client_name || `PC-${pcId}`;
+                    showToast(`💬 New message from ${pcName}`);
+                }
+                return next;
+            });
+        });
+        return () => { try { unsub && unsub(); } catch { /* ignore */ } };
+    }, [chatPc?.id]);
+
+    // Clear unread for a PC the moment its ChatPanel opens.
+    useEffect(() => {
+        if (!chatPc?.id) return;
+        setUnreadByPc((prev) => {
+            if (!prev[chatPc.id]) return prev;
+            const { [chatPc.id]: _drop, ...rest } = prev;
+            return rest;
+        });
+    }, [chatPc?.id]);
 
     const sendCmd = async (pcId, cmd, paramsObj) => {
         try {
@@ -372,15 +412,24 @@ const PCManagement = () => {
                                 className="flex-1 text-xs"
                                 disabled={pc.online === false || pc.status === 'offline'}
                             >Restart</Button>
-                            <Button
-                                onClick={() => { const text = prompt('Message to display on PC'); if (text) sendCmd(pc.id, 'message', { text }); }}
-                                variant="secondary"
-                                className="flex-1 text-xs"
-                                disabled={pc.online === false || pc.status === 'offline'}
-                            >Message</Button>
-                            <Button onClick={() => setChatPc(pc)} variant="secondary" className="flex-1 text-xs">
-                                <MessageSquare size={12} className="mr-1" /> Chat
-                            </Button>
+                            {/* "Message" (one-shot toast) was removed — its use case
+                                is fully covered by Chat, which is a persistent,
+                                two-way conversation that the customer can see and
+                                reply to on the kiosk chat widget. Keeping both
+                                confused operators (Bug: duplicate UX). */}
+                            <div className="relative flex-1">
+                                <Button onClick={() => setChatPc(pc)} variant="secondary" className="w-full text-xs">
+                                    <MessageSquare size={12} className="mr-1" /> Chat
+                                </Button>
+                                {unreadByPc[pc.id] > 0 && (
+                                    <span
+                                        className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow-lg ring-2 ring-gray-900"
+                                        aria-label={`${unreadByPc[pc.id]} unread chat message${unreadByPc[pc.id] === 1 ? '' : 's'}`}
+                                    >
+                                        {unreadByPc[pc.id] > 9 ? '9+' : unreadByPc[pc.id]}
+                                    </span>
+                                )}
+                            </div>
                         </div>
                         {menuOpenId === pc.id && (
                             <div className="absolute -right-2 top-8 z-50 w-48 rounded-lg shadow-2xl"
@@ -401,9 +450,6 @@ const PCManagement = () => {
                 {selectedPc && (
                     <div>
                         <p className="text-gray-300 mb-6">Are you sure you want to <span className="font-bold text-white">{command}</span> PC: <span className="font-bold text-white">{selectedPc.name}</span>?</p>
-                        {command === 'message' && (
-                            <textarea className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white placeholder-gray-400 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter your message..."></textarea>
-                        )}
                         <div className="flex justify-end space-x-4 mt-4">
                             <Button onClick={() => setIsModalOpen(false)} variant="secondary">Cancel</Button>
                             <Button onClick={handleCommand} variant={command === 'restart' ? 'danger' : 'primary'}>Confirm</Button>

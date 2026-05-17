@@ -124,7 +124,7 @@ public sealed class PrimusHttpClient : IPrimusApiClient
 
         return new DeviceCredentials
         {
-            PcId = root.GetProperty("pc_id").ToString(),
+            PcId = root.GetProperty("id").ToString(),
             DeviceSecret = root.TryGetProperty("device_secret", out var ds) ? ds.GetString() ?? string.Empty : string.Empty,
             LicenseKey = request.LicenseKey,
             HardwareFingerprint = request.HardwareFingerprint,

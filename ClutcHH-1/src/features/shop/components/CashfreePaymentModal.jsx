@@ -90,6 +90,10 @@ export default function CashfreePaymentModal({
     };
   }, [amount, pcId, packId, note]);
 
+  // 2. UPI-QR mode: backend already returned a base64 QR (qr_data_uri).
+  //    We render it inline below — no bridge invoke, no redirect.
+  //    Customer scans with phone, completes UPI payment out-of-band,
+  //    polling + WebSocket pick up the SUCCESS event.
   // 2. Once we have the link, open the C# child WebView (or full-page
   //    redirect when the bridge is absent).
   useEffect(() => {
@@ -346,6 +350,7 @@ export default function CashfreePaymentModal({
                 fontWeight: 600,
               }}
             >
+              Scan the QR with any UPI app
               Complete payment in the secure window
             </div>
             <div
@@ -355,6 +360,34 @@ export default function CashfreePaymentModal({
                 marginBottom: 18,
               }}
             >
+              Order #{order.order_id} · Order stays open for 10 min
+            </div>
+
+            {order.qr_data_uri ? (
+              <div
+                style={{
+                  display: 'inline-block',
+                  padding: 16,
+                  background: '#fff',
+                  borderRadius: 14,
+                  boxShadow: '0 12px 32px rgba(0,0,0,0.4)',
+                }}
+              >
+                <img
+                  src={order.qr_data_uri}
+                  alt="UPI QR code"
+                  style={{ display: 'block', width: 280, height: 280 }}
+                />
+              </div>
+            ) : (
+              <>
+                <Spinner subtle />
+                <div style={{ color: '#fca5a5', fontSize: 13, marginTop: 8 }}>
+                  Payment provider returned no QR. Try again.
+                </div>
+              </>
+            )}
+
               Choose UPI / card / netbanking · Order #{order.order_id}
             </div>
             <Spinner subtle />

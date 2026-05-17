@@ -210,6 +210,7 @@ function SignUpPage() {
         </Link>
 
         <h1 className="signup-title">Create Account</h1>
+        <p className="signup-sub">Join the NoLag gaming community</p>
         <p className="signup-sub">Join the ClutcHH gaming community</p>
 
         <button type="button" className="google-btn">

@@ -136,8 +136,12 @@ const ChatPanel = ({ pc, onClose }) => {
             </div>
           )}
           {messages.map((m) => {
-            // Determine if this message was sent by admin (role-based or from_user_id matches current user)
-            const isFromAdmin = m.from === 'admin' || (m.from_user_id && m.to_user_id === null);
+            // The backend now stamps every chat row with a `from` field
+            // ("admin" | "client") for both the live WebSocket broadcast
+            // and the GET history response. Trust it as the source of
+            // truth; the old fallback `to_user_id === null` was wrong
+            // because customer broadcasts also have to_user_id null.
+            const isFromAdmin = m.from === 'admin';
             const isFromClient = !isFromAdmin;
 
             return (
