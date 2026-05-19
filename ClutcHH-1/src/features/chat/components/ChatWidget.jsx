@@ -38,15 +38,13 @@ export default function ChatWidget({ pcId }) {
   // Merge-by-id helper: history wins for stored rows; optimistic local
   // sends are kept ONLY if the backend hasn't confirmed them yet.
   //
-  // Reconciliation rule for an optimistic "local-…" row:
-  //   • If a history row exists with the same text, same from_user_id,
-  //     and a timestamp within 60 s of the optimistic one → drop the
-  //     local copy (the real row supersedes it).
-  //   • Otherwise keep the local copy — the send is still in flight or
-  //     the row hasn't propagated to our GET yet.
-  // Without this, every customer-sent message rendered twice because the
-  // backend row was inserted at a different id from "local-…" and both
-  // stayed in state forever.
+  // An optimistic "local-…" row is considered confirmed (and dropped) if
+  // history contains any row with the same text + same from_user_id.
+  // No timestamp comparison: the kiosk's local clock and the server clock
+  // diverge enough (UTC vs IST display, NTP skew) that a time-window check
+  // misclassifies the echo as a separate message and the same text renders
+  // twice. Content+sender alone is sufficient because the customer can't
+  // queue two identical messages faster than the optimistic insert clears.
   const mergeHistory = useCallback((history) => {
     setMessages((prev) => {
       const byId = new Map();
@@ -55,13 +53,11 @@ export default function ChatWidget({ pcId }) {
         const key = String(m.id);
         if (!key.startsWith('local-')) continue;
         if (byId.has(key)) continue;
-        const localTs = new Date(m.timestamp || 0).getTime();
-        const confirmed = history.some((h) => {
-          if (h.message !== m.message) return false;
-          if ((h.from_user_id ?? null) !== (m.from_user_id ?? null)) return false;
-          const ht = new Date(h.timestamp || 0).getTime();
-          return Math.abs(ht - localTs) < 60_000;
-        });
+        const confirmed = history.some(
+          (h) =>
+            h.message === m.message
+            && (h.from_user_id ?? null) === (m.from_user_id ?? null),
+        );
         if (!confirmed) byId.set(key, m);
       }
       return Array.from(byId.values());
