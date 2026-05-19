@@ -559,16 +559,23 @@
   border-radius: 4px;
 }
 
-/* ---- Happy Hour card ---- */
+/* ---- Happy Hour card ----
+   `overflow: visible` (was hidden) so the meta pill + footer aren't clipped
+   when the gradient pseudo-element interacts with bottom-edge children on
+   smaller panel heights. Padding tightened a little to keep the card from
+   pushing the quests below out of view. */
 .neog-hh {
   position: relative;
   border-radius: var(--r-md);
-  padding: 18px;
+  padding: 16px;
   color: #fff;
   background:
     radial-gradient(120% 80% at 30% 0%, #ff9a4a 0%, var(--orange) 45%, #d63a13 100%);
   box-shadow: 0 16px 40px rgba(255, 75, 20, 0.3);
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: visible;
 }
 .neog-hh::before {
   content: "";
@@ -601,9 +608,9 @@
 
 .neog-hh__arc {
   position: relative;
-  margin: 4px auto 8px;
-  width: 200px;
-  height: 96px;
+  margin: 0 auto;
+  width: 170px;
+  height: 80px;
 }
 .neog-hh__arc-svg {
   width: 100%;
@@ -627,7 +634,6 @@
   padding: 10px 14px;
   border-radius: var(--r-sm);
   background: rgba(255, 255, 255, 0.16);
-  margin-bottom: 10px;
 }
 .neog-hh__pct-num {
   font-weight: 800;
@@ -641,14 +647,16 @@
 }
 
 .neog-hh__meta {
+  align-self: flex-start;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 12px;
+  padding: 6px 12px;
   border-radius: var(--r-pill);
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.35);
   font-size: 11px;
-  margin-bottom: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 .neog-hh__meta-dot {
   width: 6px;
@@ -661,6 +669,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-top: 2px;
 }
 .neog-hh__btn {
   padding: 9px 18px;

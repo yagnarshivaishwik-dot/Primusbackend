@@ -160,6 +160,48 @@ Then audit every reference to `WalletTransaction.cafe_id`, `Offer.cafe_id`, `Use
 **Effort:** ~10 min to reorder candidates in `App.xaml.cs:105-140`.
 **Risk:** Low. Could mildly affect the installed-layout case if anyone relies on the `.\web\` precedence — but that case is covered by candidate #3 (Program Files) anyway.
 
+### 19. Quest claim credits coins but XP rewards are silently dropped
+**Symptom:** `POST /api/v1/quests/{event_id}/claim` (`backend/app/api/endpoints/quests.py`) now credits coin rewards into `CafeUser.coins_balance` and writes a `CoinTransaction` row. XP rewards (e.g. quests with `rule_json.reward.kind="xp"`) are logged to the server log but **never banked anywhere** — `CafeUser` has no `xp` / `experience_points` column. The kiosk home page renders the XP reward badge ("+50 XP") so customers expect XP to accumulate, but no user-visible counter exists and the value is discarded.
+**Current workaround:** Author quests with `reward.kind="coins"` only. Anything authored with `kind="xp"` is effectively decorative.
+**Proper fix:**
+  - Add `users.xp` column (Integer, default 0) to the cafe DB schema via an `alembic_cafe` migration. **Blocked on item #13** — the alembic_cafe chain has a phantom `f8c2a4d61b03` reference that needs repairing first, otherwise the new migration can't be applied cleanly across the existing cafe DBs.
+  - Mirror the coins pattern in `claim_quest`: when `reward.kind == "xp"`, increment `user.xp` and write an `XpTransaction` audit row.
+  - Surface XP in `/api/me` and a wallet event ('xp_updated') so the BottomNav can show it.
+**Effort:** ~30 min once #13 unblocks; ~2 hrs end-to-end including the UI surface.
+**Risk:** Medium — touches the cafe schema and the user object, so RLS policies need to follow.
+
+### 20. HomePage "Happy Hour" card is mocked — no backend summary endpoint
+**Symptom:** `ClutcHH-1/src/features/home/pages/HomePage.jsx` renders a "Happy Hour: 2-5 PM, 30% EXTRA on all sessions" card. The values are hardcoded in JSX. There is no `/api/v1/happy-hour/current` (or similar) endpoint that summarises the currently-active time-windowed offer for a cafe. Happy-hour-style discounts DO exist as time-windowed rows in `PricingRule` / `TimeSlotPricingRule` / `Discount`, but nothing aggregates "what's the active hourly bonus right now and when does the next one start."
+**Current workaround:** The card is treated as branding, not functional. The "Learn More" button now routes to the Shop page so the customer at least lands somewhere sensible.
+**Proper fix:** New `GET /api/v1/happy-hour/current` endpoint returning `{ active: bool, label: str, percent_extra: float, starts_at: iso, ends_at: iso }`. Source from `PricingRule`/`TimeSlotPricingRule` filtered on the current wall-clock, or from a new `Promotion` model if we want explicit "happy hour" semantics distinct from base rate tables. Then make the HomePage card data-driven.
+**Effort:** ~1-2 hrs (one endpoint + one schema + frontend wiring).
+**Risk:** Low — additive only.
+
+### 21. Quest system has no operator workflow — admin CRUD + progression engine missing
+**Symptom:** `POST /api/v1/event/` exists ([backend/app/api/endpoints/event.py:16](backend/app/api/endpoints/event.py:16)) and can technically create a quest row, but:
+  1. **No admin UI** wraps it. `primus-admin-main` has zero pages for managing quests/events. Operators would have to hand-craft a curl/SQL call to author a quest.
+  2. **No progression engine.** Nothing in the backend auto-increments `EventProgress.progress` when the customer does the thing the quest tracks. "Daily Check-In" doesn't trigger on login, "Streak Master" doesn't count consecutive days, "Hour Power" doesn't tick as session minutes accrue. The only mutation path is the raw `POST /api/v1/event/progress/{id}` endpoint, which no kiosk code currently calls.
+  3. Net effect: even if a quest is created, no customer can ever make it claimable.
+**Consequence on the kiosk home page:** A data-driven "Almost there!" panel would be empty forever for every customer. So [HomePage.jsx](ClutcHH-1/src/features/home/pages/HomePage.jsx) keeps a hardcoded `QUESTS` placeholder array — three mocked quests with a non-functional "Claim!" badge — until both pieces below ship.
+**Current workaround:** Hardcoded placeholder UI on home. The live wiring (kiosk: `features/quests/services/questsService.js`; backend: claim endpoint in `quests.py` that credits coins) is implemented and dormant — the home page can flip from mock to live in a single edit once the gaps below close.
+**Proper fix (three pieces):**
+  - (a) **Admin UI for quest CRUD** in `primus-admin-main` — a `Quests` page that lists active quests, lets the operator create/edit/deactivate, and edits `rule_json` (target + reward shape) with a structured form, not raw JSON.
+  - (b) **Progression engine** as a backend service that listens for the right domain events (login → daily check-in progress, session-billing tick → playtime progress, etc.) and increments the matching `EventProgress` rows. Likely a Celery task subscribed to the same event stream the audit log uses.
+  - (c) Item #19 (add `users.xp` column + bank XP on claim) — sub-task; coins already credit correctly.
+**Effort:** Admin CRUD ~1 day. Progression engine ~2-3 days (depends on which quest types are in v1). XP column ~30 min once #13 unblocks.
+**Risk:** Medium. Touches user-visible engagement loops — needs review of which actions actually fire progress to avoid double-counting (e.g., if both the kiosk and a backend signal increment "Hour Power" the user gets 2 minutes per real minute).
+
+### 22. HomePage carousel slides are hardcoded — no featured/recently-played games endpoint
+**Symptom:** [HomePage.jsx](ClutcHH-1/src/features/home/pages/HomePage.jsx) renders three fixed hero slides (NEONBLADE / VALORSHIFT / STORMRIFT) with stock Unsplash images and Google CDN sample videos. The slides don't reflect anything in the cafe's actual games catalog, and the LAUNCH CTA is a no-op (`<button>` with no `onClick`) because the slide games don't exist in the catalog.
+**Current workaround:** Treated as branding/showcase. Customers find real games through the Games & Apps tab via BottomNav.
+**Proper fix:** Pick a feeder query and add an endpoint:
+  - **Option A — "most recently played at this cafe"**: `GET /api/v1/games/recent?limit=5` aggregating recent session-launches.
+  - **Option B — "featured by admin"**: a `featured` flag on the `Game` model + a tiny admin toggle in the games CRUD page. Operator picks the 3–5 games that appear on home.
+  - **Option C — "popular at this cafe"**: `GET /api/v1/games/popular?limit=5` ordered by lifetime launches.
+  Then make HomePage's `SLIDES` come from that endpoint and wire LAUNCH → `gamesService.launch()`. The `gamesService.list({ limit })` plumbing already exists, so the carousel can flip to live data in one edit.
+**Effort:** ~2-3 hrs (endpoint + frontend wiring). Option B adds another ~1 hr for the admin toggle.
+**Risk:** Low. Additive only; existing routes unaffected.
+
 ### 16. Kiosk Shop tab "disappearing packs" / stale-UI bug
 **Symptom:** After the admin creates or updates a time-pack, the kiosk's Shop tab continues to show "No packs configured" (or shows the old list) until the user navigates Home → Shop manually or fully relaunches the kiosk. Reproducible 2026-05-15. Even worse, packs that DID show can disappear again after some idle time. Affects production UX — operators can't expect cafe customers to log out/in to see new packs.
 **Current workaround:** Hard relaunch: `taskkill /F /IM PrimusClient.exe` + relaunch + re-login. Pack visible reliably for ~2 min after.

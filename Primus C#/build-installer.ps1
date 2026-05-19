@@ -62,7 +62,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$root          = Split-Path -Parent $MyInvocation.MyCommand.Path
+$root          = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
 $versionFile   = Join-Path $root 'version.txt'
 $changelogFile = Join-Path $root 'CHANGELOG.md'
 $solution      = Join-Path $root 'PrimusKiosk.sln'
@@ -245,8 +245,16 @@ Write-Host ""
 Write-Host "[3/4] Locating Inno Setup compiler..." -ForegroundColor Cyan
 $iscc = $null
 $candidates = @(
+    # Inno Setup 7 (current). Includes the per-user (LocalAppData) install,
+    # which is the default on Windows installs without admin rights.
+    "$env:ProgramFiles\Inno Setup 7\ISCC.exe",
+    "${env:ProgramFiles(x86)}\Inno Setup 7\ISCC.exe",
+    "$env:LocalAppData\Programs\Inno Setup 7\ISCC.exe",
+    # Inno Setup 6
     "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
     "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+    "$env:LocalAppData\Programs\Inno Setup 6\ISCC.exe",
+    # Inno Setup 5 (legacy)
     "$env:ProgramFiles\Inno Setup 5\ISCC.exe",
     "${env:ProgramFiles(x86)}\Inno Setup 5\ISCC.exe"
 )
