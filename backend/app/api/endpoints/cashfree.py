@@ -167,10 +167,42 @@ async def create_order(
         or "production"
     )
 
+    hosted_url = cf.hosted_checkout_url(session_id)
+
+    # When Cashfree's UPI-QR product isn't approved on the merchant account,
+    # `initiate_upi_qr` returns nothing usable and `qr_data_uri` stays None.
+    # The kiosk's CashfreePaymentModal renders `qr_data_uri` as an inline
+    # <img src="data:image/png;base64,...">; if it's empty the customer sees
+    # "Payment provider returned no QR" and can't pay. Generate a QR from
+    # the Cashfree hosted-checkout URL ourselves so the same code path keeps
+    # working — customer scans, opens the hosted checkout on their phone,
+    # pays via UPI/card/wallet, webhook fires. No kiosk installer change.
+    if not qr_data_uri and hosted_url:
+        try:
+            import qrcode  # noqa: WPS433  (third-party at function scope on purpose)
+            import base64
+            import io
+
+            img = qrcode.make(hosted_url)
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+            qr_data_uri = f"data:image/png;base64,{b64}"
+        except Exception:
+            # If qr generation also fails (lib missing, etc.) the kiosk
+            # still has payment_link to render as a button. Don't crash.
+            import logging
+            logging.getLogger(__name__).warning(
+                "Local QR fallback generation failed for order %s — kiosk will "
+                "have to fall back to clickable payment_link.",
+                order_id,
+                exc_info=True,
+            )
+
     return CreateOrderOut(
         order_id=order_id,
         payment_session_id=session_id,
-        payment_link=cf.hosted_checkout_url(session_id),
+        payment_link=hosted_url,
         qr_data_uri=qr_data_uri,
         upi_link=upi_link,
         environment=environment,

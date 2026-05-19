@@ -89,6 +89,12 @@ gunicorn>=21.2.0
 # Image Processing (Optional)
 pillow>=10.0.0
 
+# QR code generation — server-side fallback when Cashfree's UPI-QR product
+# is not enabled on the merchant account. Encodes the hosted-checkout
+# payment_link as a PNG QR so the kiosk renders a scannable code without a
+# new installer build.
+qrcode[pil]>=7.4.0
+
 # Azure Blob Storage (profile pictures + future blob uploads)
 azure-storage-blob>=12.19.0
 
