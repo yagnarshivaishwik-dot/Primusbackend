@@ -197,6 +197,22 @@ def my_messages(
     def _from_label(user_id: int | None) -> str:
         return "admin" if role_by_id.get(user_id or 0, "") in _ADMIN_ROLES else "client"
 
+    def _utc_iso(dt):
+        """Always emit a UTC-marked ISO string.
+
+        The ChatMessage.timestamp column is `DateTime` (no tz) in the cafe
+        schema, so SQLAlchemy returns it as naive even though it was
+        written with `datetime.now(UTC)`. Without an explicit `+00:00`
+        suffix, `new Date(s)` on the kiosk parses the string as local time
+        (IST on the cafe kiosks) and the displayed time drifts by the local
+        UTC offset — that was the root of the duplicate-bubble timezone bug.
+        """
+        if not dt:
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=UTC)
+        return dt.isoformat()
+
     return [
         {
             "id": m.id,
@@ -204,7 +220,7 @@ def my_messages(
             "to_user_id": m.to_user_id,
             "pc_id": m.pc_id,
             "message": m.message,
-            "timestamp": m.timestamp.isoformat() if m.timestamp else None,
+            "timestamp": _utc_iso(m.timestamp),
             "read": m.read,
             "from": _from_label(m.from_user_id),
         }

@@ -3,6 +3,7 @@ import axios from 'axios';
 import { X, Send } from 'lucide-react';
 import { getApiBase, authHeaders, showToast } from '../utils/api';
 import { subscribe as subscribeAdminWs } from '../utils/wsAdmin';
+import { formatLocalTime } from '../utils/datetime';
 
 const ChatPanel = ({ pc, onClose }) => {
   const [messages, setMessages] = useState([]);
@@ -154,7 +155,7 @@ const ChatPanel = ({ pc, onClose }) => {
                     {isFromClient ? (m.user_name || 'Client') : 'Admin'}
                   </span>
                   <span>•</span>
-                  <span>{new Date(m.timestamp || m.ts || Date.now()).toLocaleTimeString()}</span>
+                  <span>{formatLocalTime(m.timestamp || (m.ts ? m.ts * 1000 : Date.now()))}</span>
                 </div>
                 <div
                   className={`inline-block text-sm px-3 py-2 rounded-lg max-w-[85%] whitespace-pre-wrap break-words ${isFromAdmin

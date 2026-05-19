@@ -21,11 +21,21 @@ from app.auth.context import AuthContext, get_auth_context
 from app.db.dependencies import MULTI_DB_ENABLED
 
 if MULTI_DB_ENABLED:
-    from app.db.models_cafe import Event, EventProgress
+    from app.db.models_cafe import (
+        CafeUser as _UserModel,
+        CoinTransaction,
+        Event,
+        EventProgress,
+    )
     from app.db.global_db import global_session_factory
     from app.db.router import cafe_db_router
 else:
-    from app.models import Event, EventProgress  # type: ignore[no-redef]
+    from app.models import (  # type: ignore[no-redef]
+        CoinTransaction,
+        Event,
+        EventProgress,
+        User as _UserModel,
+    )
     from app.db.global_db import global_session_factory
 
 router = APIRouter()
@@ -182,11 +192,42 @@ def claim_quest(
             )
 
         progress.completed = True
+
+        # Credit the user's reward. Today we only support coin rewards because
+        # the cafe DB has `coins_balance` + `CoinTransaction`. XP rewards are
+        # logged but NOT credited — there is no `users.xp` column yet (see
+        # TECH_DEBT.md: add users.xp + bank XP on quest claim, blocked on
+        # alembic_cafe chain repair).
+        reward = rule.get("reward") or {}
+        reward_kind = (reward.get("kind") or "").lower()
+        reward_amount = int(reward.get("amount") or 0)
+        coins_credited = 0
+        xp_skipped = 0
+
+        if reward_kind == "coins" and reward_amount > 0:
+            user_row = (
+                db.query(_UserModel)
+                .filter(_UserModel.id == current_user.id)
+                .first()
+            )
+            if user_row is not None:
+                user_row.coins_balance = (user_row.coins_balance or 0) + reward_amount
+                db.add(
+                    CoinTransaction(
+                        user_id=user_row.id,
+                        amount=reward_amount,
+                        reason=f"quest_claim:{event_id}",
+                    )
+                )
+                coins_credited = reward_amount
+        elif reward_kind == "xp" and reward_amount > 0:
+            xp_skipped = reward_amount
+
         db.commit()
         db.refresh(progress)
         logger.info(
-            "[QUEST CLAIM] user=%s event=%s reward=%s",
-            current_user.id, event_id, rule.get("reward"),
+            "[QUEST CLAIM] user=%s event=%s reward=%s coins_credited=%d xp_skipped=%d",
+            current_user.id, event_id, reward, coins_credited, xp_skipped,
         )
         return _to_quest_out(event, progress)
     finally:

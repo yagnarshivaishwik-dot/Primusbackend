@@ -82,6 +82,25 @@ export default function ShopPage() {
     };
   }, [refetch]);
 
+  // Belt-and-suspenders for stale packs: the backend's `inventory.updated`
+  // WS event is the primary refresh signal, but if the C# bridge isn't
+  // forwarding it (or the backend doesn't broadcast on every pack mutation)
+  // the kiosk falls back on:
+  //   (a) refetch when the page becomes visible (focus returns), and
+  //   (b) a 30 s background poll while the user is on /shop.
+  // TECH_DEBT.md #16 captures the proper fix (backend-side WS invalidation).
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") refetch();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    const pollId = window.setInterval(refetch, 30000);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.clearInterval(pollId);
+    };
+  }, [refetch]);
+
   // Cart logic
   const cartTotal = useMemo(
     () => cart.reduce((sum, it) => sum + (it.priceRupees || it.price || 0) * it.quantity, 0),

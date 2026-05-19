@@ -1,12 +1,32 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import "../../../styles/homepage.css";
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+
+import { ROUTES } from '@/app/routes/paths';
+import useWalletStore from '@/app/store/useWalletStore';
+import { homeService } from '@/features/home/services/homeService';
+
+import '../../../styles/homepage.css';
 
 /* ============================================================
-   NeoG Dashboard
-   - Auto-advancing carousel (pause on hover, reset on manual nav)
-   - Left content over gradient bg + right media (image + video overlay)
-   - Bottom-right controls: page counter, dots, arrows, progress bar
-   - Glass right panel toggled via edge arrow
+   NeoG Dashboard — Guna's design.
+
+   Both the carousel slides AND the "Almost there!" quests are
+   intentionally hardcoded placeholders right now. The quest system
+   has two missing pieces (see TECH_DEBT.md #21):
+     1. No admin UI exists for authoring quests.
+     2. No backend engine auto-increments EventProgress when a user
+        does the thing the quest tracks (login, streak, playtime).
+   Until both pieces ship, a live "Almost there!" panel would just
+   be empty forever for every customer.
+
+   The carousel is hardcoded for a similar reason — no
+   "featured / most-recently-played games" backend endpoint yet.
+
+   Live wiring lives in:
+     - features/quests/services/questsService.js (list + claim)
+     - backend/app/api/endpoints/quests.py     (claim credits coins)
+   so flipping back from mock to live is a one-screen edit once the
+   gaps above close.
 ============================================================ */
 
 const AUTO_INTERVAL_MS = 7000;
@@ -16,17 +36,6 @@ const I = {
   Play: (p) => (
     <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" {...p}>
       <path d="M8 5v14l11-7z" />
-    </svg>
-  ),
-  Gear: (p) => (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" {...p}>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.9 2.9l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1A2 2 0 1 1 4.1 16.9l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.9-2.9l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.9 2.9l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
-    </svg>
-  ),
-  ChevronDown: (p) => (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" {...p}>
-      <polyline points="6 9 12 15 18 9" />
     </svg>
   ),
   ChevronLeft: (p) => (
@@ -70,137 +79,85 @@ const I = {
       <circle cx="12" cy="12" r="10" />
     </svg>
   ),
-  Home: (p) => (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" {...p}>
-      <path d="M3 11l9-8 9 8" />
-      <path d="M5 10v10h14V10" />
-    </svg>
-  ),
-  Grid: (p) => (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" {...p}>
-      <rect x="3" y="3" width="7" height="7" />
-      <rect x="14" y="3" width="7" height="7" />
-      <rect x="3" y="14" width="7" height="7" />
-      <rect x="14" y="14" width="7" height="7" />
-    </svg>
-  ),
-  Bag: (p) => (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" {...p}>
-      <path d="M6 7h12l-1 13H7L6 7z" />
-      <path d="M9 7a3 3 0 0 1 6 0" />
-    </svg>
-  ),
-  Trophy: (p) => (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" {...p}>
-      <path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4z" />
-      <path d="M17 6h3v2a3 3 0 0 1-3 3M7 6H4v2a3 3 0 0 0 3 3" />
-    </svg>
-  ),
-  Bolt: (p) => (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" {...p}>
-      <path d="M13 2 4 14h6l-1 8 9-12h-6z" />
-    </svg>
-  ),
-  Pause: (p) => (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" {...p}>
-      <rect x="6" y="5" width="4" height="14" rx="1" />
-      <rect x="14" y="5" width="4" height="14" rx="1" />
-    </svg>
-  ),
-  PlayFill: (p) => (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" {...p}>
-      <path d="M7 5v14l12-7z" />
-    </svg>
-  ),
 };
 
-/* ---------- Slide data ----------
-   videoSrc: replace these with your actual trailer files.
-   The image acts as the poster while the video loads / if it fails.
-*/
+/* ---------- Hardcoded slide data (placeholder) ---------- */
 const SLIDES = [
   {
-    id: "neonblade",
-    tag: "NEONBLADE",
-    subtitle: "CYBER COMBAT ARENA",
-    title: ["NEON", "BLADE"],
-    cta: "LAUNCH VIA EPIC",
-    tags: ["CYBERPUNK", "PVP ARENA", "4V4"],
-    leftBg:
-      "radial-gradient(120% 80% at 0% 0%, #16223c 0%, #0a1124 45%, #06091a 100%)",
-    media:
-      "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1600&q=80&auto=format&fit=crop",
-    videoSrc:
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+    id: 'neonblade',
+    tag: 'NEONBLADE',
+    subtitle: 'CYBER COMBAT ARENA',
+    title: ['NEON', 'BLADE'],
+    cta: 'LAUNCH VIA EPIC',
+    tags: ['CYBERPUNK', 'PVP ARENA', '4V4'],
+    leftBg: 'radial-gradient(120% 80% at 0% 0%, #16223c 0%, #0a1124 45%, #06091a 100%)',
+    media: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1600&q=80&auto=format&fit=crop',
+    videoSrc: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
   },
   {
-    id: "valorshift",
-    tag: "VALORSHIFT",
-    subtitle: "TACTICAL FPS",
-    title: ["VALOR", "SHIFT"],
-    cta: "LAUNCH VIA STEAM",
-    tags: ["TACTICAL", "5V5", "RANKED"],
-    leftBg:
-      "radial-gradient(120% 80% at 0% 0%, #3a1830 0%, #1a0a1a 45%, #08050d 100%)",
-    media:
-      "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=1600&q=80&auto=format&fit=crop",
-    videoSrc:
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+    id: 'valorshift',
+    tag: 'VALORSHIFT',
+    subtitle: 'TACTICAL FPS',
+    title: ['VALOR', 'SHIFT'],
+    cta: 'LAUNCH VIA STEAM',
+    tags: ['TACTICAL', '5V5', 'RANKED'],
+    leftBg: 'radial-gradient(120% 80% at 0% 0%, #3a1830 0%, #1a0a1a 45%, #08050d 100%)',
+    media: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=1600&q=80&auto=format&fit=crop',
+    videoSrc: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
   },
   {
-    id: "stormrift",
-    tag: "STORMRIFT",
-    subtitle: "MOBA UNIVERSE",
-    title: ["STORM", "RIFT"],
-    cta: "LAUNCH NOW",
-    tags: ["MOBA", "STRATEGY", "5V5"],
-    leftBg:
-      "radial-gradient(120% 80% at 0% 0%, #0e2f30 0%, #061a1c 45%, #03090e 100%)",
-    media:
-      "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=1600&q=80&auto=format&fit=crop",
-    videoSrc:
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
+    id: 'stormrift',
+    tag: 'STORMRIFT',
+    subtitle: 'MOBA UNIVERSE',
+    title: ['STORM', 'RIFT'],
+    cta: 'LAUNCH NOW',
+    tags: ['MOBA', 'STRATEGY', '5V5'],
+    leftBg: 'radial-gradient(120% 80% at 0% 0%, #0e2f30 0%, #061a1c 45%, #03090e 100%)',
+    media: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=1600&q=80&auto=format&fit=crop',
+    videoSrc: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
   },
 ];
 
-/* ---------- Quests data ---------- */
+/* ---------- Hardcoded quests data (placeholder).
+   All three reward coins only — kiosk doesn't have an XP column
+   on the user model yet (see TECH_DEBT.md #19). Reward amounts are
+   mirrored on the backend in app/api/endpoints/home.py so the kiosk
+   label and the backend credit can never drift. */
 const QUESTS = [
   {
-    id: "checkin",
+    id: 'checkin',
     icon: <I.Check />,
-    color: "#8B5CF6",
-    title: "Daily Check-In",
-    desc: "Log in today",
-    xp: 50,
+    color: '#8B5CF6',
+    title: 'Daily Check-In',
+    desc: 'Log in today',
     coins: 25,
-    progressLabel: "1/1",
+    progressLabel: '1/1',
     claimable: true,
     percent: 100,
   },
   {
-    id: "streak",
+    id: 'streak',
     icon: <I.Flame />,
-    color: "#7C3AED",
-    title: "Streak Master",
-    desc: "Log in 7 days in a row",
-    xp: 1000,
+    color: '#7C3AED',
+    title: 'Streak Master',
+    desc: 'Log in 7 days in a row',
     coins: 25,
-    progressLabel: "6/7 days",
+    progressLabel: '6/7 days',
+    claimable: true,
     percent: 86,
   },
   {
-    id: "hour",
+    id: 'hour',
     icon: <I.Clock />,
-    color: "#D946EF",
-    title: "Hour Power",
-    desc: "Spend at least 1 hour today",
-    xp: 75,
+    color: '#D946EF',
+    title: 'Hour Power',
+    desc: 'Spend at least 1 hour today',
     coins: 50,
-    progressLabel: "45/60 min",
+    progressLabel: '45/60 min',
+    claimable: true,
     percent: 75,
   },
 ];
-
 
 /* ============================================================
    Carousel — left content + right media (image + video overlay)
@@ -208,11 +165,7 @@ const QUESTS = [
 function Carousel({ slide }) {
   return (
     <section className="neog-carousel" key={slide.id}>
-      {/* LEFT — content over gradient */}
-      <div
-        className="neog-carousel__left"
-        style={{ background: slide.leftBg }}
-      >
+      <div className="neog-carousel__left" style={{ background: slide.leftBg }}>
         <div className="neog-carousel__left-inner">
           <div className="neog-tagrow">
             <span className="neog-pill">{slide.tag}</span>
@@ -221,22 +174,33 @@ function Carousel({ slide }) {
 
           <h1 className="neog-title">
             {slide.title.map((line, i) => (
-              <span key={i} className="neog-title__line">
-                {line}
-              </span>
+              <span key={i} className="neog-title__line">{line}</span>
             ))}
           </h1>
 
-          <button className="neog-cta">
+          {/* LAUNCH CTA is intentionally a no-op — the slides are mock games
+              that don't exist in the catalog. Wire onClick once the home
+              carousel switches to real game data. */}
+          <button type="button" className="neog-cta">
             <I.Play /> {slide.cta}
           </button>
 
           <ul className="neog-links">
             <li>
-              <I.Diamond style={{ color: "#ff6b35" }} /> EXPLORE CHALLENGES
+              <Link
+                to={ROUTES.challenges}
+                style={{ color: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+              >
+                <I.Diamond style={{ color: '#ff6b35' }} /> EXPLORE CHALLENGES
+              </Link>
             </li>
             <li>
-              <I.Spark style={{ color: "#ff6b35" }} /> EXPLORE QUESTS
+              <Link
+                to={ROUTES.quests}
+                style={{ color: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+              >
+                <I.Spark style={{ color: '#ff6b35' }} /> EXPLORE QUESTS
+              </Link>
             </li>
           </ul>
 
@@ -248,7 +212,6 @@ function Carousel({ slide }) {
         </div>
       </div>
 
-      {/* RIGHT — background image + video layered on top */}
       <div className="neog-carousel__right">
         <div
           className="neog-carousel__media"
@@ -269,13 +232,6 @@ function Carousel({ slide }) {
           ) : null}
 
           <div className="neog-carousel__media-overlay" />
-
-          {/* <button className="neog-watch-trailer" aria-label="Watch trailer">
-            <span className="neog-watch-trailer__play">
-              <I.Play />
-            </span>
-            <span>WATCH TRAILER</span>
-          </button> */}
         </div>
       </div>
     </section>
@@ -284,47 +240,16 @@ function Carousel({ slide }) {
 
 /* ============================================================
    Carousel Controls (bottom-right)
-   - Page counter "01 / 03"
-   - Dots
-   - Arrows
-   - Progress bar above (auto-advance indicator)
-   - Play / pause button
 ============================================================ */
-function CarouselControls({
-  index,
-  total,
-  onPrev,
-  onNext,
-  onJump,
-  progress,
-  paused,
-  onTogglePause,
-}) {
+function CarouselControls({ index, total, onPrev, onNext, onJump }) {
   return (
     <div className="neog-carousel-controls">
-      {/* <div className="neog-carousel-controls__progress">
-        <div
-          className="neog-carousel-controls__progress-fill"
-          style={{ width: `${paused ? 0 : progress}%` }}
-        />
-      </div> */}
-
       <div className="neog-carousel-controls__row">
-        {/* <div className="neog-pagecount">
-          <span className="neog-pagecount__current">
-            {String(index + 1).padStart(2, "0")}
-          </span>
-          <span className="neog-pagecount__sep">/</span>
-          <span className="neog-pagecount__total">
-            {String(total).padStart(2, "0")}
-          </span>
-        </div> */}
-
         <div className="neog-dots" role="tablist">
           {Array.from({ length: total }).map((_, i) => (
             <button
               key={i}
-              className={`neog-dot ${i === index ? "is-active" : ""}`}
+              className={`neog-dot ${i === index ? 'is-active' : ''}`}
               onClick={() => onJump(i)}
               aria-label={`Go to slide ${i + 1}`}
             />
@@ -332,13 +257,6 @@ function CarouselControls({
         </div>
 
         <div className="neog-carousel-arrows glass">
-          {/* <button
-            className="neog-arrowbtn"
-            onClick={onTogglePause}
-            aria-label={paused ? "Play" : "Pause"}
-          >
-            {paused ? <I.PlayFill /> : <I.Pause />}
-          </button> */}
           <span className="neog-arrowdiv" />
           <button className="neog-arrowbtn" onClick={onPrev} aria-label="Previous">
             <I.ChevronLeft />
@@ -354,12 +272,13 @@ function CarouselControls({
 }
 
 /* ============================================================
-   Right Panel — collapsible glass
+   Right Panel — hardcoded happy hour + hardcoded quests
 ============================================================ */
-function RightPanel({ open }) {
+function RightPanel({ open, claimedKinds, claimingKind, claimError, onClaim }) {
   return (
-    <aside className={`neog-rightpanel ${open ? "is-open" : "is-closed"} glass`}>
-      {/* Happy Hour card */}
+    <aside className={`neog-rightpanel ${open ? 'is-open' : 'is-closed'} glass`}>
+      {/* Happy Hour card — visual mock; no /happy-hour/current endpoint yet
+          (see TECH_DEBT.md #20). */}
       <div className="neog-hh">
         <div className="neog-hh__head">
           <span className="neog-hh__title">Happy Hour: 2-5 PM</span>
@@ -368,22 +287,8 @@ function RightPanel({ open }) {
 
         <div className="neog-hh__arc">
           <svg viewBox="0 0 200 110" className="neog-hh__arc-svg">
-            <path
-              d="M20,100 A80,80 0 0,1 180,100"
-              fill="none"
-              stroke="rgba(255,255,255,0.25)"
-              strokeWidth="10"
-              strokeLinecap="round"
-              strokeDasharray="6 8"
-            />
-            <path
-              d="M20,100 A80,80 0 0,1 180,100"
-              fill="none"
-              stroke="rgba(255,255,255,0.95)"
-              strokeWidth="10"
-              strokeLinecap="round"
-              strokeDasharray="180 251"
-            />
+            <path d="M20,100 A80,80 0 0,1 180,100" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="10" strokeLinecap="round" strokeDasharray="6 8" />
+            <path d="M20,100 A80,80 0 0,1 180,100" fill="none" stroke="rgba(255,255,255,0.95)" strokeWidth="10" strokeLinecap="round" strokeDasharray="180 251" />
           </svg>
           <span className="neog-hh__arc-label">2 – 5 PM</span>
         </div>
@@ -399,7 +304,9 @@ function RightPanel({ open }) {
         </div>
 
         <div className="neog-hh__footer">
-          <button className="neog-hh__btn">Learn More</button>
+          <Link to={ROUTES.mainShop} className="neog-hh__btn" style={{ textDecoration: 'none' }}>
+            Learn More
+          </Link>
           <div className="neog-hh__dots">
             <span className="neog-hh__dot is-active" />
             <span className="neog-hh__dot" />
@@ -410,52 +317,87 @@ function RightPanel({ open }) {
 
       <h3 className="neog-section-title">Almost there!</h3>
 
-      <ul className="neog-quests">
-        {QUESTS.map((q) => (
-          <li className="neog-quest" key={q.id}>
-            <div
-              className="neog-quest__icon"
-              style={{ background: `${q.color}22`, color: q.color }}
-            >
-              {q.icon}
-            </div>
+      {claimError && (
+        <div
+          role="alert"
+          style={{
+            padding: '8px 12px',
+            margin: '0 0 8px',
+            borderRadius: 8,
+            background: 'rgba(239,68,68,0.1)',
+            border: '1px solid rgba(239,68,68,0.3)',
+            color: '#fca5a5',
+            fontSize: 12,
+          }}
+        >
+          {claimError}
+        </div>
+      )}
 
-            <div className="neog-quest__body">
-              <div className="neog-quest__top">
-                <span className="neog-quest__title">{q.title}</span>
-                {q.claimable ? (
-                  <span className="neog-quest__claim">Claim!</span>
-                ) : (
-                  <span className="neog-quest__pct">{q.percent}%</span>
-                )}
+      <ul className="neog-quests">
+        {QUESTS.map((q) => {
+          const isClaimed = claimedKinds.includes(q.id);
+          const isClaiming = claimingKind === q.id;
+          const canClaim = q.claimable && !isClaimed;
+          return (
+            <li className="neog-quest" key={q.id}>
+              <div
+                className="neog-quest__icon"
+                style={{ background: `${q.color}22`, color: q.color }}
+              >
+                {q.icon}
               </div>
-              <div className="neog-quest__desc">{q.desc}</div>
-              <div className="neog-quest__rewards">
-                <span className="neog-reward">
-                  <I.Spark style={{ color: "#ff6b35" }} /> {q.xp} XP
-                </span>
-                <span className="neog-reward">
-                  <I.Coin style={{ color: "#ff6b35" }} /> {q.coins}
-                </span>
-                <span className="neog-quest__progress">{q.progressLabel}</span>
+
+              <div className="neog-quest__body">
+                <div className="neog-quest__top">
+                  <span className="neog-quest__title">{q.title}</span>
+                  {isClaimed ? (
+                    <span className="neog-quest__pct">Claimed</span>
+                  ) : canClaim ? (
+                    <button
+                      type="button"
+                      className="neog-quest__claim"
+                      onClick={() => onClaim(q.id)}
+                      disabled={isClaiming}
+                      style={{
+                        background: '#ff6b35',
+                        border: 'none',
+                        padding: '4px 12px',
+                        borderRadius: 999,
+                        cursor: isClaiming ? 'wait' : 'pointer',
+                        color: '#fff',
+                        fontWeight: 700,
+                        fontSize: 12,
+                      }}
+                    >
+                      {isClaiming ? 'Claiming…' : 'Claim!'}
+                    </button>
+                  ) : (
+                    <span className="neog-quest__pct">{q.percent}%</span>
+                  )}
+                </div>
+                <div className="neog-quest__desc">{q.desc}</div>
+                <div className="neog-quest__rewards">
+                  <span className="neog-reward">
+                    <I.Coin style={{ color: '#ff6b35' }} /> {q.coins}
+                  </span>
+                  <span className="neog-quest__progress">{q.progressLabel}</span>
+                </div>
               </div>
-            </div>
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ul>
     </aside>
   );
 }
 
-/* ============================================================
-   Right Panel Toggle (edge arrow)
-============================================================ */
 function PanelToggle({ open, onClick }) {
   return (
     <button
-      className={`neog-paneltoggle ${open ? "is-open" : ""}`}
+      className={`neog-paneltoggle ${open ? 'is-open' : ''}`}
       onClick={onClick}
-      aria-label={open ? "Close panel" : "Open panel"}
+      aria-label={open ? 'Close panel' : 'Open panel'}
       aria-expanded={open}
     >
       {open ? <I.ChevronRight /> : <I.ChevronLeft />}
@@ -463,53 +405,67 @@ function PanelToggle({ open, onClick }) {
   );
 }
 
-
 /* ============================================================
-   Root component
+   Root
 ============================================================ */
-export default function LoginPage() {
+export default function HomePage() {
+  const hydrate = useWalletStore((s) => s.hydrate);
+
   const [index, setIndex] = useState(0);
   const [panelOpen, setPanelOpen] = useState(true);
   const [paused, setPaused] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [claimedKinds, setClaimedKinds] = useState([]);
+  const [claimingKind, setClaimingKind] = useState(null);
+  const [claimError, setClaimError] = useState(null);
   const startRef = useRef(Date.now());
 
-  const next = useCallback(
-    () => setIndex((i) => (i + 1) % SLIDES.length),
-    []
-  );
-  const prev = useCallback(
-    () => setIndex((i) => (i - 1 + SLIDES.length) % SLIDES.length),
-    []
-  );
+  const next = useCallback(() => setIndex((i) => (i + 1) % SLIDES.length), []);
+  const prev = useCallback(() => setIndex((i) => (i - 1 + SLIDES.length) % SLIDES.length), []);
   const jump = useCallback((i) => setIndex(i), []);
 
-  /* Auto-advance + progress ticker.
-     Restarts whenever index changes (manual nav resets the timer). */
   useEffect(() => {
     if (paused) return undefined;
-
     startRef.current = Date.now();
-    setProgress(0);
-
     const id = setInterval(() => {
       const elapsed = Date.now() - startRef.current;
       if (elapsed >= AUTO_INTERVAL_MS) {
         clearInterval(id);
         setIndex((i) => (i + 1) % SLIDES.length);
-      } else {
-        setProgress((elapsed / AUTO_INTERVAL_MS) * 100);
       }
-    }, 60);
-
+    }, 200);
     return () => clearInterval(id);
   }, [index, paused]);
 
-  return (
-    <div className={`neog-app ${panelOpen ? "panel-open" : "panel-closed"}`}>
-      <div className="neog-bg" aria-hidden />
+  const handleClaim = useCallback(async (kind) => {
+    if (!kind || claimingKind) return;
+    setClaimError(null);
+    setClaimingKind(kind);
+    try {
+      await homeService.claimPlaceholder(kind);
+      setClaimedKinds((prev) => (prev.includes(kind) ? prev : [...prev, kind]));
+      try {
+        await hydrate({});
+      } catch { /* ignore — wallet will refresh on next mount */ }
+    } catch (err) {
+      // 409 from the backend means "already claimed today" — treat as
+      // success (mark claimed) so the customer doesn't keep re-trying.
+      if (err?.status === 409) {
+        setClaimedKinds((prev) => (prev.includes(kind) ? prev : [...prev, kind]));
+      } else {
+        setClaimError(err?.message || 'Claim failed.');
+      }
+    } finally {
+      setClaimingKind(null);
+    }
+  }, [claimingKind, hydrate]);
 
-      {/* <TopNav /> */}
+  return (
+    <div
+      className={`neog-app ${panelOpen ? 'panel-open' : 'panel-closed'}`}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      <div className="neog-bg" aria-hidden />
 
       <main className="neog-stage">
         <Carousel slide={SLIDES[index]} />
@@ -519,16 +475,17 @@ export default function LoginPage() {
           onPrev={prev}
           onNext={next}
           onJump={jump}
-          // progress={progress}
-          // paused={paused}
-          onTogglePause={() => setPaused((p) => !p)}
         />
       </main>
 
       <PanelToggle open={panelOpen} onClick={() => setPanelOpen((o) => !o)} />
-      <RightPanel open={panelOpen} />
-
-      {/* <BottomNav /> */}
+      <RightPanel
+        open={panelOpen}
+        claimedKinds={claimedKinds}
+        claimingKind={claimingKind}
+        claimError={claimError}
+        onClaim={handleClaim}
+      />
     </div>
   );
 }

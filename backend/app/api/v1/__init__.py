@@ -28,6 +28,7 @@ from app.api.endpoints import (
     game,
     games,
     hardware,
+    home,
     leaderboard,
     license,
     membership,
@@ -84,6 +85,7 @@ v1_router.include_router(game.router, prefix="/game", tags=["v1-game"])
 v1_router.include_router(games.router, prefix="/games", tags=["v1-games"])
 v1_router.include_router(leaderboard.router, prefix="/leaderboard", tags=["v1-leaderboard"])
 v1_router.include_router(event.router, prefix="/event", tags=["v1-event"])
+v1_router.include_router(home.router, prefix="/home", tags=["v1-home"])
 v1_router.include_router(stats.router, prefix="/stats", tags=["v1-stats"])
 v1_router.include_router(analytics.router, prefix="/analytics", tags=["v1-analytics"])
 

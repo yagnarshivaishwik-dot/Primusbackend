@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { MdChat, MdClose, MdSend } from 'react-icons/md';
 
 import { listen as listenBridge } from '@/app/bridge/invoke';
 import useSessionStore from '@/app/store/useSessionStore';
+import { ROUTES } from '@/app/routes/paths';
+import { formatLocalTime, parseUtcDate } from '@/utils/datetime';
 import { chatService } from '../services/chatService';
 
 import './ChatWidget.css';
@@ -24,6 +27,7 @@ import './ChatWidget.css';
  */
 export default function ChatWidget({ pcId }) {
   const user = useSessionStore((s) => s.user);
+  const location = useLocation();
 
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -33,7 +37,13 @@ export default function ChatWidget({ pcId }) {
 
   const listEndRef = useRef(null);
 
-  const showWidget = !!user && !!pcId;
+  // Hide on the home page — the right-side panel (happy hour + quests)
+  // pins itself to the right edge of the viewport with no clearance at the
+  // bottom, so the floating chat launcher visually overlaps the panel.
+  // Chat is more useful during a session anyway; hiding on home keeps the
+  // overlap from happening while staying available everywhere else.
+  const isHome = location.pathname === ROUTES.home;
+  const showWidget = !!user && !!pcId && !isHome;
 
   // Merge-by-id helper: history wins for stored rows; optimistic local
   // sends are kept ONLY if the backend hasn't confirmed them yet.
@@ -194,11 +204,11 @@ export default function ChatWidget({ pcId }) {
 
   const sorted = useMemo(
     () =>
-      [...messages].sort(
-        (a, b) =>
-          new Date(a.timestamp || 0).getTime() -
-          new Date(b.timestamp || 0).getTime(),
-      ),
+      [...messages].sort((a, b) => {
+        const ta = parseUtcDate(a.timestamp)?.getTime() ?? 0;
+        const tb = parseUtcDate(b.timestamp)?.getTime() ?? 0;
+        return ta - tb;
+      }),
     [messages],
   );
 
@@ -266,10 +276,7 @@ export default function ChatWidget({ pcId }) {
                 >
                   <div className="chatwidget-bubble-text">{m.message}</div>
                   <div className="chatwidget-bubble-meta">
-                    {new Date(m.timestamp).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
+                    {formatLocalTime(m.timestamp)}
                     {m.failed ? ' • failed to send' : ''}
                   </div>
                 </div>
