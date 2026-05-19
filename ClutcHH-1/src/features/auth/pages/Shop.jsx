@@ -104,7 +104,6 @@ function Shop() {
         <section className="section sectionBg">
           <div className="section-header">
             <h2 className="section-title">Popular at NoLag</h2>
-            <h2 className="section-title">Popular at ClutcHH</h2>
             <div className="section-nav">
               <button className="nav-arrow">‹</button>
               <button className="nav-arrow">›</button>

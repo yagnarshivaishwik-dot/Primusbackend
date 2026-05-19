@@ -40,7 +40,6 @@ function LoginPage() {
         <div className="card">
           <h1 className="card-title">Welcome back</h1>
           <p className="card-subtitle">Sign in to your NoLag account</p>
-          <p className="card-subtitle">Sign in to your ClutcHH account</p>
           <form noValidate onSubmit={handleSubmit}>
             <div className="field">
               <label htmlFor="email">Email</label>
@@ -190,7 +189,6 @@ function LoginPage() {
         <div className="card">
           <h1 className="card-title">Create account</h1>
           <p className="card-subtitle">Join 50K+ players on NoLag</p>
-          <p className="card-subtitle">Join 50K+ players on ClutcHH</p>
           <form novalidate onsubmit="return false">
             <div className="field">
               <label htmlFor="name">Full Name</label>

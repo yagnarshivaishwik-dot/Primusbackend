@@ -267,7 +267,6 @@ const [activeTag, setActiveTag] = useState("All");
            <Topbar />
           <h1 className="page-title">Access your own games</h1>
           <GameSection title="Most played at NoLag" games={GAMES} />
-          <GameSection title="Most played at ClutcHH" games={GAMES} />
           <GameSection title="Free to Play" badge="FREE" games={GAMES} />
           <GameSectionAll title="All Games" games={GAMES} />
           <AppCard title=" All Apps" />

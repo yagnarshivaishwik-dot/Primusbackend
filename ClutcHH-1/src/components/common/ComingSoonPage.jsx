@@ -20,7 +20,6 @@ export default function ComingSoonPage({
         <div style={{ fontSize: 15, color: '#E5E7EB', lineHeight: 1.55 }}>
           {summary ||
             'This screen is part of the NoLag roadmap but is not yet connected to a backend. Once an admin configures the matching feature it will show up here live.'}
-            'This screen is part of the ClutcHH roadmap but is not yet connected to a backend. Once an admin configures the matching feature it will show up here live.'}
         </div>
         {Array.isArray(bullets) && bullets.length > 0 && (
           <ul style={{ marginTop: 14, color: '#9CA3AF', fontSize: 13, lineHeight: 1.8 }}>
