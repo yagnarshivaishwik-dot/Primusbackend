@@ -173,7 +173,6 @@ export default function App() {
     // chat_message is subscribed by <ChatWidget /> (mounted in App's return)
     // so it owns its own message list lifecycle. Keep no-op handler removed
     // here to avoid two-listener confusion.
-    wire('chat_message', () => {});
     wire('pc_lock_state', (ev) => {
       const p = ev?.payload || {};
       setLock({ locked: !!p.locked, message: p.message || null });
@@ -213,7 +212,6 @@ export default function App() {
         <div className="text-center">
           <div className="w-14 h-14 border-4 border-[#3ABEFF] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-slate-300 text-sm tracking-wide uppercase">Initialising NoLag…</p>
-          <p className="text-slate-300 text-sm tracking-wide uppercase">Initialising ClutcHH…</p>
         </div>
       </div>
     );
@@ -238,7 +236,6 @@ export default function App() {
         }}
       />
     );
-    return <SetupPage onComplete={() => setSetupState('ready')} />;
   }
 
   return (
