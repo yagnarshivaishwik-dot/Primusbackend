@@ -66,16 +66,18 @@ export default function AppRoutes() {
         <Route path={ROUTES.resetPassword} element={<ResetPasswordPage />} />
       </Route>
 
-      {/* FullScreenLayout — Guna's NoLag home + Pavan's NoLag shop bring
-          their own internal nav, so we render them without the shared Navbar. */}
+      {/* FullScreenLayout — Guna's NoLag home, Pavan's NoLag shop, and the
+          Games & Apps page bring their own internal chrome (tabs, filters)
+          so we render them without the shared top Navbar and let the
+          floating BottomNav provide cross-page nav instead. */}
       <Route element={<FullScreenLayout />}>
         <Route path={ROUTES.home} element={<HomePage />} />
         <Route path={ROUTES.mainShop} element={<ShopPage />} />
+        <Route path={ROUTES.mainGames} element={<GamesPage />} />
       </Route>
 
       {/* Main layout (shell) — other pages keep the shared Navbar. */}
       <Route element={<MainLayout />}>
-        <Route path={ROUTES.mainGames} element={<GamesPage />} />
         <Route path={ROUTES.mainApps} element={<AppsPage />} />
         <Route path={ROUTES.mainArcade} element={<ArcadePage />} />
 

@@ -333,8 +333,8 @@ public sealed class PrimusWebSocketClient : IPrimusRealtimeClient, IAsyncDisposa
                 // history refetch). Read the modern shape directly.
                 {
                     var msgId   = payload.TryGetProperty("message_id", out var mid) ? mid.GetString() ?? string.Empty : string.Empty;
-                    var clientId = payload.TryGetProperty("client_id", out var cid) && cid.ValueKind == JsonValueKind.Number ? cid.GetInt32() : (int?)null;
-                    var clientName = payload.TryGetProperty("client_name", out var cn) ? cn.GetString() ?? string.Empty : string.Empty;
+                    var clientId = payload.TryGetProperty("client_id", out var cIdEl) && cIdEl.ValueKind == JsonValueKind.Number ? cIdEl.GetInt32() : (int?)null;
+                    var clientName = payload.TryGetProperty("client_name", out var cNameEl) ? cNameEl.GetString() ?? string.Empty : string.Empty;
                     var userName = payload.TryGetProperty("user_name", out var un) ? un.GetString() ?? string.Empty : string.Empty;
                     var text    = payload.TryGetProperty("text", out var tx) ? tx.GetString() ?? string.Empty : string.Empty;
                     var from    = payload.TryGetProperty("from", out var fr) ? fr.GetString() ?? string.Empty : string.Empty;
