@@ -1,16 +1,39 @@
+import json
+import logging
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import get_current_user, require_role
 from app.auth.context import AuthContext, get_auth_context
 from app.auth.tenant import scoped_query, enforce_cafe_ownership
-from app.db.dependencies import get_cafe_db as get_db
+from app.db.dependencies import MULTI_DB_ENABLED, get_cafe_db as get_db
 from app.models import Event, EventProgress
 from app.schemas import EventIn, EventOut, EventProgressOut
 
+if MULTI_DB_ENABLED:
+    from app.db.models_cafe import (
+        CafeUser,
+        CoinTransaction as CafeCoinTransaction,
+    )
+else:
+    from app.models import CoinTransaction as CafeCoinTransaction  # type: ignore[no-redef]
+
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+def _parse_rule(raw):
+    """Same rule_json parser quests.py uses. Tolerant of None / bad JSON."""
+    if not raw:
+        return {}
+    if isinstance(raw, dict):
+        return raw
+    try:
+        return json.loads(raw)
+    except (TypeError, ValueError):
+        return {}
 
 
 @router.post("/", response_model=EventOut)
@@ -75,4 +98,115 @@ def update_progress(
     prog.progress += max(0, delta)
     db.commit()
     db.refresh(prog)
+    return prog
+
+
+@router.post("/{event_id}/claim", response_model=EventProgressOut)
+def claim_event(
+    event_id: int,
+    current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+):
+    """Claim a completed event/challenge for its coin reward.
+
+    Mirror of `quests.claim_quest` but scoped to the generic Event model
+    so the kiosk Challenges feature can pay out coins on completion.
+    Reads the reward shape from `Event.rule_json`:
+        { "reward": { "kind": "coins", "amount": 100 }, "target": 1 }
+    Behaviour:
+      * 404 if event missing
+      * 400 if progress < target ("Quest not complete yet")
+      * idempotent: if already completed, returns the same row without
+        re-crediting
+      * credits CafeUser.coins_balance + writes a CoinTransaction
+        (multi-DB) / global User.coins_balance (single-DB)
+    """
+    evt = db.query(Event).filter_by(id=event_id).first()
+    if not evt:
+        raise HTTPException(status_code=404, detail="Event not found")
+    enforce_cafe_ownership(evt, ctx)
+
+    rule = _parse_rule(getattr(evt, "rule_json", None))
+    target = int(rule.get("target") or 1)
+    reward = rule.get("reward") or {}
+    reward_kind = (reward.get("kind") or "").lower()
+    reward_amount = int(reward.get("amount") or 0)
+
+    prog = (
+        db.query(EventProgress)
+        .filter_by(event_id=event_id, user_id=current_user.id)
+        .first()
+    )
+    if prog is None:
+        prog = EventProgress(
+            event_id=event_id,
+            user_id=current_user.id,
+            progress=0,
+            completed=False,
+        )
+        db.add(prog)
+
+    # Idempotent: a re-claim returns the same row unchanged.
+    if prog.completed:
+        db.commit()
+        db.refresh(prog)
+        return prog
+
+    if (prog.progress or 0) < target:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Quest not complete yet ({prog.progress or 0}/{target})",
+        )
+
+    prog.completed = True
+    coins_credited = 0
+
+    if reward_kind == "coins" and reward_amount > 0:
+        if MULTI_DB_ENABLED:
+            user_row = (
+                db.query(CafeUser)
+                .filter(CafeUser.global_user_id == current_user.id)
+                .first()
+            )
+            if user_row is None:
+                user_row = CafeUser(
+                    global_user_id=current_user.id,
+                    name=getattr(current_user, "name", None) or getattr(current_user, "email", None),
+                    email=getattr(current_user, "email", None),
+                    role="client",
+                    wallet_balance=0,
+                    coins_balance=0,
+                )
+                db.add(user_row)
+                db.flush()
+                logger.info(
+                    "[EVENT CLAIM] auto-provisioned CafeUser for global_user_id=%s event=%s",
+                    current_user.id, event_id,
+                )
+        else:
+            from app.models import User as _LegacyUser  # noqa: WPS433
+            user_row = (
+                db.query(_LegacyUser)
+                .filter(_LegacyUser.id == current_user.id)
+                .first()
+            )
+
+        if user_row is not None:
+            user_row.coins_balance = (user_row.coins_balance or 0) + reward_amount
+            db.add(
+                CafeCoinTransaction(
+                    user_id=user_row.id,
+                    amount=reward_amount,
+                    reason=f"event_claim:{event_id}",
+                )
+            )
+            coins_credited = reward_amount
+
+    db.commit()
+    db.refresh(prog)
+    logger.info(
+        "[EVENT CLAIM] user=%s event=%s reward=%s coins_credited=%d",
+        current_user.id, event_id, reward, coins_credited,
+    )
     return prog

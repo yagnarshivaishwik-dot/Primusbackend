@@ -480,6 +480,66 @@
     height: 120px;
 }
 
+/* ---- Real challenges list (below the placeholder carousel) ---- */
+.real-challenges {
+    margin-top: 1.5rem;
+}
+
+.real-challenges__title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 12px;
+}
+
+.real-challenges__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.real-challenge-card {
+    border-radius: 18px;
+}
+
+/* ---- Leaderboard ranks below the podium ---------------------- */
+.leaderboard__tail {
+    margin-top: 16px;
+    list-style: none;
+    padding: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.leaderboard__tail li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    color: #fff;
+    font-size: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.leaderboard__tail-rank {
+    width: 36px;
+    color: rgba(255, 255, 255, 0.55);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.leaderboard__tail-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.leaderboard__tail-score {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--PrimaryOrange, #ff7a00);
+}
+
 /* ---- Responsive ---------------------------------------------- */
 @media (max-width: 900px) {
     .stats {

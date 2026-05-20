@@ -5,6 +5,8 @@ import { FaStar, FaStarHalfAlt } from 'react-icons/fa';
 
 import * as prizesService from '@/features/prizeVault/services/prizesService';
 import { homeService } from '@/features/home/services/homeService';
+import { listEvents, claimEvent } from '@/features/quests/services/eventsService';
+import * as lb from '@/features/leaderboard/services/leaderboardService';
 import useWalletStore from '@/app/store/useWalletStore';
 import useSessionStore from '@/app/store/useSessionStore';
 import AppHeader from '@/components/layout/AppHeader';
@@ -91,6 +93,17 @@ export default function PrizeVaultPage() {
   const [claimingKind, setClaimingKind] = useState(null);
   const [claimError, setClaimError] = useState(null);
 
+  // Real challenges (backend Event rows) + claim state per event.
+  const [events, setEvents] = useState([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
+  const [claimingEventId, setClaimingEventId] = useState(null);
+
+  // Leaderboard (live entries with hardcoded podium fallback when empty).
+  const [boards, setBoards] = useState([]);
+  const [activeBoardId, setActiveBoardId] = useState(null);
+  const [boardEntries, setBoardEntries] = useState([]);
+  const [boardLoading, setBoardLoading] = useState(true);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -123,6 +136,46 @@ export default function PrizeVaultPage() {
     return () => { cancelled = true; };
   }, []);
 
+  // Load real challenges (backend Event rows) for the Challenges tab.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setEventsLoading(true);
+      try {
+        const rows = await listEvents();
+        if (!cancelled) setEvents(rows);
+      } catch {
+        if (!cancelled) setEvents([]);
+      } finally {
+        if (!cancelled) setEventsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Load leaderboards + first board's entries.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setBoardLoading(true);
+      try {
+        const list = await lb.list();
+        if (cancelled) return;
+        setBoards(list);
+        if (list.length > 0) {
+          setActiveBoardId(list[0].id);
+          const entries = await lb.entries(list[0].id);
+          if (!cancelled) setBoardEntries(entries);
+        }
+      } catch {
+        if (!cancelled) { setBoards([]); setBoardEntries([]); }
+      } finally {
+        if (!cancelled) setBoardLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const displayName = user?.name || user?.email?.split('@')[0] || 'Guest';
   const initials = useMemo(() => {
     const source = user?.name || user?.email || 'U';
@@ -148,6 +201,27 @@ export default function PrizeVaultPage() {
       setFeedback({ type: 'error', text: err?.message || 'Redemption failed.' });
     } finally {
       setRedeeming(null);
+    }
+  };
+
+  // Claim a real backend Event (challenge) for its coin reward.
+  // Backend is idempotent on already-completed events, so re-clicking
+  // a "Claimed" badge is safe.
+  const handleEventClaim = async (eventId) => {
+    if (!eventId || claimingEventId) return;
+    setClaimError(null);
+    setClaimingEventId(eventId);
+    try {
+      const updated = await claimEvent(eventId);
+      // Refresh the local event row's completed flag so the button flips.
+      setEvents((prev) => prev.map((e) => (
+        e.id === eventId ? { ...e, completed: !!updated?.completed } : e
+      )));
+      try { await hydrate({}); } catch { /* ignore */ }
+    } catch (err) {
+      setClaimError(err?.message || 'Claim failed.');
+    } finally {
+      setClaimingEventId(null);
     }
   };
 
@@ -190,16 +264,10 @@ export default function PrizeVaultPage() {
             <div className="tag">7 days Streak</div>
           </div>
 
-          <div className="experience">
-            <div className="exp-top">
-              <strong>Experience</strong>
-              <span>2,350 / 10,000 XP</span>
-            </div>
-            <div className="statsbar">
-              <div className="statsprogress" style={{ width: '23.5%' }} />
-            </div>
-            <div className="exp-text">7,650 XP to Level 3</div>
-          </div>
+          {/* Experience bar intentionally hidden until the backend has a
+              real XP column. Showing fake static numbers (2,350 / 10,000
+              XP) here would be misleading the customer. TECH_DEBT #19
+              tracks the schema work needed to bring this back live. */}
         </div>
 
         <div className="stats">
@@ -265,11 +333,69 @@ export default function PrizeVaultPage() {
       {/* Tab panels ----------------------------------------------------- */}
       {tab === 'challenges' && (
         <div className="displaycontent Challengestab">
+          {/* Placeholder daily quests (Daily Check-In / Streak / Hour Power)
+              — same source of truth as the Home page. */}
           <ChallengeCarousel
             claimedKinds={claimedKinds}
             claimingKind={claimingKind}
             onClaim={handleClaim}
           />
+
+          {/* Real backend challenges, listed below the placeholder carousel
+              so the customer sees both. Each row shows progress vs target
+              and a Claim button when complete. */}
+          <div className="real-challenges">
+            <h3 className="real-challenges__title">All Challenges</h3>
+            {eventsLoading && (
+              <div style={{ padding: 16, color: '#9CA3AF' }}>Loading challenges…</div>
+            )}
+            {!eventsLoading && events.length === 0 && (
+              <div style={{ padding: 16, color: '#9CA3AF' }}>
+                No active challenges right now. Check back once an admin publishes new ones.
+              </div>
+            )}
+            {!eventsLoading && events.length > 0 && (
+              <div className="real-challenges__grid">
+                {events.map((evt) => {
+                  const isCompleted = !!evt.completed;
+                  const isClaiming = claimingEventId === evt.id;
+                  const rewardText = (evt.rewardKind === 'coins' && evt.rewardAmount > 0)
+                    ? `${evt.rewardAmount} coins`
+                    : null;
+                  return (
+                    <div className="shopcard glassyfinish real-challenge-card" key={evt.id}>
+                      <div className="daily-card">
+                        <div className="daily-content">
+                          <h2>{evt.name}</h2>
+                          {evt.description && <p>{evt.description}</p>}
+                          {evt.endTime && (
+                            <p style={{ fontSize: 11, color: '#9CA3AF' }}>
+                              Ends {new Date(evt.endTime).toLocaleDateString()}
+                            </p>
+                          )}
+                          <div className="bottom-section">
+                            {rewardText && (
+                              <div className="reward">
+                                <span className="coins">{rewardText}</span>
+                              </div>
+                            )}
+                            <button
+                              type="button"
+                              className="coinsbtn"
+                              disabled={isCompleted || isClaiming}
+                              onClick={() => handleEventClaim(evt.id)}
+                            >
+                              {isCompleted ? 'Claimed' : isClaiming ? 'Claiming…' : 'Claim'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -314,23 +440,90 @@ export default function PrizeVaultPage() {
               </button>
             ))}
           </div>
-          <div className="leaderboard glassyfinish">
-            <div className="leadertoptext">
-              Your Rank: <span>#10</span> out of 128 Players
-            </div>
-            <div className="leaderbadge">Top 8%</div>
-            <div className="leaderplayers">
-              {PLACEHOLDER_LEADERBOARD.map((p) => (
-                <div className={`leaderplayer ${p.podium}`} key={p.id}>
-                  <div className="leaderavatar">{p.initials}</div>
-                  <div className="leadermedal">{p.medal}</div>
-                  <div className="leadername">{p.name}</div>
-                  <div className="leadertime">{p.hours}</div>
-                  <div className="leaderpodium">{p.score.toLocaleString()}</div>
+
+          {boardLoading && (
+            <div style={{ padding: 16, color: '#9CA3AF' }}>Loading leaderboard…</div>
+          )}
+
+          {!boardLoading && boardEntries.length > 0 && (() => {
+            // Show real top-3 on the podium, then a list of any
+            // remaining ranks below.
+            const podium = boardEntries.slice(0, 3);
+            const tail = boardEntries.slice(3);
+            const podiumClass = ['leadersecond', 'leaderfirst', 'leaderthird'];
+            const medal = ['🥈', '🥇', '🥉'];
+            // Rebuild as [#2, #1, #3] so the visual centre is the top rank.
+            const orderedPodium = podium.length === 3
+              ? [podium[1], podium[0], podium[2]]
+              : podium.map((p, i) => podium[i]); // fallback for <3 entries
+            const orderedMeta = podium.length === 3
+              ? [{ cls: 'leadersecond', m: '🥈' }, { cls: 'leaderfirst', m: '🥇' }, { cls: 'leaderthird', m: '🥉' }]
+              : podium.map((_, i) => ({ cls: podiumClass[i], m: medal[i] }));
+
+            const meIndex = boardEntries.findIndex((r) => (
+              user && (String(user.id) === String(r.userId) || user.email === r.email)
+            ));
+            const myRank = meIndex >= 0 ? meIndex + 1 : null;
+
+            return (
+              <div className="leaderboard glassyfinish">
+                {myRank && (
+                  <div className="leadertoptext">
+                    Your Rank: <span>#{myRank}</span> out of {boardEntries.length} Players
+                  </div>
+                )}
+                <div className="leaderplayers">
+                  {orderedPodium.map((p, i) => {
+                    const meta = orderedMeta[i];
+                    const initials = (p.name || 'P').slice(0, 2).toUpperCase();
+                    return (
+                      <div className={`leaderplayer ${meta.cls}`} key={`${p.userId || p.name}-${i}`}>
+                        <div className="leaderavatar">{initials}</div>
+                        <div className="leadermedal">{meta.m}</div>
+                        <div className="leadername">{p.name}</div>
+                        <div className="leaderpodium">{Number(p.score || 0).toLocaleString()}</div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
+
+                {tail.length > 0 && (
+                  <ul className="leaderboard__tail">
+                    {tail.map((r) => (
+                      <li key={`${r.userId || r.name}-${r.rank}`}>
+                        <span className="leaderboard__tail-rank">#{r.rank}</span>
+                        <span className="leaderboard__tail-name">{r.name}</span>
+                        <span className="leaderboard__tail-score">{Number(r.score || 0).toLocaleString()}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Fallback podium when the backend returns no entries — keeps
+              the page from looking broken on a fresh cafe install. */}
+          {!boardLoading && boardEntries.length === 0 && (
+            <div className="leaderboard glassyfinish">
+              <div className="leadertoptext">
+                Leaderboard <span style={{ fontSize: 14, fontWeight: 600, color: '#9CA3AF' }}>
+                  (no entries yet — preview)
+                </span>
+              </div>
+              <div className="leaderplayers">
+                {PLACEHOLDER_LEADERBOARD.map((p) => (
+                  <div className={`leaderplayer ${p.podium}`} key={p.id}>
+                    <div className="leaderavatar">{p.initials}</div>
+                    <div className="leadermedal">{p.medal}</div>
+                    <div className="leadername">{p.name}</div>
+                    <div className="leadertime">{p.hours}</div>
+                    <div className="leaderpodium">{p.score.toLocaleString()}</div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 

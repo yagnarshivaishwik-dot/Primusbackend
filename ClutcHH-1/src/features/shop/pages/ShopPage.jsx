@@ -34,7 +34,6 @@ import "./ShopPage.css";
 export default function ShopPage() {
   const navigate = useNavigate();
   const balance = useWalletStore((s) => s.balance);
-  const coins = useWalletStore((s) => s.coins);
   const hydrate = useWalletStore((s) => s.hydrate);
   const user = useSessionStore((s) => s.user);
 
@@ -252,11 +251,12 @@ export default function ShopPage() {
           <div className="walletcard glassyfinish">
             <h3 className="wallettitle">WALLET BALANCE</h3>
             <h1 className="walletamount"><span><MdOutlineCurrencyRupee /></span>{Number(balance ?? 0).toLocaleString()}</h1>
+            {/* Coins removed from the wallet card — coins are spent only
+                in the Rewards / Prize Vault flow, not on Shop checkout.
+                Showing them here implied they could be used for cart
+                payment, which they can't. */}
             <p className="walletsubtitle">
-              <span style={{ color: '#ff9a4a', fontWeight: 600 }}>
-                {Number(coins ?? 0).toLocaleString()} coins
-              </span>
-              {balance > 0 ? ' · Last recharge: recent' : ' · No recharges yet'}
+              {balance > 0 ? 'Last recharge: recent' : 'No recharges yet'}
             </p>
             <button
               type="button"

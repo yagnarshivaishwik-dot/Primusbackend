@@ -79,6 +79,16 @@ export default function SettingsPanel() {
     brightness: 80, nightMode: false,
   }));
 
+  // Apply night-mode class once on mount based on persisted value, so
+  // a kiosk reload doesn't reset the filter back to "off" until the
+  // user opens the dropdown again.
+  useEffect(() => {
+    if (typeof document !== 'undefined' && display.nightMode) {
+      document.body.classList.add('night-mode');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Read OS state on mount if bridge is live. Silent fallback when not.
   useEffect(() => {
     if (!hasBridge()) return;
@@ -115,6 +125,13 @@ export default function SettingsPanel() {
       invoke('set_display_brightness', {
         percent: display.brightness,
       }).catch(() => {});
+    }
+    // Night mode: warm filter on the document root. CSS `filter`
+    // composites on top of every rendered pixel, so this works without
+    // touching individual page styles. Removed by toggling the class
+    // off (no `else` needed thanks to classList.toggle's second arg).
+    if (typeof document !== 'undefined') {
+      document.body.classList.toggle('night-mode', !!display.nightMode);
     }
   }, [display]);
 
