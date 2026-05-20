@@ -454,10 +454,15 @@ async def admin_create_detected(
 
 
 def ctx_fake_from_cafe(cafe_id: int):
-    """Lightweight AuthContext stand-in for `scoped_query` — only the
-    `.cafe_id` attribute is accessed."""
+    """Lightweight AuthContext stand-in for `scoped_query`.
+
+    scoped_query reads `.is_superadmin` and `.cafe_id`. The admin in
+    our flow has already been validated against the kiosk's cafe at
+    the endpoint level, so we hard-code is_superadmin=False and let
+    scoped_query filter by cafe_id."""
     class _Ctx:
         pass
     c = _Ctx()
     c.cafe_id = cafe_id
+    c.is_superadmin = False
     return c
