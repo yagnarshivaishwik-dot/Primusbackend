@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { IoGameControllerOutline } from 'react-icons/io5';
 import { TbApps } from 'react-icons/tb';
-import { TbAppsOff } from 'react-icons/tb';
 
 import { gamesService, launch as launchGame, adminCreateDetected } from '@/features/games/services/gamesService';
 import { invoke, hasBridge } from '@/app/bridge/invoke';
@@ -206,38 +205,20 @@ export default function GamesPage() {
   return (
     <div className="gameContainer">
       <AppHeader />
-      <div className="tabs-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <div className="tabs">
-          <button
-            type="button"
-            className={`tab-btn${tab === 'games' ? ' active' : ''}`}
-            onClick={() => setTab('games')}
-          >
-            <IoGameControllerOutline /> Games
-          </button>
-          <button
-            type="button"
-            className={`tab-btn${tab === 'apps' ? ' active' : ''}`}
-            onClick={() => setTab('apps')}
-          >
-            <TbApps /> Apps
-          </button>
-        </div>
+      <div className="tabs">
         <button
           type="button"
-          onClick={openAddModal}
-          style={{
-            padding: '8px 16px',
-            borderRadius: 999,
-            background: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.18)',
-            color: '#fff',
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
+          className={`tab-btn${tab === 'games' ? ' active' : ''}`}
+          onClick={() => setTab('games')}
         >
-          + Add games from this PC
+          <IoGameControllerOutline /> Games
+        </button>
+        <button
+          type="button"
+          className={`tab-btn${tab === 'apps' ? ' active' : ''}`}
+          onClick={() => setTab('apps')}
+        >
+          <TbApps /> Apps
         </button>
       </div>
 
@@ -277,6 +258,7 @@ export default function GamesPage() {
             onFilterChange={setActiveFilter}
             onLaunch={handleLaunch}
             launchingId={launchingId}
+            onAdd={openAddModal}
           />
         </div>
       )}
@@ -284,59 +266,78 @@ export default function GamesPage() {
       {!loading && !error && tab === 'apps' && (
         <div className="displaycontent appsontent">
           <div className="appswrapper">
-            {apps.length === 0 ? (
-              <div
+            <div className="appsgrid">
+              {apps.map((app) => {
+                const isLaunching = launchingId === app.id;
+                return (
+                  <button
+                    key={app.id}
+                    type="button"
+                    className="appcard"
+                    onClick={() => handleLaunch(app)}
+                    disabled={isLaunching}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: isLaunching ? 'wait' : 'pointer',
+                    }}
+                    aria-label={`Launch ${app.name}`}
+                  >
+                    {app.logo ? (
+                      <div
+                        className="iconbox"
+                        style={{
+                          backgroundImage: `url(${app.logo})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                        }}
+                      />
+                    ) : (
+                      <div className="iconbox">
+                        <TbApps />
+                      </div>
+                    )}
+                    <div className="appname">{app.name}</div>
+                  </button>
+                );
+              })}
+
+              {/* Trailing "+" tile — always visible. When the grid is
+                  empty it's the only thing showing (replaces the
+                  "No apps configured yet" hint). When there are apps
+                  it sits at the end as an obvious "add more"
+                  affordance. Clicking opens the same scan modal as
+                  the games carousel's add tile. */}
+              <button
+                type="button"
+                className="appcard appcard--add"
+                onClick={openAddModal}
                 style={{
-                  padding: 20,
-                  color: '#9CA3AF',
-                  textAlign: 'center',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 8,
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
                 }}
+                aria-label="Add apps from this PC"
               >
-                <TbAppsOff size={32} />
-                No apps configured yet. Add apps in the admin panel (category: app).
-              </div>
-            ) : (
-              <div className="appsgrid">
-                {apps.map((app) => {
-                  const isLaunching = launchingId === app.id;
-                  return (
-                    <button
-                      key={app.id}
-                      type="button"
-                      className="appcard"
-                      onClick={() => handleLaunch(app)}
-                      disabled={isLaunching}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: isLaunching ? 'wait' : 'pointer',
-                      }}
-                      aria-label={`Launch ${app.name}`}
-                    >
-                      {app.logo ? (
-                        <div
-                          className="iconbox"
-                          style={{
-                            backgroundImage: `url(${app.logo})`,
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                          }}
-                        />
-                      ) : (
-                        <div className="iconbox">
-                          <TbApps />
-                        </div>
-                      )}
-                      <div className="appname">{app.name}</div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+                <div
+                  className="iconbox"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 40,
+                    color: 'rgba(255,255,255,0.6)',
+                    border: '2px dashed rgba(255,255,255,0.25)',
+                    background: 'rgba(255,255,255,0.03)',
+                  }}
+                >
+                  +
+                </div>
+                <div className="appname" style={{ color: 'rgba(255,255,255,0.7)' }}>
+                  {apps.length === 0 ? 'Add apps from this PC' : 'Add more'}
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       )}
