@@ -1,4 +1,4 @@
-import { apiPost } from '@/app/api/client';
+import { apiGet, apiPost } from '@/app/api/client';
 
 /**
  * Home-page placeholder rewards.
@@ -15,5 +15,17 @@ export async function claimPlaceholder(kind) {
   return apiPost(`/api/v1/home/claim-placeholder/${kind}`);
 }
 
-export const homeService = { claimPlaceholder };
+/**
+ * GET /api/v1/home/claim-status → { checkin: bool, streak: bool, hour: bool }
+ *
+ * Source of truth for "what's already claimed today" — keeps the
+ * Claimed badge correct across page navigations and full kiosk
+ * reloads, since today's CoinTransaction rows persist while React
+ * state doesn't.
+ */
+export async function getClaimStatus() {
+  return apiGet('/api/v1/home/claim-status').catch(() => ({}));
+}
+
+export const homeService = { claimPlaceholder, getClaimStatus };
 export default homeService;

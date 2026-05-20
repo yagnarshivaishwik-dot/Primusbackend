@@ -20,7 +20,7 @@ from app.api.endpoints.audit import log_action
 from app.api.endpoints.auth import get_current_user
 from app.auth.context import AuthContext, get_auth_context
 from app.auth.tenant import scoped_query, enforce_cafe_ownership
-from app.db.dependencies import get_cafe_db as get_db
+from app.db.dependencies import MULTI_DB_ENABLED, get_cafe_db as get_db
 from app.schemas import WalletAction, WalletTransactionOut
 from app.utils.cache import publish_invalidation
 
@@ -35,14 +35,48 @@ WALLET_TOPUP_MAX = float(os.getenv("WALLET_TOPUP_MAX", "100000.0"))
 
 @router.get("/balance")
 def wallet_balance(
-    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
 ) -> dict:
     """
     Get the current wallet balance and coins for the authenticated user.
+
+    In multi-DB mode, balances live on the per-cafe `users` table
+    (`CafeUser.wallet_balance` / `CafeUser.coins_balance`) — that's where
+    every credit endpoint (cashfree, billing.session-finalize,
+    home.claim_placeholder, quests.claim_quest) writes. Reading the global
+    `User` columns here gave back stale zeros and made coin credits
+    "invisible" on the Shop wallet card. Now we read the cafe row so the
+    write path and read path match.
+
+    Legacy single-DB layouts keep using the global User columns.
     """
+    if MULTI_DB_ENABLED and ctx.cafe_id is not None:
+        from app.db.models_cafe import CafeUser
+        from app.db.router import cafe_db_router
+
+        cdb = cafe_db_router.get_session(ctx.cafe_id)
+        try:
+            row = (
+                cdb.query(CafeUser)
+                .filter(CafeUser.global_user_id == current_user.id)
+                .first()
+            )
+            if row is not None:
+                return {
+                    "balance": float(row.wallet_balance or 0.0),
+                    "coins": int(row.coins_balance or 0),
+                }
+            # No cafe row yet (auth-side auto-provision will create one on
+            # the next login). Return zeros so the UI doesn't blow up.
+            return {"balance": 0.0, "coins": 0}
+        finally:
+            cdb.close()
+
     return {
         "balance": current_user.wallet_balance or 0.0,
-        "coins": current_user.coins_balance or 0
+        "coins": current_user.coins_balance or 0,
     }
 
 

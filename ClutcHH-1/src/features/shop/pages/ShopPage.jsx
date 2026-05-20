@@ -42,6 +42,7 @@ export default function ShopPage() {
   const [error, setError] = useState(null);
   const [cart, setCart] = useState([]);
   const [payment, setPayment] = useState(null);
+  const [topUp, setTopUp] = useState(null); // null | { amount: string }
 
   // Live fetch + admin sync
   const refetch = useCallback(async () => {
@@ -153,17 +154,20 @@ export default function ShopPage() {
     });
   };
 
-  // Wallet top-up flow ("Add Coins"). Reuses the same CashfreePaymentModal
-  // as cart checkout — backend accepts pack_id=null for a generic top-up,
-  // so no new endpoint needed. Simple prompt for the amount keeps the
-  // scope tight; a designed amount picker is a future iteration.
-  const handleAddCoins = async () => {
+  // Wallet top-up flow ("Add Coins"). Opens a styled inline modal where
+  // the customer picks an amount, then routes through the same
+  // CashfreePaymentModal as cart checkout. Backend accepts pack_id=null
+  // for a generic top-up so no new endpoint is needed.
+  const handleAddCoins = () => {
     if (!user?.id) return;
-    const raw = window.prompt('Amount to add to wallet (₹)', '100');
-    if (raw == null) return;
-    const amount = Number(String(raw).replace(/[^0-9.]/g, ''));
+    setTopUp({ amount: '100' });
+  };
+
+  const handleTopUpSubmit = async () => {
+    const amount = Number(String(topUp?.amount || '').replace(/[^0-9.]/g, ''));
     if (!amount || amount < 1) return;
     const pcId = await resolvePcId();
+    setTopUp(null);
     setPayment({
       amount,
       pcId,
@@ -331,6 +335,131 @@ export default function ShopPage() {
           onSuccess={handlePaymentSuccess}
           onClose={handlePaymentClose}
         />
+      )}
+
+      {topUp && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Add coins to wallet"
+          onClick={() => setTopUp(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1500,
+            background: 'rgba(0, 0, 0, 0.55)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+          }}
+        >
+          <div
+            className="glassyfinish"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: 420,
+              padding: 28,
+              borderRadius: 20,
+              color: '#fff',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 18,
+            }}
+          >
+            <div>
+              <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Add to Wallet</h3>
+              <p style={{ margin: '6px 0 0', fontSize: 13, color: 'rgba(255,255,255,0.65)' }}>
+                Top up any amount. Goes straight to your wallet balance.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
+              <span style={{ fontSize: 22, color: 'rgba(255,255,255,0.7)' }}>₹</span>
+              <input
+                autoFocus
+                type="number"
+                inputMode="numeric"
+                min={1}
+                step={1}
+                value={topUp.amount}
+                onChange={(e) => setTopUp({ amount: e.target.value })}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleTopUpSubmit(); }}
+                style={{
+                  flex: 1,
+                  background: 'transparent',
+                  border: 0,
+                  outline: 'none',
+                  color: '#fff',
+                  fontSize: 22,
+                  fontWeight: 600,
+                  width: '100%',
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {[100, 200, 500, 1000].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setTopUp({ amount: String(preset) })}
+                  style={{
+                    flex: '1 1 calc(50% - 4px)',
+                    padding: '10px 12px',
+                    borderRadius: 10,
+                    background: String(topUp.amount) === String(preset) ? 'rgba(255,107,53,0.25)' : 'rgba(255,255,255,0.06)',
+                    border: `1px solid ${String(topUp.amount) === String(preset) ? 'rgba(255,107,53,0.6)' : 'rgba(255,255,255,0.12)'}`,
+                    color: '#fff',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  ₹{preset}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+              <button
+                type="button"
+                onClick={() => setTopUp(null)}
+                style={{
+                  flex: 1,
+                  padding: '12px 16px',
+                  borderRadius: 12,
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  color: 'rgba(255,255,255,0.9)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleTopUpSubmit}
+                disabled={!Number(String(topUp.amount).replace(/[^0-9.]/g, '')) || Number(topUp.amount) < 1}
+                style={{
+                  flex: 1,
+                  padding: '12px 16px',
+                  borderRadius: 12,
+                  background: 'linear-gradient(135deg, #ff9a4a, #ff5b1f)',
+                  border: 'none',
+                  color: '#fff',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -60,6 +60,60 @@ def _open_db(ctx: AuthContext) -> Session:
     return SessionLocal()
 
 
+@router.get("/claim-status")
+def claim_status(
+    current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+):
+    """Return which placeholder kinds the current user has already claimed today.
+
+    Sourced from CoinTransaction rows whose `reason` matches
+    `placeholder_{kind}:{today}` — same key the claim endpoint writes. The
+    kiosk home page calls this on mount so the "Claimed" badge survives
+    navigation away and back, without a separate state table.
+    """
+    today = datetime.utcnow().date().isoformat()
+    result = {kind: False for kind in PLACEHOLDER_REWARDS}
+
+    if not MULTI_DB_ENABLED:
+        # Legacy single-DB layouts share the user record, but we still need
+        # the cafe-scoped CoinTransaction query. Best-effort: return all
+        # false rather than crashing.
+        return result
+
+    db = _open_db(ctx)
+    try:
+        # Look up the cafe-local user. If missing, nothing has been claimed
+        # by definition (no rows could have been written for them yet).
+        user_row = (
+            db.query(_UserModel)
+            .filter(_UserModel.global_user_id == current_user.id)
+            .first()
+        )
+        if user_row is None:
+            return result
+
+        rows = (
+            db.query(CoinTransaction)
+            .filter(
+                CoinTransaction.user_id == user_row.id,
+                CoinTransaction.reason.like(f"placeholder_%:{today}"),
+            )
+            .all()
+        )
+        for r in rows:
+            # reason format: "placeholder_{kind}:{date}"
+            try:
+                kind = r.reason.split("placeholder_", 1)[1].split(":", 1)[0]
+            except (IndexError, AttributeError):
+                continue
+            if kind in result:
+                result[kind] = True
+        return result
+    finally:
+        db.close()
+
+
 @router.post("/claim-placeholder/{kind}", response_model=ClaimResult)
 def claim_placeholder(
     kind: PlaceholderKind,

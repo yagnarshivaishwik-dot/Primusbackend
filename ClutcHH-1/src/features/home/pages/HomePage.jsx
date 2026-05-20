@@ -384,11 +384,6 @@ function RightPanel({ open, claimedKinds, claimingKind, claimError, onClaim, hap
           >
             {learnMoreOpen ? 'Close' : 'Learn More'}
           </button>
-          <div className="neog-hh__dots">
-            <span className="neog-hh__dot is-active" />
-            <span className="neog-hh__dot" />
-            <span className="neog-hh__dot" />
-          </div>
         </div>
       </div>
 
@@ -507,6 +502,25 @@ export default function HomePage() {
   }, []);
 
   const happyHour = useMemo(() => computeHappyHour(now), [now]);
+
+  // Pre-populate claimed badges from backend so navigating away and back
+  // doesn't reset the UI to "Claim!" for already-claimed quests. Sourced
+  // from CoinTransaction rows the claim endpoint already writes, so this
+  // adds zero extra state to track.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const status = await homeService.getClaimStatus();
+        if (cancelled) return;
+        const already = Object.entries(status || {})
+          .filter(([, claimed]) => claimed)
+          .map(([kind]) => kind);
+        if (already.length > 0) setClaimedKinds(already);
+      } catch { /* ignore — badge just stays at "Claim!" */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const next = useCallback(() => setIndex((i) => (i + 1) % SLIDES.length), []);
   const prev = useCallback(() => setIndex((i) => (i - 1 + SLIDES.length) % SLIDES.length), []);
