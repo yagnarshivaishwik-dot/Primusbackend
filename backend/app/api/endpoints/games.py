@@ -10,7 +10,7 @@ from app.api.endpoints.audit import log_action
 from app.api.endpoints.auth import authenticate_user, get_current_user
 from app.auth.context import AuthContext, get_auth_context
 from app.auth.tenant import scoped_query, enforce_cafe_ownership
-from app.db.dependencies import get_cafe_db as get_db
+from app.db.dependencies import get_cafe_db as get_db, get_global_db
 from app.models import Game as GameModel
 from app.models import License, User, UserCafeMap
 from app.schemas import Game as GameSchema
@@ -317,7 +317,8 @@ class AdminCreateDetectedIn(BaseModel):
 async def admin_create_detected(
     body: AdminCreateDetectedIn,
     request: Request,
-    db: Session = Depends(get_db),
+    cafe_db: Session = Depends(get_db),
+    global_db: Session = Depends(get_global_db),
 ):
     """Bulk-create catalog entries for games the kiosk just scanned off the PC.
 
@@ -345,27 +346,27 @@ async def admin_create_detected(
     if not body.games:
         raise HTTPException(400, "No games provided to add")
 
-    # Step 1: validate admin (same logic as /auth/login + the admin-bind
-    # endpoint — exact-case email match, then role check).
-    admin = authenticate_user(db, admin_email, admin_password)
+    # Step 1: validate admin against the GLOBAL DB (users table lives
+    # there, not on per-cafe DBs — same pattern as /auth/admin-bind-and-login).
+    admin = authenticate_user(global_db, admin_email, admin_password)
     if not admin:
         raise HTTPException(401, "Invalid admin credentials")
     if admin.role not in ("admin", "superadmin"):
         raise HTTPException(403, f"'{admin.role}' is not an admin role")
 
     # Step 2: resolve kiosk's cafe from X-License-Key + verify admin
-    # owns it. The kiosk attaches X-License-Key on every request.
+    # owns it. License + UserCafeMap also live on the global DB.
     license_key_header = request.headers.get("X-License-Key")
     if not license_key_header:
         raise HTTPException(400, "Missing X-License-Key header — kiosk context required")
-    lic = db.query(License).filter_by(key=license_key_header, is_active=True).first()
+    lic = global_db.query(License).filter_by(key=license_key_header, is_active=True).first()
     if not lic or not lic.cafe_id:
         raise HTTPException(400, "Invalid or unknown kiosk license")
     kiosk_cafe_id = lic.cafe_id
 
     if admin.role != "superadmin":
         admin_mapping = (
-            db.query(UserCafeMap)
+            global_db.query(UserCafeMap)
             .filter_by(user_id=admin.id, cafe_id=kiosk_cafe_id)
             .first()
         )
@@ -375,13 +376,14 @@ async def admin_create_detected(
                 "This admin doesn't own the cafe this kiosk is bound to",
             )
 
-    # Step 3: bulk-insert games, skipping duplicates by name within the cafe.
+    # Step 3: bulk-insert games into the CAFE DB, skipping duplicates by name.
+    # Game rows live on per-cafe DBs (the DB router resolves cafe_db from
+    # X-License-Key automatically). admin/license/UserCafeMap above were
+    # validated against the global DB; from here on we work on cafe_db.
     def _insert_all():
-        # Build a set of existing names to dedupe in-process; cheaper
-        # than per-row IN-clause for typical scan sizes (10-30 games).
         existing_names = {
             n for (n,) in (
-                scoped_query(db, GameModel, ctx_fake_from_cafe(kiosk_cafe_id))
+                scoped_query(cafe_db, GameModel, ctx_fake_from_cafe(kiosk_cafe_id))
                 .with_entities(GameModel.name)
                 .all()
             )
@@ -409,17 +411,22 @@ async def admin_create_detected(
                     kwargs["cafe_id"] = kiosk_cafe_id
             except Exception:
                 pass
-            db.add(GameModel(**kwargs))
+            cafe_db.add(GameModel(**kwargs))
             created.append(g.name)
             existing_names.add(g.name)
-        db.commit()
-        log_action(
-            db,
-            admin.id,
-            "games_admin_bulk_added",
-            f"Admin {admin_email} added {len(created)} detected games, "
-            f"skipped {len(skipped)} (already in catalog).",
-        )
+        cafe_db.commit()
+        try:
+            log_action(
+                cafe_db,
+                admin.id,
+                "games_admin_bulk_added",
+                f"Admin {admin_email} added {len(created)} detected games, "
+                f"skipped {len(skipped)} (already in catalog).",
+            )
+        except Exception as exc:
+            # Audit log on the cafe DB is best-effort — don't fail the
+            # whole add if the audit table shape differs from expectations.
+            logger.warning("admin-create-detected: log_action failed: %s", exc)
         return created, skipped
 
     created, skipped = await run_in_threadpool(_insert_all)
