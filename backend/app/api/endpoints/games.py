@@ -380,14 +380,21 @@ async def admin_create_detected(
     # Game rows live on per-cafe DBs (the DB router resolves cafe_db from
     # X-License-Key automatically). admin/license/UserCafeMap above were
     # validated against the global DB; from here on we work on cafe_db.
+    #
+    # Dedup query: in MULTI_DB mode, cafe_db is already cafe-scoped AND
+    # the games table has no cafe_id column — every row is for this cafe.
+    # In single-DB mode the games table has a cafe_id column we must
+    # filter on explicitly.
+    try:
+        from app.db.dependencies import MULTI_DB_ENABLED
+    except Exception:
+        MULTI_DB_ENABLED = True
+
     def _insert_all():
-        existing_names = {
-            n for (n,) in (
-                scoped_query(cafe_db, GameModel, ctx_fake_from_cafe(kiosk_cafe_id))
-                .with_entities(GameModel.name)
-                .all()
-            )
-        }
+        q = cafe_db.query(GameModel.name)
+        if not MULTI_DB_ENABLED:
+            q = q.filter(GameModel.cafe_id == kiosk_cafe_id)
+        existing_names = {n for (n,) in q.all()}
         created, skipped = [], []
         for g in body.games:
             if g.name in existing_names:
@@ -402,15 +409,11 @@ async def admin_create_detected(
             )
             if g.launcher:
                 kwargs["launchers"] = g.launcher
-            # Multi-DB: cafe_id is implicit via the DB router; legacy
-            # single-DB: scoped_query/enforce_cafe_ownership rely on a
-            # cafe_id column on Game so set it explicitly.
-            try:
-                from app.db.dependencies import MULTI_DB_ENABLED
-                if not MULTI_DB_ENABLED:
-                    kwargs["cafe_id"] = kiosk_cafe_id
-            except Exception:
-                pass
+            # Single-DB only: tag the row with cafe_id explicitly so
+            # tenant-scoping filters elsewhere still work. Multi-DB has
+            # no cafe_id column.
+            if not MULTI_DB_ENABLED:
+                kwargs["cafe_id"] = kiosk_cafe_id
             cafe_db.add(GameModel(**kwargs))
             created.append(g.name)
             existing_names.add(g.name)
@@ -453,16 +456,3 @@ async def admin_create_detected(
     }
 
 
-def ctx_fake_from_cafe(cafe_id: int):
-    """Lightweight AuthContext stand-in for `scoped_query`.
-
-    scoped_query reads `.is_superadmin` and `.cafe_id`. The admin in
-    our flow has already been validated against the kiosk's cafe at
-    the endpoint level, so we hard-code is_superadmin=False and let
-    scoped_query filter by cafe_id."""
-    class _Ctx:
-        pass
-    c = _Ctx()
-    c.cafe_id = cafe_id
-    c.is_superadmin = False
-    return c
