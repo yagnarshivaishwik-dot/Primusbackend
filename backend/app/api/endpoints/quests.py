@@ -205,11 +205,22 @@ def claim_quest(
         xp_skipped = 0
 
         if reward_kind == "coins" and reward_amount > 0:
-            user_row = (
-                db.query(_UserModel)
-                .filter(_UserModel.id == current_user.id)
-                .first()
-            )
+            # Same gotcha as home.claim_placeholder: in multi-DB mode the
+            # cafe-side user is keyed by `global_user_id`, not the local
+            # `id` PK. Without this branch we silently skip the credit
+            # because no row matches.
+            if MULTI_DB_ENABLED:
+                user_row = (
+                    db.query(_UserModel)
+                    .filter(_UserModel.global_user_id == current_user.id)
+                    .first()
+                )
+            else:
+                user_row = (
+                    db.query(_UserModel)
+                    .filter(_UserModel.id == current_user.id)
+                    .first()
+                )
             if user_row is not None:
                 user_row.coins_balance = (user_row.coins_balance or 0) + reward_amount
                 db.add(

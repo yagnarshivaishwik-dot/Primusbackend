@@ -212,11 +212,15 @@ export default function ShopPage() {
                 title="Time Packs"
                 packs={packs.filter((p) => (p.minutes || 0) > 0)}
                 onAddToCart={addToCart}
+                cart={cart}
+                onBumpQty={bumpQty}
               />
               <ShopCarousel
                 title="Snacks & Drinks"
                 packs={packs.filter((p) => (p.minutes || 0) === 0)}
                 onAddToCart={addToCart}
+                cart={cart}
+                onBumpQty={bumpQty}
               />
             </div>
           )}
@@ -259,10 +263,12 @@ export default function ShopPage() {
                   </div>
                 </div>
 
+                {/* +/- controls moved inline onto the shop card (see
+                    ShopCarousel.jsx). Sidebar now shows the qty as a static
+                    badge so the customer can see what's in the cart without
+                    a duplicate set of step buttons. */}
                 <div className='listquantity'>
-                  <span onClick={() => bumpQty(item.id, -1)}>-</span>
-                  <p>{item.quantity}</p>
-                  <span onClick={() => bumpQty(item.id, +1)}>+</span>
+                  <p>×{item.quantity}</p>
                 </div>
               </div>
             ))}

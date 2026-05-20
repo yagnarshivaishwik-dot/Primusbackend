@@ -83,11 +83,24 @@ def claim_placeholder(
 
     db = _open_db(ctx)
     try:
-        user_row = (
-            db.query(_UserModel)
-            .filter(_UserModel.id == current_user.id)
-            .first()
-        )
+        # `current_user.id` is the GLOBAL user id (auth resolves against the
+        # global users table). In multi-DB mode the cafe-side row joins via
+        # `global_user_id`, NOT the cafe-local `id` PK. Looking up by `id`
+        # against the cafe schema is what gave us "User not found in cafe DB"
+        # in QA. In legacy single-DB mode they're the same row, so `id`
+        # works.
+        if MULTI_DB_ENABLED:
+            user_row = (
+                db.query(_UserModel)
+                .filter(_UserModel.global_user_id == current_user.id)
+                .first()
+            )
+        else:
+            user_row = (
+                db.query(_UserModel)
+                .filter(_UserModel.id == current_user.id)
+                .first()
+            )
         if user_row is None:
             raise HTTPException(status_code=404, detail="User not found in cafe DB")
 
