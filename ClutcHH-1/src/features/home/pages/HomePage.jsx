@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import { ROUTES } from '@/app/routes/paths';
 import useWalletStore from '@/app/store/useWalletStore';
 import { homeService } from '@/features/home/services/homeService';
-import AppHeader from '@/components/layout/AppHeader';
 
 import '../../../styles/homepage.css';
 
@@ -570,8 +569,6 @@ export default function HomePage() {
       onMouseLeave={() => setPaused(false)}
     >
       <div className="neog-bg" aria-hidden />
-
-      <AppHeader />
 
       <main className="neog-stage">
         <Carousel slide={SLIDES[index]} />
