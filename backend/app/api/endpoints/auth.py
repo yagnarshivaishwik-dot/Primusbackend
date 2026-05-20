@@ -595,9 +595,17 @@ async def admin_bind_and_login(
     from app.models import License, RefreshToken as RefreshTokenModel, UserCafeMap
 
     form = await request.form()
-    admin_email = (form.get("admin_email") or "").lower().strip()
+    # NOTE: do NOT .lower() these emails. `authenticate_user` does an
+    # exact-string match against `User.email`, and email values are
+    # stored with their original casing (registration doesn't normalize).
+    # The /auth/login endpoint follows the same pattern — it lowercases
+    # only for lockout-tracking but passes the original casing to
+    # `authenticate_user`. Lowercasing here was the cause of "Invalid
+    # admin credentials" rejections for any account whose email was
+    # registered with capital letters.
+    admin_email = (form.get("admin_email") or "").strip()
     admin_password = form.get("admin_password") or ""
-    user_email = (form.get("user_email") or "").lower().strip()
+    user_email = (form.get("user_email") or "").strip()
     user_password = form.get("user_password") or ""
 
     if not (admin_email and admin_password and user_email and user_password):
