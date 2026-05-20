@@ -11,6 +11,7 @@ import { invoke, hasBridge, listen as listenBridge } from "@/app/bridge/invoke";
 import { ROUTES } from "@/app/routes/paths";
 
 import ShopCarousel from "@/features/ShopCarousel/ShopCarousel";
+import AppHeader from "@/components/layout/AppHeader";
 
 import "./ShopPage.css";
 
@@ -197,35 +198,7 @@ export default function ShopPage() {
   // ── Pavan's JSX structure, verbatim where possible ─────────────────────
   return (
     <div className='ShopContainer'>
-      <div className='cartheader glassyfinish'>
-        <div className="sessionbadge">
-          <div className="indicator"></div>
-          <p>SESSION &nbsp;<span>--:--:--</span></p>
-        </div>
-        <div className="shoplogo">No<span>Lag</span></div>
-        <div className="headerright">
-          <div
-            className="iconbtn"
-            role="button"
-            tabIndex={0}
-            title="Settings"
-            onClick={() => navigate(ROUTES.settingsHelp)}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(ROUTES.settingsHelp); }}
-          >
-            <IoSettingsOutline />
-          </div>
-          <div
-            className="useravatar"
-            role="button"
-            tabIndex={0}
-            title="Profile"
-            onClick={() => navigate(ROUTES.mainProfile)}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(ROUTES.mainProfile); }}
-          >
-            {userInitials}
-          </div>
-        </div>
-      </div>
+      <AppHeader />
       <div className='cartpannel'>
         <div className='cartleft'>
           {loading && <div style={{ padding: 40, color: '#A7A7A7' }}>Loading shop…</div>}

@@ -1,0 +1,138 @@
+/* Rewards page (PrizeVault route). Pavan's design for the daily/prize
+   card visuals, reused across both the Challenge carousel (kiosk-side
+   placeholder quests) and the Prize carousel (real prizesService data). */
+
+.prizeVaultContainer {
+    min-height: 100vh;
+    color: #fff;
+    padding-bottom: 160px;
+}
+
+.prizeVaultBody {
+    width: 90%;
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+.prizeVaultIntro {
+    text-align: left;
+    margin: 8px 0 4px;
+}
+
+.prizeVaultTitle {
+    font-size: 32px;
+    font-weight: 800;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+}
+
+.prizeVaultSubtitle {
+    margin: 0;
+    color: #9CA3AF;
+    font-size: 14px;
+}
+
+/* ---- Daily / challenge / prize card inner content ---- */
+
+.daily-card {
+    padding: 14px 16px;
+}
+
+.daily-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.daily-content h2 {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+    color: #fff;
+}
+
+.daily-content p {
+    font-size: 13px;
+    color: #9CA3AF;
+    margin: 0;
+}
+
+/* Progress bar for challenges (Pavan's class names). */
+.progress-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff9a4a, #ff5b1f);
+    border-radius: inherit;
+    transition: width 0.4s ease;
+}
+
+.bottom-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.reward {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #fff;
+    font-weight: 600;
+}
+
+.reward .coins {
+    color: var(--PrimaryOrange, #ff5b1f);
+    font-weight: 700;
+}
+
+.reward svg {
+    width: 18px;
+    height: 18px;
+    color: var(--PrimaryOrange, #ff5b1f);
+}
+
+.coinsbtn {
+    padding: 8px 16px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #ff9a4a, #ff5b1f);
+    color: #fff;
+    border: none;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.1s ease, opacity 0.15s ease;
+}
+
+.coinsbtn:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.coinsbtn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.coinsbtn.Prizesbtn {
+    width: 100%;
+    padding: 10px 16px;
+}
+
+/* Filters row Pavan added on the prize carousel header — reuse the
+   existing .filter-btn styling from the games page. */
+.challengefilters {
+    display: flex;
+    gap: 8px;
+}

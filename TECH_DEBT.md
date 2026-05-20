@@ -160,6 +160,15 @@ Then audit every reference to `WalletTransaction.cafe_id`, `Offer.cafe_id`, `Use
 **Effort:** ~10 min to reorder candidates in `App.xaml.cs:105-140`.
 **Risk:** Low. Could mildly affect the installed-layout case if anyone relies on the `.\web\` precedence — but that case is covered by candidate #3 (Program Files) anyway.
 
+### 24. Session timer is frontend-only, doesn't survive kiosk reload
+**Symptom:** The session pill in `AppHeader` (top-right of every full-screen page) shows time elapsed since login as `HH:MM:SS`. Today the clock starts from `sessionStartedAt = Date.now()` captured in `useSessionStore` at sign-in time and persisted to localStorage. That works for normal kiosk use but has two failure modes:
+  1. **Kiosk relaunch mid-session**: the React `useSessionStore.persist` blob includes `sessionStartedAt`, so the clock survives a normal SPA reload. But if the C# host clears local app data (uninstall/reinstall, profile reset, recovery script) the customer's session timer resets to 0 even though their actual cafe session is mid-flight per the backend's `sessions` table.
+  2. **Multi-device**: a customer who logs in on PC #1, then walks to PC #2 (same JWT, both bound to same cafe), gets two independent timers — neither matches the real session start.
+**Current workaround:** Accept the drift. Frontend timer is "approximate elapsed time on this PC", not "real session duration".
+**Proper fix:** Add `GET /api/v1/session/current` returning `{ session_id, started_at }` for the authenticated user's active session row (from the cafe DB's `sessions` table). `AppHeader` (or `useSessionStore.refreshMe`) hits it on mount and uses `now - started_at` instead of the locally-captured timestamp. Backend already has the row — billing.py / `sessions` table is the source of truth.
+**Effort:** ~30 min — one read endpoint + small frontend swap.
+**Risk:** Low. Read-only endpoint; existing local-timestamp path stays as a fallback if the endpoint 404s.
+
 ### 23. Kiosk customer login doesn't auto-provision a CafeUser row
 **Symptom:** When a customer (or admin) logs in on a kiosk, their global user record exists but no corresponding row is written to the device's bound cafe-DB `users` table. Any endpoint that needs to credit coins / wallet / track per-cafe state will fail with "User not found in cafe DB" until something else provisions the row. We worked around this on 2026-05-19 by auto-provisioning inside [home.py](backend/app/api/endpoints/home.py) and [quests.py](backend/app/api/endpoints/quests.py) claim endpoints — but that's a band-aid, every new endpoint that touches a cafe-local user has to remember to do the same dance.
 **Current workaround:** In-endpoint auto-provision with `role="client"` and zero balances. Logged via `logger.info` so we can spot how often it fires in prod.

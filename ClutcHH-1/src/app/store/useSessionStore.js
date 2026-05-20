@@ -20,16 +20,23 @@ const useSessionStore = create(
     (set, get) => ({
       user: null,
       isAuthenticated: false,
+      // Wall-clock timestamp (ms since epoch) when the current user signed
+      // in on this kiosk. Used by PageHeader's session counter to display
+      // elapsed time since login. Cleared on sign-out; populated on signIn
+      // and on refreshMe when the user transitions from null → present.
+      // TECH_DEBT #24: source this from a backend session record so the
+      // counter survives a kiosk reload and reflects real session time.
+      sessionStartedAt: null,
       loading: false,
       error: null,
 
       async signIn({ email, password }) {
         // Clear any previously-persisted user BEFORE we hit the wire, so
         // that if login fails we don't keep showing the old identity.
-        set({ user: null, isAuthenticated: false, loading: true, error: null });
+        set({ user: null, isAuthenticated: false, sessionStartedAt: null, loading: true, error: null });
         try {
           const user = await authService.signIn({ email, password });
-          set({ user, isAuthenticated: true, loading: false, error: null });
+          set({ user, isAuthenticated: true, sessionStartedAt: Date.now(), loading: false, error: null });
           return user;
         } catch (err) {
           const message = err?.message || 'Sign in failed';
@@ -46,7 +53,7 @@ const useSessionStore = create(
         }
         // Wipe both in-memory state AND the persisted blob so a refresh
         // can't rehydrate the signed-out identity.
-        set({ user: null, isAuthenticated: false, error: null });
+        set({ user: null, isAuthenticated: false, sessionStartedAt: null, error: null });
         try {
           useSessionStore.persist.clearStorage();
         } catch {
@@ -58,11 +65,19 @@ const useSessionStore = create(
         try {
           const user = await authService.me();
           if (user) {
-            set({ user, isAuthenticated: true });
+            // Only set sessionStartedAt if we don't already have one — a
+            // page reload during an active session shouldn't reset the
+            // timer to 0. (The persisted blob carries it through reload.)
+            const current = get();
+            set({
+              user,
+              isAuthenticated: true,
+              sessionStartedAt: current.sessionStartedAt || Date.now(),
+            });
           } else {
             // /auth/me returned null → JWT is gone or rejected. Drop the
             // cached identity so the UI stops showing a stale email.
-            set({ user: null, isAuthenticated: false });
+            set({ user: null, isAuthenticated: false, sessionStartedAt: null });
           }
           return user;
         } catch {
@@ -70,12 +85,23 @@ const useSessionStore = create(
         }
       },
 
-      setUser: (user) => set({ user, isAuthenticated: !!user }),
+      setUser: (user) => {
+        const current = get();
+        set({
+          user,
+          isAuthenticated: !!user,
+          sessionStartedAt: user ? (current.sessionStartedAt || Date.now()) : null,
+        });
+      },
       clearError: () => set({ error: null }),
     }),
     {
       name: STORAGE_KEYS.session,
-      partialize: (s) => ({ user: s.user, isAuthenticated: s.isAuthenticated }),
+      partialize: (s) => ({
+        user: s.user,
+        isAuthenticated: s.isAuthenticated,
+        sessionStartedAt: s.sessionStartedAt,
+      }),
     },
   ),
 );

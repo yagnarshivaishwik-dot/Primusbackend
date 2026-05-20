@@ -1,0 +1,112 @@
+/* Shared top header for full-screen pages.
+   Ports Pavan's PageHeader.css visual language — the class names map to
+   the same selectors the existing ShopPage cartheader used, so applying
+   <AppHeader /> visually matches what was already there. */
+
+.appheader {
+    width: 75%;
+    margin: 0rem auto;
+    padding: 1rem 0;
+}
+
+.appheader__bar {
+    margin-bottom: 1rem;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    height: 60px;
+    border-radius: 25px;
+    box-shadow:
+        0px 20px 48px -12px rgba(0, 0, 0, 0.5),
+        0px 1px 0.5px 0px rgba(255, 255, 255, 0.45) inset;
+}
+
+/* The sessionbadge / shoplogo / headerright / useravatar / iconbtn
+   selectors below are intentionally NOT scoped under .appheader because
+   ShopPage already uses them on its `cartheader`. Keeping them global
+   means we can either swap ShopPage's cartheader for <AppHeader /> or
+   leave it as-is — both will pick up the same styling. */
+
+.sessionbadge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: #fff;
+}
+
+.sessionbadge .indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--PrimaryOrange, #ff5b1f);
+    box-shadow: 0 0 8px var(--PrimaryOrange, #ff5b1f);
+    animation: appheader-pulse 1.5s infinite;
+}
+
+@keyframes appheader-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.sessionbadge p {
+    color: rgba(127, 127, 127, 1);
+    margin: 0;
+}
+
+.sessionbadge span {
+    color: #fff;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums; /* keep the timer width stable */
+}
+
+.shoplogo {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.shoplogo span {
+    color: var(--PrimaryOrange, #ff5b1f);
+}
+
+.headerright {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.iconbtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.iconbtn svg {
+    width: 22px;
+    height: 22px;
+    color: #fff;
+}
+
+.useravatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff3c3c, #ff8c00);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+}

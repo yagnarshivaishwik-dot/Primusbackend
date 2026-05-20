@@ -4,6 +4,7 @@ import { TbApps } from 'react-icons/tb';
 import { TbAppsOff } from 'react-icons/tb';
 
 import { gamesService, launch as launchGame } from '@/features/games/services/gamesService';
+import AppHeader from '@/components/layout/AppHeader';
 
 import GameCarousel from './GameCarousel';
 import './GamesPage.css';
@@ -90,6 +91,7 @@ export default function GamesPage() {
 
   return (
     <div className="gameContainer">
+      <AppHeader />
       <div className="tabs">
         <button
           type="button"

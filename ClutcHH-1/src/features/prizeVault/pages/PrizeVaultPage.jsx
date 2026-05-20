@@ -1,24 +1,35 @@
 import { useEffect, useState } from 'react';
-import PlaceholderPage from '@/components/common/PlaceholderPage';
-import { Badge, Button, Card } from '@/components/common';
-import { ROUTES } from '@/app/routes/paths';
+
 import * as prizesService from '@/features/prizeVault/services/prizesService';
+import { homeService } from '@/features/home/services/homeService';
 import useWalletStore from '@/app/store/useWalletStore';
+import AppHeader from '@/components/layout/AppHeader';
 
-function tierTone(tier) {
-  const t = (tier || '').toLowerCase();
-  if (t === 'gold') return 'warning';
-  if (t === 'silver') return 'muted';
-  return 'info';
-}
+import PrizeCarousel from './PrizeCarousel';
+import ChallengeCarousel from './ChallengeCarousel';
+import './PrizeVaultPage.css';
 
+/**
+ * Rewards page (Pavan's design — `prizeVault` route, "Rewards" label).
+ * Splits into two carousels:
+ *   - Prizes: redeem coins for real items (data from prizesService).
+ *   - Challenges: home-page placeholder quests, exposed here too so the
+ *     customer can see and claim them from the Rewards tab as well.
+ * Both share the existing `shopcard glassyfinish` visual language.
+ */
 export default function PrizeVaultPage() {
+  const coins = useWalletStore((s) => s.coins);
+  const hydrate = useWalletStore((s) => s.hydrate);
+
   const [prizes, setPrizes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [redeeming, setRedeeming] = useState(null);
   const [feedback, setFeedback] = useState(null);
-  const coins = useWalletStore((s) => s.coins);
+
+  const [claimedKinds, setClaimedKinds] = useState([]);
+  const [claimingKind, setClaimingKind] = useState(null);
+  const [claimError, setClaimError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -34,9 +45,23 @@ export default function PrizeVaultPage() {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
+  }, []);
+
+  // Pull claim-status so the badge state is consistent with HomePage.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const status = await homeService.getClaimStatus();
+        if (cancelled) return;
+        const already = Object.entries(status || {})
+          .filter(([, claimed]) => claimed)
+          .map(([kind]) => kind);
+        if (already.length > 0) setClaimedKinds(already);
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const handleRedeem = async (prize) => {
@@ -52,6 +77,7 @@ export default function PrizeVaultPage() {
       setFeedback({ type: 'ok', text: `Redeemed "${prize.name}". Check your notifications.` });
       const list = await prizesService.list();
       setPrizes(list);
+      try { await hydrate({}); } catch { /* ignore */ }
     } catch (err) {
       setFeedback({ type: 'error', text: err?.message || 'Redemption failed.' });
     } finally {
@@ -59,104 +85,71 @@ export default function PrizeVaultPage() {
     }
   };
 
+  const handleClaim = async (kind) => {
+    if (!kind || claimingKind) return;
+    setClaimError(null);
+    setClaimingKind(kind);
+    try {
+      await homeService.claimPlaceholder(kind);
+      setClaimedKinds((prev) => (prev.includes(kind) ? prev : [...prev, kind]));
+      try { await hydrate({}); } catch { /* ignore */ }
+    } catch (err) {
+      if (err?.status === 409) {
+        setClaimedKinds((prev) => (prev.includes(kind) ? prev : [...prev, kind]));
+      } else {
+        setClaimError(err?.message || 'Claim failed.');
+      }
+    } finally {
+      setClaimingKind(null);
+    }
+  };
+
   return (
-    <PlaceholderPage
-      title="Prize Vault"
-      subtitle={coins != null ? `Your balance: ${coins.toLocaleString()} coins` : 'Redeem your coins for real gear'}
-      backTo={ROUTES.home}
-    >
-      {feedback && (
-        <div
-          role="status"
-          style={{
-            marginBottom: 14,
-            padding: '10px 14px',
-            borderRadius: 10,
-            fontSize: 13,
-            background: feedback.type === 'error' ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)',
-            border: `1px solid ${feedback.type === 'error' ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.3)'}`,
-            color: feedback.type === 'error' ? '#fca5a5' : '#86efac',
-          }}
-        >
-          {feedback.text}
-        </div>
-      )}
+    <div className="prizeVaultContainer">
+      <AppHeader />
 
-      {loading && <Card><div style={{ color: '#9CA3AF' }}>Loading prizes…</div></Card>}
-      {error && !loading && (
-        <Card>
-          <div style={{ color: '#fca5a5' }}>{error}</div>
-        </Card>
-      )}
-      {!loading && !error && prizes.length === 0 && (
-        <Card>
-          <div style={{ color: '#9CA3AF' }}>
-            No prizes are configured yet. Ask an admin to add items to the Prize Vault.
+      <div className="prizeVaultBody">
+        <div className="prizeVaultIntro">
+          <h1 className="prizeVaultTitle">Rewards</h1>
+          <p className="prizeVaultSubtitle">
+            {coins != null ? `You have ${coins.toLocaleString()} coins to spend` : 'Redeem coins for real gear'}
+          </p>
+        </div>
+
+        {(feedback || claimError) && (
+          <div
+            role="status"
+            style={{
+              margin: '0 auto 16px',
+              padding: '10px 14px',
+              borderRadius: 10,
+              fontSize: 13,
+              maxWidth: 600,
+              background: (feedback?.type === 'error' || claimError) ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)',
+              border: `1px solid ${(feedback?.type === 'error' || claimError) ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.3)'}`,
+              color: (feedback?.type === 'error' || claimError) ? '#fca5a5' : '#86efac',
+              textAlign: 'center',
+            }}
+          >
+            {feedback?.text || claimError}
           </div>
-        </Card>
-      )}
+        )}
 
-      {!loading && !error && prizes.length > 0 && (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-            gap: 16,
-          }}
-        >
-          {prizes.map((p) => {
-            const outOfStock = typeof p.stock === 'number' && p.stock <= 0;
-            const canAfford = coins == null || coins >= p.coinCost;
-            return (
-              <Card key={p.id}>
-                {p.image && (
-                  <img
-                    src={p.image}
-                    alt=""
-                    loading="lazy"
-                    style={{
-                      width: '100%',
-                      height: 120,
-                      objectFit: 'cover',
-                      borderRadius: 8,
-                      marginBottom: 10,
-                      background: '#1f2937',
-                    }}
-                  />
-                )}
-                <Badge tone={tierTone(p.tier)}>{p.tier.toUpperCase()}</Badge>
-                <div style={{ fontWeight: 700, color: '#fff', marginTop: 10 }}>{p.name}</div>
-                {p.description && (
-                  <div style={{ color: '#9CA3AF', fontSize: 12, margin: '4px 0 8px' }}>
-                    {p.description}
-                  </div>
-                )}
-                <div style={{ color: '#9CA3AF', fontSize: 13, margin: '6px 0 12px' }}>
-                  🪙 {p.coinCost.toLocaleString()} coins
-                  {typeof p.stock === 'number' && (
-                    <span style={{ marginLeft: 8, color: outOfStock ? '#fca5a5' : '#9CA3AF' }}>
-                      · {outOfStock ? 'Out of stock' : `${p.stock} left`}
-                    </span>
-                  )}
-                </div>
-                <Button
-                  size="sm"
-                  disabled={outOfStock || !canAfford || redeeming === p.id}
-                  onClick={() => handleRedeem(p)}
-                >
-                  {redeeming === p.id
-                    ? 'Redeeming…'
-                    : outOfStock
-                      ? 'Sold Out'
-                      : canAfford
-                        ? 'Redeem'
-                        : 'Need more coins'}
-                </Button>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-    </PlaceholderPage>
+        <ChallengeCarousel
+          claimedKinds={claimedKinds}
+          claimingKind={claimingKind}
+          onClaim={handleClaim}
+        />
+
+        <PrizeCarousel
+          prizes={prizes}
+          loading={loading}
+          error={error}
+          coins={coins}
+          redeemingId={redeeming}
+          onRedeem={handleRedeem}
+        />
+      </div>
+    </div>
   );
 }
