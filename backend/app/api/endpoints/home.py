@@ -101,6 +101,28 @@ def claim_placeholder(
                 .filter(_UserModel.id == current_user.id)
                 .first()
             )
+
+        # Auto-provision the cafe-side row if missing. Customer login on the
+        # kiosk doesn't currently create a CafeUser entry in the device's
+        # bound cafe DB (TECH_DEBT: auth.py should provision on first login).
+        # Until that's fixed, every kiosk endpoint that needs a cafe-local
+        # user row would fail forever. Provisioning here on first interaction
+        # is the recovery path.
+        if user_row is None and MULTI_DB_ENABLED:
+            user_row = _UserModel(
+                global_user_id=current_user.id,
+                name=getattr(current_user, "name", None) or getattr(current_user, "email", None),
+                email=getattr(current_user, "email", None),
+                role="client",
+                wallet_balance=0,
+                coins_balance=0,
+            )
+            db.add(user_row)
+            db.flush()  # populate user_row.id for the CoinTransaction FK below
+            logger.info(
+                "[HOME CLAIM] auto-provisioned CafeUser for global_user_id=%s cafe_id=%s",
+                current_user.id, ctx.cafe_id,
+            )
         if user_row is None:
             raise HTTPException(status_code=404, detail="User not found in cafe DB")
 

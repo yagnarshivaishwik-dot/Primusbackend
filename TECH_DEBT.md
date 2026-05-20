@@ -160,6 +160,13 @@ Then audit every reference to `WalletTransaction.cafe_id`, `Offer.cafe_id`, `Use
 **Effort:** ~10 min to reorder candidates in `App.xaml.cs:105-140`.
 **Risk:** Low. Could mildly affect the installed-layout case if anyone relies on the `.\web\` precedence — but that case is covered by candidate #3 (Program Files) anyway.
 
+### 23. Kiosk customer login doesn't auto-provision a CafeUser row
+**Symptom:** When a customer (or admin) logs in on a kiosk, their global user record exists but no corresponding row is written to the device's bound cafe-DB `users` table. Any endpoint that needs to credit coins / wallet / track per-cafe state will fail with "User not found in cafe DB" until something else provisions the row. We worked around this on 2026-05-19 by auto-provisioning inside [home.py](backend/app/api/endpoints/home.py) and [quests.py](backend/app/api/endpoints/quests.py) claim endpoints — but that's a band-aid, every new endpoint that touches a cafe-local user has to remember to do the same dance.
+**Current workaround:** In-endpoint auto-provision with `role="client"` and zero balances. Logged via `logger.info` so we can spot how often it fires in prod.
+**Proper fix:** Do the auto-provision once in [auth.py](backend/app/api/endpoints/auth.py) at customer-login time. When `login` (or `register`) succeeds AND the JWT carries a `cafe_id`, insert a `CafeUser` row keyed by `global_user_id` for that cafe before issuing the token. Idempotent on conflict. Removes the workaround from every consumer endpoint.
+**Effort:** ~1 hr (one helper + two call sites). Needs a small migration if we want a uniqueness constraint on `(cafe_id-implicit-via-DB, global_user_id)` to make it conflict-safe.
+**Risk:** Low. Additive — endpoints that already work continue to work.
+
 ### 19. Quest claim credits coins but XP rewards are silently dropped
 **Symptom:** `POST /api/v1/quests/{event_id}/claim` (`backend/app/api/endpoints/quests.py`) now credits coin rewards into `CafeUser.coins_balance` and writes a `CoinTransaction` row. XP rewards (e.g. quests with `rule_json.reward.kind="xp"`) are logged to the server log but **never banked anywhere** — `CafeUser` has no `xp` / `experience_points` column. The kiosk home page renders the XP reward badge ("+50 XP") so customers expect XP to accumulate, but no user-visible counter exists and the value is discarded.
 **Current workaround:** Author quests with `reward.kind="coins"` only. Anything authored with `kind="xp"` is effectively decorative.

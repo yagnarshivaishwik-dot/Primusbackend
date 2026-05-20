@@ -221,6 +221,27 @@ def claim_quest(
                     .filter(_UserModel.id == current_user.id)
                     .first()
                 )
+
+            # See home.claim_placeholder for why this auto-provisioning
+            # exists. Kiosk customer-login doesn't seed the cafe-side users
+            # table yet, so the first time an endpoint needs the row we
+            # create it.
+            if user_row is None and MULTI_DB_ENABLED:
+                user_row = _UserModel(
+                    global_user_id=current_user.id,
+                    name=getattr(current_user, "name", None) or getattr(current_user, "email", None),
+                    email=getattr(current_user, "email", None),
+                    role="client",
+                    wallet_balance=0,
+                    coins_balance=0,
+                )
+                db.add(user_row)
+                db.flush()
+                logger.info(
+                    "[QUEST CLAIM] auto-provisioned CafeUser for global_user_id=%s event=%s",
+                    current_user.id, event_id,
+                )
+
             if user_row is not None:
                 user_row.coins_balance = (user_row.coins_balance or 0) + reward_amount
                 db.add(
