@@ -85,7 +85,7 @@ public sealed class AppRegistryScanner
         if (string.IsNullOrWhiteSpace(name)) return null;
         if (IsExcluded(name, sub)) return null;
 
-        var exe = ResolveExecutable(sub);
+        var exe = ResolveExecutable(sub, name!);
         if (string.IsNullOrWhiteSpace(exe)) return null;
 
         return new GameDto
@@ -94,6 +94,7 @@ public sealed class AppRegistryScanner
             Category = "App",
             ExecutablePath = exe,
             Enabled = true,
+            LogoDataUri = IconExtractor.TryExtractDataUri(exe),
         };
     }
 
@@ -124,55 +125,101 @@ public sealed class AppRegistryScanner
         return false;
     }
 
-    private static string? ResolveExecutable(RegistryKey sub)
+    private static string? ResolveExecutable(RegistryKey sub, string displayName)
     {
-        // DisplayIcon usually points at the app's primary .exe (and
-        // optionally a `,iconIndex` suffix). It's the most reliable
-        // source when present.
+        // 1. DisplayIcon — but reject if it looks like an installer.
+        //    OneDrive's DisplayIcon, for example, is OneDriveSetup.exe;
+        //    launching that would re-run the installer. We catch any
+        //    .exe whose filename contains "setup" / "installer" / "unins"
+        //    here and fall through to InstallLocation below.
         var icon = sub.GetValue("DisplayIcon") as string;
         if (!string.IsNullOrWhiteSpace(icon))
         {
             var trimmed = icon.Trim().Trim('"');
-            // Strip ",iconIndex" suffix if present.
+            // Strip ",iconIndex" suffix if present (e.g. `foo.exe,0`).
             var commaIdx = trimmed.LastIndexOf(',');
             if (commaIdx > 0 && int.TryParse(trimmed[(commaIdx + 1)..].Trim(), out _))
             {
                 trimmed = trimmed[..commaIdx].Trim();
             }
-            if (trimmed.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && File.Exists(trimmed))
+            if (trimmed.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+                && !LooksLikeInstaller(Path.GetFileName(trimmed))
+                && File.Exists(trimmed))
             {
                 return trimmed;
             }
         }
 
-        // Fall back to InstallLocation + first launchable .exe (skipping
-        // installer/uninstaller binaries).
+        // 2. InstallLocation — pick the .exe whose name best matches
+        //    the DisplayName. Falling back to "first .exe" is what we
+        //    used to do, but on apps like OneDrive that ships a half
+        //    dozen utility .exes alongside the real launcher, that
+        //    picked the wrong one. Scoring by name overlap is robust
+        //    enough for the common cases without being clever.
         var installLoc = (sub.GetValue("InstallLocation") as string)?.Trim().Trim('"');
-        if (!string.IsNullOrWhiteSpace(installLoc) && Directory.Exists(installLoc))
+        var fromInstall = PickFromDirectory(installLoc, displayName);
+        if (fromInstall is not null) return fromInstall;
+
+        // 3. InstallLocation parent — some apps (OneDrive again) put
+        //    the real .exe one level above InstallLocation, which
+        //    points at a versioned subdir. Walking up once usually
+        //    finds the canonical launcher.
+        if (!string.IsNullOrWhiteSpace(installLoc))
         {
-            try
-            {
-                var candidates = Directory.EnumerateFiles(installLoc, "*.exe", SearchOption.TopDirectoryOnly)
-                    .Where(f => !LooksLikeInstaller(Path.GetFileName(f)))
-                    .ToList();
-                if (candidates.Count > 0) return candidates[0];
-            }
-            catch (Exception ex)
-            {
-                Log.Debug(ex, "InstallLocation enumeration failed for {Path}", installLoc);
-            }
+            var parent = Path.GetDirectoryName(installLoc.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            var fromParent = PickFromDirectory(parent, displayName);
+            if (fromParent is not null) return fromParent;
         }
 
         return null;
     }
 
+    private static string? PickFromDirectory(string? dir, string displayName)
+    {
+        if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir)) return null;
+        try
+        {
+            var exes = Directory.EnumerateFiles(dir, "*.exe", SearchOption.TopDirectoryOnly)
+                .Where(f => !LooksLikeInstaller(Path.GetFileName(f)))
+                .ToList();
+            if (exes.Count == 0) return null;
+
+            // Score each candidate by how well its file name matches the
+            // DisplayName. A .exe whose basename appears as a substring
+            // of DisplayName (or vice versa) is far more likely to be the
+            // real launcher than a random co-installed utility.
+            var displayLower = displayName.ToLowerInvariant();
+            var scored = exes.Select(f =>
+            {
+                var stem = Path.GetFileNameWithoutExtension(f).ToLowerInvariant();
+                int score = 0;
+                if (displayLower.Contains(stem) || stem.Contains(displayLower.Split(' ')[0])) score += 10;
+                if (displayLower.Split(new[] { ' ', '-', '_' }, StringSplitOptions.RemoveEmptyEntries)
+                                .Any(w => w.Length >= 3 && stem.Contains(w))) score += 5;
+                return (Path: f, Score: score);
+            }).OrderByDescending(x => x.Score).ToList();
+
+            return scored[0].Path;
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "Directory enumeration failed for {Path}", dir);
+            return null;
+        }
+    }
+
     private static bool LooksLikeInstaller(string fileName)
     {
         var lower = fileName.ToLowerInvariant();
-        return lower.StartsWith("uninstall")
-            || lower.StartsWith("unins000")
-            || lower.StartsWith("setup")
-            || lower.Contains("installer");
+        // Strict to "starts with" was too narrow — OneDriveSetup.exe
+        // slipped through. Switch to "contains" but keep the list
+        // focused on installer/uninstaller-shaped names so we don't
+        // accidentally exclude legitimate apps.
+        return lower.Contains("uninstall")
+            || lower.StartsWith("unins")     // Inno Setup-style: unins000.exe, unins001.exe
+            || lower.Contains("setup")
+            || lower.Contains("installer")
+            || lower.Contains("updater");
     }
 
     // Tuned heuristics — biased toward hiding noise. Easier to relax

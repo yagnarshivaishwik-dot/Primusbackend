@@ -134,6 +134,9 @@ public sealed class GameRegistryScanner
                 Category = "Steam",
                 ExecutablePath = launchTarget,
                 Enabled = launchTarget is not null,
+                // Icons only resolvable from a real .exe path, not from
+                // a steam:// URI. So skip icon extraction for URI fallbacks.
+                LogoDataUri = exe is not null ? IconExtractor.TryExtractDataUri(exe) : null,
             };
         }
         catch (Exception ex)
@@ -192,6 +195,7 @@ public sealed class GameRegistryScanner
                         Category = "Epic",
                         ExecutablePath = exe,
                         Enabled = exe is not null && File.Exists(exe),
+                        LogoDataUri = IconExtractor.TryExtractDataUri(exe),
                     };
                 }
             }
@@ -253,6 +257,7 @@ public sealed class GameRegistryScanner
                         Category = "Local",
                         ExecutablePath = exe,
                         Enabled = exe is not null && File.Exists(exe),
+                        LogoDataUri = IconExtractor.TryExtractDataUri(exe),
                     };
                 }
             }

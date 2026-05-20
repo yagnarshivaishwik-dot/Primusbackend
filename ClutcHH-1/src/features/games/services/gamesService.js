@@ -105,6 +105,10 @@ export async function adminCreateDetected({ adminEmail, adminPassword, games }) 
       exe_path: g.executable_path || g.exe_path || null,
       category: g.category || 'game',
       launcher: g.launcher || null,
+      // base64 data URI extracted from the .exe icon by the C# scanner;
+      // backend stores it on `Game.logo_url` so catalog tiles render
+      // real icons instead of the placeholder.
+      logo_url: g.logo_url || g.logoDataUri || null,
     })),
   });
 }

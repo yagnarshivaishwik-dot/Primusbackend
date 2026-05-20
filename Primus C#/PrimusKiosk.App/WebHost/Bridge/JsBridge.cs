@@ -791,6 +791,11 @@ public sealed class JsBridge : IDisposable
             category        = g.Category,
             executable_path = g.ExecutablePath,
             enabled         = g.Enabled,
+            // base64 PNG data URI extracted from the .exe icon —
+            // GamesPage.openAddModal forwards this to the backend's
+            // admin-create-detected endpoint as `logo_url` so the
+            // kiosk catalog tiles render real app icons.
+            logo_url        = g.LogoDataUri,
         }).ToArray();
     }
 
@@ -811,6 +816,7 @@ public sealed class JsBridge : IDisposable
             category        = g.Category,
             executable_path = g.ExecutablePath,
             enabled         = g.Enabled,
+            logo_url        = g.LogoDataUri,
         }).ToArray();
     }
 

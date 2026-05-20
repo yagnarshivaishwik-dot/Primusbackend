@@ -330,6 +330,10 @@ class DetectedGameIn(BaseModel):
     exe_path: str | None = None
     category: str = "game"
     launcher: str | None = None
+    # Inline `data:image/png;base64,…` URI extracted from the .exe icon
+    # by the C# IconExtractor. Persisted as `Game.logo_url` so the kiosk
+    # tiles render real app icons.
+    logo_url: str | None = None
 
 
 class AdminCreateDetectedIn(BaseModel):
@@ -441,6 +445,8 @@ async def admin_create_detected(
             }
             if g.launcher:
                 row["launchers"] = g.launcher
+            if g.logo_url:
+                row["logo_url"] = g.logo_url
             if not MULTI_DB_ENABLED:
                 row["cafe_id"] = kiosk_cafe_id
             rows_to_insert.append(row)
