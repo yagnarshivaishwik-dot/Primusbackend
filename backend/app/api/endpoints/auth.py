@@ -560,6 +560,166 @@ async def login(
     }
 
 
+@router.post("/admin-bind-and-login")
+async def admin_bind_and_login(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+    _rate_limited: None = Depends(LOGIN_LIMIT),
+):
+    """Admin-supervised customer login + cafe binding (kiosk-side flow).
+
+    When a customer tries to sign in on a kiosk but isn't bound to the
+    kiosk's cafe, the kiosk LoginPage surfaces an "Admin approval"
+    panel. The admin physically present at the kiosk enters their own
+    credentials. This endpoint:
+
+      1. Verifies the admin's credentials (must be admin / superadmin).
+      2. Resolves the kiosk's cafe from the X-License-Key header.
+      3. Verifies the admin has access to that cafe.
+      4. Verifies the customer's credentials.
+      5. Creates a `UserCafeMap(user_id=customer, cafe_id=kiosk_cafe,
+         role='client')` if missing — the actual binding.
+      6. Mints customer access + refresh tokens scoped to the kiosk's
+         cafe (mirrors `/login`'s token shape so the frontend can use
+         the same code path).
+
+    Form fields:  admin_email, admin_password, user_email, user_password
+    Header:       X-License-Key   (set by every kiosk request)
+    """
+    from app.auth.tokens import (
+        create_access_token as _unused_alias,  # noqa: F401
+        create_refresh_token,
+        mint_access_token,
+    )
+    from app.models import License, RefreshToken as RefreshTokenModel, UserCafeMap
+
+    form = await request.form()
+    admin_email = (form.get("admin_email") or "").lower().strip()
+    admin_password = form.get("admin_password") or ""
+    user_email = (form.get("user_email") or "").lower().strip()
+    user_password = form.get("user_password") or ""
+
+    if not (admin_email and admin_password and user_email and user_password):
+        raise HTTPException(
+            status_code=400,
+            detail="admin_email, admin_password, user_email and user_password are all required",
+        )
+
+    # Step 1: validate admin
+    admin = authenticate_user(db, admin_email, admin_password)
+    if not admin:
+        raise HTTPException(status_code=401, detail="Invalid admin credentials")
+    if admin.role not in ("admin", "superadmin"):
+        raise HTTPException(
+            status_code=403,
+            detail=f"'{admin.role}' is not an admin role — kiosk approval requires an admin login",
+        )
+
+    # Step 2: resolve kiosk's cafe from X-License-Key
+    license_key_header = request.headers.get("X-License-Key")
+    if not license_key_header:
+        raise HTTPException(
+            status_code=400,
+            detail="Missing X-License-Key header — admin approval is only valid from a kiosk",
+        )
+    lic = db.query(License).filter_by(key=license_key_header, is_active=True).first()
+    if not lic or not lic.cafe_id:
+        raise HTTPException(status_code=400, detail="Invalid or unknown kiosk license")
+    kiosk_cafe_id = lic.cafe_id
+
+    # Step 3: verify admin owns / belongs to this kiosk's cafe (superadmins exempt)
+    if admin.role != "superadmin":
+        admin_mapping = (
+            db.query(UserCafeMap)
+            .filter_by(user_id=admin.id, cafe_id=kiosk_cafe_id)
+            .first()
+        )
+        if not admin_mapping and admin.cafe_id != kiosk_cafe_id:
+            raise HTTPException(
+                status_code=403,
+                detail="This admin doesn't own the cafe this kiosk is bound to",
+            )
+
+    # Step 4: validate the customer's credentials
+    target = authenticate_user(db, user_email, user_password)
+    if not target:
+        raise HTTPException(status_code=401, detail="Invalid customer credentials")
+
+    # Step 5: bind the customer to the kiosk's cafe (idempotent)
+    existing = (
+        db.query(UserCafeMap)
+        .filter_by(user_id=target.id, cafe_id=kiosk_cafe_id)
+        .first()
+    )
+    if not existing:
+        db.add(UserCafeMap(user_id=target.id, cafe_id=kiosk_cafe_id, role="client"))
+        db.commit()
+        logger.info(
+            "[ADMIN_BIND] admin=%s bound customer=%s to cafe=%s via kiosk",
+            admin.id, target.id, kiosk_cafe_id,
+        )
+
+    # Step 6: mint customer tokens scoped to kiosk's cafe
+    customer_role = "client"  # forced for safety — admin can't accidentally elevate
+    access_token, access_jti, _exp = mint_access_token(
+        email=target.email,
+        user_id=target.id,
+        cafe_id=kiosk_cafe_id,
+        device_id=None,
+        role=customer_role,
+    )
+
+    try:
+        from app.services.cafe_user_provisioning import ensure_cafe_user
+        ensure_cafe_user(
+            global_user_id=target.id,
+            cafe_id=kiosk_cafe_id,
+            name=getattr(target, "name", None),
+            email=target.email,
+            role=customer_role,
+        )
+    except Exception as exc:
+        logger.warning("admin-bind-and-login: ensure_cafe_user failed: %s", exc)
+
+    client_ip = str(request.client.host) if request and request.client else None
+    refresh_token = create_refresh_token(
+        db,
+        user_id=target.id,
+        cafe_id=kiosk_cafe_id,
+        device_id=None,
+        ip_address=client_ip,
+        access_jti=access_jti,
+    )
+
+    response.set_cookie(
+        key="access_token",
+        value=f"Bearer {access_token}",
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=60 * 60 * 24 * 7,
+        path="/api/auth/refresh",
+    )
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "cafe_id": kiosk_cafe_id,
+        "role": customer_role,
+        "bound_just_now": existing is None,
+    }
+
+
 @router.post("/logout")
 def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     """Clear auth cookies and revoke refresh token."""

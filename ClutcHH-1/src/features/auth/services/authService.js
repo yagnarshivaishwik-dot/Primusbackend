@@ -88,6 +88,45 @@ export const authService = {
     return true;
   },
 
+  /**
+   * Admin-supervised customer login + cafe binding.
+   *
+   * Used by LoginPage when a customer fails the kiosk's cafe-access
+   * check (403 from /auth/login). The admin physically present at the
+   * kiosk enters THEIR credentials; combined with the customer's
+   * already-entered credentials, the backend creates a UserCafeMap
+   * binding the customer to this kiosk's cafe AND mints customer
+   * tokens in one round-trip.
+   *
+   * Form-encoded to match the existing /auth/login style.
+   */
+  async adminBindAndLogin({ adminEmail, adminPassword, userEmail, userPassword }) {
+    if (!adminEmail || !adminPassword || !userEmail || !userPassword) {
+      throw new Error('Admin and customer credentials are both required.');
+    }
+    const form = new URLSearchParams();
+    form.append('admin_email', adminEmail);
+    form.append('admin_password', adminPassword);
+    form.append('user_email', userEmail);
+    form.append('user_password', userPassword);
+
+    const res = await api('/api/v1/auth/admin-bind-and-login', {
+      method: 'POST',
+      body: form,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+
+    const token = res?.access_token;
+    if (!token) throw new Error('Admin-bind succeeded but returned no token.');
+    setJwt(token);
+
+    const me = await apiGet('/api/v1/auth/me').catch(() => null);
+    const merged = me
+      ? { ...me, cafe_id: res?.cafe_id ?? me.cafe_id, role: me.role || res?.role }
+      : { email: userEmail, role: res?.role, cafe_id: res?.cafe_id };
+    return normalizeUser(merged);
+  },
+
   async me() {
     return normalizeUser(await apiGet('/api/v1/auth/me'));
   },

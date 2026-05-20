@@ -40,34 +40,53 @@ const useSessionStore = create(
         // Clear any previously-persisted user BEFORE we hit the wire, so
         // that if login fails we don't keep showing the old identity.
         // Also clear `avatar` so customer B doesn't inherit customer A's
-        // chosen avatar after a fresh kiosk launch on a shared PC. The
-        // avatar still persists across the SAME customer's reloads (it
-        // sits in localStorage), but a new sign-in resets it back to the
-        // initials fallback so each customer starts blank in Appearance.
+        // chosen avatar after a fresh kiosk launch on a shared PC.
         set({ user: null, isAuthenticated: false, sessionStartedAt: null, avatar: null, loading: true, error: null });
         try {
           const user = await authService.signIn({ email, password });
 
-          // Reject sign-ins from accounts that aren't bound to a cafe.
-          // The kiosk is itself tied to a specific cafe via the device
-          // handshake, so a JWT without a cafe_id can't transact against
-          // any cafe-scoped endpoint (shop, claims, prizes…). Better to
-          // kick the user back to the login screen with a clear error
-          // than to let them in and have every subsequent call 4xx.
-          // Per the product requirement: anyone signing in without an
-          // admin binding is redirected to admin login.
+          // Backend enforces cafe-binding access via the kiosk's
+          // X-License-Key + UserCafeMap lookup at /auth/login. A
+          // customer who isn't bound to this kiosk's cafe gets a 403
+          // before we ever reach this code path. The frontend `cafe_id
+          // == null` check is kept as a belt-and-suspenders fallback —
+          // if backend somehow returns a user without cafe_id, we
+          // still bail out instead of letting cafe-scoped calls 4xx
+          // silently downstream.
           if (!user || user.cafe_id == null) {
             try { await authService.signOut(); } catch { /* ignore */ }
             set({ user: null, isAuthenticated: false, sessionStartedAt: null, loading: false });
-            throw new Error(
-              "Your account isn't registered with this cafe. Please ask the cafe admin to add you, or sign in with an admin account."
-            );
+            const e = new Error("Your account isn't registered with this cafe.");
+            e.requiresAdminApproval = true;
+            throw e;
           }
 
           set({ user, isAuthenticated: true, sessionStartedAt: Date.now(), loading: false, error: null });
           return user;
         } catch (err) {
           const message = err?.message || 'Sign in failed';
+          set({ loading: false, error: message });
+          throw err;
+        }
+      },
+
+      /**
+       * Admin-supervised customer sign-in.
+       *
+       * Called from LoginPage's "Admin approval" panel when the
+       * customer hit a 403 on regular sign-in. Sends both the admin's
+       * credentials AND the customer's credentials to the backend in
+       * one shot — backend validates the admin, binds the customer
+       * via UserCafeMap, and returns the customer's tokens.
+       */
+      async adminBindAndLogin({ adminEmail, adminPassword, userEmail, userPassword }) {
+        set({ user: null, isAuthenticated: false, sessionStartedAt: null, avatar: null, loading: true, error: null });
+        try {
+          const user = await authService.adminBindAndLogin({ adminEmail, adminPassword, userEmail, userPassword });
+          set({ user, isAuthenticated: true, sessionStartedAt: Date.now(), loading: false, error: null });
+          return user;
+        } catch (err) {
+          const message = err?.message || 'Admin approval failed';
           set({ loading: false, error: message });
           throw err;
         }
