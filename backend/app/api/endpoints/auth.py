@@ -380,12 +380,13 @@ async def login(
         create_access_token as create_enriched_token,
         create_refresh_token,
     )
-    from app.models import ClientPC, UserCafeMap
+    from app.models import ClientPC, License, UserCafeMap
     from app.config import REQUIRE_DEVICE_ID_ON_LOGIN
 
     # Extract device_id from form data (optional for backwards compat)
     form = await request.form()
     device_id = form.get("device_id")
+    license_key_header = request.headers.get("X-License-Key")
     resolved_cafe_id = user.cafe_id
     resolved_role = user.role
 
@@ -416,6 +417,45 @@ async def login(
                 status_code=403,
                 detail="User does not have access to this cafe",
             )
+    elif license_key_header:
+        # KIOSK LOGIN PATH: the React kiosk doesn't send `device_id` in the
+        # form — it sends X-License-Key on every request (set after the
+        # admin handshake). For a customer registered via the many-to-many
+        # `UserCafeMap` (the typical kiosk-signup path), `user.cafe_id` is
+        # NULL on the global users row, so without this branch the token
+        # would be minted with cafe_id=null and the kiosk's frontend
+        # binding check would reject the login.
+        #
+        # Each License row carries the cafe it belongs to. Looking up the
+        # license gives us the kiosk's cafe; we then validate the user has
+        # access to it (UserCafeMap OR direct cafe_id OR admin/superadmin
+        # role) before stamping that cafe_id onto the token.
+        lic = db.query(License).filter_by(key=license_key_header, is_active=True).first()
+        if lic and lic.cafe_id:
+            kiosk_cafe_id = lic.cafe_id
+            if user.role in ("admin", "superadmin"):
+                # Admins/superadmins can sign into any kiosk in their org
+                # tree — gate them on role only, not UserCafeMap.
+                resolved_cafe_id = kiosk_cafe_id
+            else:
+                mapping = (
+                    db.query(UserCafeMap)
+                    .filter(
+                        UserCafeMap.user_id == user.id,
+                        UserCafeMap.cafe_id == kiosk_cafe_id,
+                    )
+                    .first()
+                )
+                if mapping:
+                    resolved_cafe_id = kiosk_cafe_id
+                    resolved_role = mapping.role
+                elif user.cafe_id == kiosk_cafe_id:
+                    resolved_cafe_id = kiosk_cafe_id
+                else:
+                    raise HTTPException(
+                        status_code=403,
+                        detail="User does not have access to this cafe",
+                    )
     elif REQUIRE_DEVICE_ID_ON_LOGIN:
         raise HTTPException(status_code=400, detail="device_id is required for login")
 
