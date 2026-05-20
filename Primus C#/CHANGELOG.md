@@ -1,4 +1,19 @@
-﻿## 1.0.22 - 2026-05-19
+## v1.3.0 — 2026-05-20
+
+- Steam URI launch + Add games category normalization
+
+## v1.2.3 — 2026-05-20
+
+- Admin-gated add games from this PC
+
+## v1.2.2 — 2026-05-20
+
+- Admin-gated add games from this PC
+
+## 1.2.1 - 2026-05-20
+- Appearance avatars, Rewards page (challenges + leaderboard + prizes), Happy Hour discount, inline settings controls, system audio + brightness bridge
+
+## 1.0.22 - 2026-05-19
 - Quest claim wiring; UTC fix on chat timestamps; BottomNav on Games page; C# switch-scope rename; Shop stale-UI fallback; Happy Hour card cleanup
 
 # Primus Client â€” Changelog
@@ -112,4 +127,5 @@ Format: `YYYY-MM-DD â€” vX.Y.Z â€” notes`. Most recent version on top.
 - 30 s heartbeat with CPU / RAM / GPU / temperature / idle / session
   telemetry. Time-limit enforcement auto-locks the station on expiry.
 - Single-file self-contained `PrimusClient.exe` (~76 MB compressed).
+
 

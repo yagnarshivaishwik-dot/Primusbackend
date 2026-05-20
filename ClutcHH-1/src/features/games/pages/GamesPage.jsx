@@ -125,7 +125,21 @@ export default function GamesPage() {
         invoke('detect_installed_games').catch(() => []),
         invoke('detect_installed_apps').catch(() => []),
       ]);
-      const combined = [...(scanGames || []), ...(scanApps || [])];
+      // Tag with the kiosk's canonical category buckets BEFORE merging.
+      // The bridge returns category="Steam"/"Local"/"Epic"/... — the
+      // launcher name, not the catalog filter. /api/v1/games?category=game
+      // is what the kiosk UI lists by, so normalize here.
+      const taggedGames = (scanGames || []).map((g) => ({
+        ...g,
+        launcher: g.launcher || g.category || null,
+        category: 'game',
+      }));
+      const taggedApps = (scanApps || []).map((g) => ({
+        ...g,
+        launcher: g.launcher || g.category || null,
+        category: 'app',
+      }));
+      const combined = [...taggedGames, ...taggedApps];
       // Dedupe by name in case a launcher reports the same title twice.
       const byName = new Map();
       for (const g of combined) {

@@ -97,12 +97,14 @@ public sealed class GameRegistryScanner
             string[] lines = File.ReadAllLines(acfPath);
             string? name = null;
             string? installDir = null;
+            string? appid = null;
 
             foreach (var line in lines)
             {
                 var t = line.Trim();
                 if (t.StartsWith("\"name\"", StringComparison.OrdinalIgnoreCase)) name = Extract(t);
                 else if (t.StartsWith("\"installdir\"", StringComparison.OrdinalIgnoreCase)) installDir = Extract(t);
+                else if (t.StartsWith("\"appid\"", StringComparison.OrdinalIgnoreCase)) appid = Extract(t);
             }
 
             if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(installDir))
@@ -115,12 +117,23 @@ public sealed class GameRegistryScanner
                 ? Directory.EnumerateFiles(commonPath, "*.exe", SearchOption.TopDirectoryOnly).FirstOrDefault()
                 : null;
 
+            // For modern Steam games that don't expose a top-level .exe
+            // (e.g. CS2, Dota 2, anything using Source 2 / launcher
+            // wrappers), launch via the Steam URI scheme. Process.Start
+            // with UseShellExecute=true hands the URI to the OS shell
+            // which dispatches to Steam.
+            var launchTarget = exe;
+            if (string.IsNullOrWhiteSpace(launchTarget) && !string.IsNullOrWhiteSpace(appid))
+            {
+                launchTarget = $"steam://rungameid/{appid}";
+            }
+
             return new GameDto
             {
                 Name = name!,
                 Category = "Steam",
-                ExecutablePath = exe,
-                Enabled = exe is not null,
+                ExecutablePath = launchTarget,
+                Enabled = launchTarget is not null,
             };
         }
         catch (Exception ex)
