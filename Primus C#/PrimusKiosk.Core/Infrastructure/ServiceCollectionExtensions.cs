@@ -47,6 +47,7 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IKioskOrchestrator, KioskOrchestrator>();
         services.TryAddSingleton<IShellReplacementService, Kiosk.ShellReplacementService>();
         services.TryAddSingleton<GameRegistryScanner>();
+        services.TryAddSingleton<AppRegistryScanner>();
         services.TryAddSingleton<IGameCatalog, GameCatalog>();
         services.TryAddSingleton<IGameLauncher, GameLauncher>();
         // Screenshot uses managed GDI+ by default so the feature works without the native DLL.

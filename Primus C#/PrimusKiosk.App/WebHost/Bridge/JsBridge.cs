@@ -796,9 +796,15 @@ public sealed class JsBridge : IDisposable
 
     private async Task<object?> DetectInstalledApps(JsonObject _)
     {
-        var catalog = _sp.GetRequiredService<IGameCatalog>();
-        var games   = await catalog.GetGamesAsync(CancellationToken.None).ConfigureAwait(false);
-        return games.Select(g => new
+        // Use the dedicated AppRegistryScanner — was previously calling
+        // IGameCatalog.GetGamesAsync which returned the games list (so
+        // the Apps tab on "+ Add games from this PC" was broken). The
+        // new scanner walks the Uninstall keys and surfaces real
+        // applications (Office, browsers, productivity tools), filtering
+        // out runtimes, drivers, updates, and game launchers.
+        var scanner = _sp.GetRequiredService<AppRegistryScanner>();
+        var apps    = await scanner.ScanAsync(CancellationToken.None).ConfigureAwait(false);
+        return apps.Select(g => new
         {
             id              = g.Id,
             name            = g.Name,

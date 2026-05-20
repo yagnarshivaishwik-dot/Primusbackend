@@ -1,3 +1,7 @@
+## v1.4.0 — 2026-05-20
+
+- Add real Windows app scanner for the Apps tab
+
 ## v1.3.1 — 2026-05-20
 
 - Shop card sizing fix for PC screens
