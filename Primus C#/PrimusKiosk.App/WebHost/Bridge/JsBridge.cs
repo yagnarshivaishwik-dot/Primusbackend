@@ -385,6 +385,13 @@ public sealed class JsBridge : IDisposable
                 // WebView so an admin can reach the desktop. Auto re-locks.
                 "kiosk_exit_temp"           => await KioskExitTemp(args).ConfigureAwait(false),
 
+                // Settings dropdown — system volume + display brightness.
+                // SettingsPanel.jsx in the React app talks to these directly.
+                "get_system_volume"         => SystemSettingsBridge.GetSystemVolume(),
+                "set_system_volume"         => SystemSettingsBridge.SetSystemVolume(args),
+                "get_display_brightness"    => SystemSettingsBridge.GetDisplayBrightness(),
+                "set_display_brightness"    => SystemSettingsBridge.SetDisplayBrightness(args),
+
                 // Internal (emit from React) — no-op on C# side; browser handles it
                 "__emit"                    => null,
 

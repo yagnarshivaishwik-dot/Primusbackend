@@ -160,7 +160,15 @@ Then audit every reference to `WalletTransaction.cafe_id`, `Offer.cafe_id`, `Use
 **Effort:** ~10 min to reorder candidates in `App.xaml.cs:105-140`.
 **Risk:** Low. Could mildly affect the installed-layout case if anyone relies on the `.\web\` precedence — but that case is covered by candidate #3 (Program Files) anyway.
 
-### 25. Kiosk has no native bridge for system audio / display brightness
+### 25. [Resolved 2026-05-20] Kiosk native bridge for system audio / display brightness
+
+**Status:** Implemented. `NAudio.Wasapi` + WMI wiring shipped in `SystemSettingsBridge.cs`; four handlers (`get_system_volume`, `set_system_volume`, `get_display_brightness`, `set_display_brightness`) registered in `JsBridge.DispatchAsync`. React `SettingsPanel` already speaks to these handlers, so the dropdown's sliders/toggles now drive the kiosk PC's actual master volume + mute + monitor brightness.
+
+Known follow-up (smaller): DDC-CI for desktop monitors that don't expose WMI brightness. Today on those rigs the brightness slider falls back to localStorage (silent no-op at the OS layer). Adding DDC-CI would be a separate PR — touches a different Win32 API surface (`HighLevelMonitorConfigurationAPI` or a third-party lib).
+
+---
+
+### 25-old. Kiosk has no native bridge for system audio / display brightness
 **Symptom:** The Sound and Display settings pages (`SoundSettingsPage.jsx`, `DisplaySettingsPage.jsx`) render volume sliders and a brightness slider that look functional, but moving them only writes to `localStorage` — the kiosk PC's actual Windows volume mixer and monitor brightness never change. Both pages already TRY to call `invoke('set_system_volume', …)` / `invoke('set_display_brightness', …)` / `invoke('get_system_volume')` / `invoke('get_display_brightness')` via `@/app/bridge/invoke`, but the C# host hasn't registered those handlers, so every call silently no-ops. The customer sees the slider move and assumes it took effect.
 **Current workaround:** Status note on each page explains that values save locally when the bridge isn't available. No real OS effect today.
 **Proper fix (C# side):**
