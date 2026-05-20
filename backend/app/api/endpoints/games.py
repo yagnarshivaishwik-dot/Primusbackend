@@ -21,7 +21,7 @@ from app.db.models_cafe import Game as GameModel
 from app.models import License, User, UserCafeMap
 from app.schemas import Game as GameSchema
 from app.schemas import GameCreate, GameUpdate
-from app.utils.cache import get_or_set, publish_invalidation
+from app.utils.cache import get_or_set, invalidate_keys, publish_invalidation
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -471,6 +471,19 @@ async def admin_create_detected(
 
     created, skipped = await run_in_threadpool(_insert_all)
 
+    # Synchronously delete the cached catalog so the kiosk's immediate
+    # refetch (in GamesPage.handleAddSubmit) returns the just-added rows
+    # instead of the stale empty list. publish_invalidation alone isn't
+    # enough — it relies on the Redis pub/sub subscriber loop, which
+    # tends to drop on long-running deployments ("Redis invalidation
+    # subscriber stopped: Timeout reading from redis"). Calling
+    # invalidate_keys directly removes the keys regardless of subscriber
+    # health, and the publish stays for any other instances listening.
+    await invalidate_keys([
+        ("game_catalog", "*"),
+        ("game_count", "*"),
+        ("game_popular", "*"),
+    ], version="v1")
     await publish_invalidation(
         {
             "scope": "games",
