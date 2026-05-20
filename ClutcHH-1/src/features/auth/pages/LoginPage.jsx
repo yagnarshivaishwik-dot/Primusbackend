@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/app/routes/paths';
 import useSessionStore from '@/app/store/useSessionStore';
+import { invoke, hasBridge } from '@/app/bridge/invoke';
 import '../../../styles/LoginPage.css';
 
 function LoginPage() {
@@ -11,11 +12,40 @@ function LoginPage() {
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  // True after a cafe-less rejection — surfaces the "Switch to admin
+  // setup" affordance inline next to the error message so the customer
+  // (or an admin assisting them) has a one-click way back to SetupPage.
+  const [needsAdminSetup, setNeedsAdminSetup] = useState(false);
+
+  /**
+   * Reset device credentials and reload. App.jsx's boot effect will
+   * then find no device.bin and show SetupPage (which gates the
+   * handshake to admin / superadmin accounts after the recent fix).
+   * Confirmation prompt because this WIPES the current cafe binding.
+   */
+  const handleAdminSetup = async () => {
+    if (!hasBridge()) {
+      setError('Admin setup is only available on the kiosk host.');
+      return;
+    }
+    // eslint-disable-next-line no-alert
+    const ok = window.confirm(
+      'This will unbind the kiosk from its cafe and require admin credentials to re-bind. Continue?',
+    );
+    if (!ok) return;
+    try {
+      await invoke('reset_device_credentials');
+    } catch {
+      /* even if the bridge call fails, reload — App.jsx will re-evaluate */
+    }
+    window.location.reload();
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (submitting) return;
     setError(null);
+    setNeedsAdminSetup(false);
     const trimmedEmail = email.trim();
     if (!trimmedEmail || !password) {
       setError('Please enter your email and password.');
@@ -26,7 +56,16 @@ function LoginPage() {
       await signIn({ email: trimmedEmail, password });
       navigate(ROUTES.home, { replace: true });
     } catch (err) {
-      setError(err?.message || 'Sign in failed. Check credentials and try again.');
+      const message = err?.message || 'Sign in failed. Check credentials and try again.';
+      setError(message);
+      // Detect the cafe-less rejection from useSessionStore.signIn and
+      // auto-redirect to admin login. handleAdminSetup() shows a
+      // confirm() before actually resetting the binding — that's the
+      // safety prompt so a customer typo can't silently wipe device.bin.
+      if (/registered with this cafe|admin account/i.test(message)) {
+        setNeedsAdminSetup(true);
+        handleAdminSetup();
+      }
     } finally {
       setSubmitting(false);
     }
@@ -129,7 +168,26 @@ function LoginPage() {
                 fontSize: 13,
                 marginBottom: 12,
               }}>
-                {error}
+                <div>{error}</div>
+                {needsAdminSetup && (
+                  <button
+                    type="button"
+                    onClick={handleAdminSetup}
+                    style={{
+                      marginTop: 10,
+                      padding: '8px 14px',
+                      borderRadius: 8,
+                      background: 'linear-gradient(135deg, #ff9a4a, #ff5b1f)',
+                      color: '#fff',
+                      border: 'none',
+                      fontWeight: 700,
+                      fontSize: 13,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Switch to admin login
+                  </button>
+                )}
               </div>
             )}
             <button type="submit" className="btn-primary" disabled={submitting}>
