@@ -33,6 +33,11 @@ function normalizeUser(u) {
     name,
     email: u.email || '',
     role: u.role || 'user',
+    // Surface cafe_id so the kiosk can reject sign-ins from accounts
+    // that aren't bound to any cafe. Backend includes it on /auth/me
+    // and on the /auth/login response itself; we prefer the former
+    // because it's the canonical source after a token refresh.
+    cafe_id: u.cafe_id ?? null,
     avatar,
     fullName: u.full_name || null,
     raw: u,
@@ -58,7 +63,11 @@ export const authService = {
     setJwt(token);
 
     const me = await apiGet('/api/v1/auth/me').catch(() => null);
-    return normalizeUser(me) || normalizeUser({ email, role: res?.role });
+    // Fall back to the login response itself if /me failed — make sure
+    // cafe_id/role still come through so the kiosk's binding check
+    // doesn't false-positive a no-cafe rejection just because /me 500'd.
+    const fallback = { email, role: res?.role, cafe_id: res?.cafe_id };
+    return normalizeUser(me) || normalizeUser(fallback);
   },
 
   async signOut() {

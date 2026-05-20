@@ -42,6 +42,23 @@ const useSessionStore = create(
         set({ user: null, isAuthenticated: false, sessionStartedAt: null, loading: true, error: null });
         try {
           const user = await authService.signIn({ email, password });
+
+          // Reject sign-ins from accounts that aren't bound to a cafe.
+          // The kiosk is itself tied to a specific cafe via the device
+          // handshake, so a JWT without a cafe_id can't transact against
+          // any cafe-scoped endpoint (shop, claims, prizes…). Better to
+          // kick the user back to the login screen with a clear error
+          // than to let them in and have every subsequent call 4xx.
+          // Per the product requirement: anyone signing in without an
+          // admin binding is redirected to admin login.
+          if (!user || user.cafe_id == null) {
+            try { await authService.signOut(); } catch { /* ignore */ }
+            set({ user: null, isAuthenticated: false, sessionStartedAt: null, loading: false });
+            throw new Error(
+              "Your account isn't registered with this cafe. Please ask the cafe admin to add you, or sign in with an admin account."
+            );
+          }
+
           set({ user, isAuthenticated: true, sessionStartedAt: Date.now(), loading: false, error: null });
           return user;
         } catch (err) {

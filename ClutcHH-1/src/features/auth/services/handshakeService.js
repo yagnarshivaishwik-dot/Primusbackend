@@ -52,6 +52,27 @@ async function adminLogin(baseUrl, email, password) {
   if (!res.ok) throw await parseErr(res, 'Admin login failed');
   const json = await res.json();
   if (!json.access_token) throw new Error('Admin login returned no access_token');
+
+  // Hard-gate the handshake to admin / superadmin accounts. Without this,
+  // a customer who knows the kiosk's setup screen could type their own
+  // credentials and bind the device to whatever cafe the backend
+  // resolves for them — wrong cafe in the best case, no cafe binding in
+  // the worst. The backend login response includes the resolved role
+  // and cafe_id; reject anything that isn't an admin role with a clear
+  // error before we touch any license / device-register endpoints.
+  const role = String(json.role || '').toLowerCase();
+  if (role !== 'admin' && role !== 'superadmin') {
+    throw new Error(
+      role
+        ? `These credentials are for a "${role}" account. Device setup requires an admin login.`
+        : 'Device setup requires an admin login. The credentials you entered are not an admin account.'
+    );
+  }
+  if (!json.cafe_id) {
+    throw new Error(
+      'This admin account isn\'t bound to a cafe yet. Open the admin portal and assign a cafe before registering kiosks.'
+    );
+  }
   return json.access_token;
 }
 
