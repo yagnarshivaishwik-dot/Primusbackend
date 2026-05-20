@@ -152,24 +152,27 @@
     height: 18px;
 }
 
+/* Pavan's exact dropdown values — only the trigger swapped from
+   :hover to React-state `.is-open` (so it works on touch). Item
+   visual mirrors his minimal `<p>Settings</p>` rows — plain text
+   inheriting the menu's typography, no per-item background or border
+   radius. Hover gives subtle opacity feedback, matching his style. */
 .dropdownmenu {
+    cursor: pointer;
     position: absolute;
-    top: calc(100% + 12px);
+    top: 58px;
     right: 0;
     min-width: 190px;
-    padding: 8px;
+    padding: 10px;
     border-radius: 18px;
-    background: rgba(15, 23, 42, 0.85);
+    background: rgba(15, 23, 42, 0.7);
     backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
     opacity: 0;
     visibility: hidden;
     transform: translateY(10px);
-    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+    transition: 0.3s ease;
     z-index: 50;
 }
 
@@ -179,29 +182,29 @@
     transform: translateY(0);
 }
 
+/* Items rendered as transparent buttons (for keyboard nav) but styled
+   to look like Pavan's <p> rows: no per-item bg, no rounded corners,
+   subtle opacity hover. */
 .dropdownmenu > button {
+    display: block;
     text-align: left;
     width: 100%;
-    padding: 10px 14px;
-    border-radius: 12px;
+    padding: 8px 6px;
     background: transparent;
     border: 0;
     color: #fff;
     font-size: 14px;
     font-weight: 500;
-    cursor: pointer;
-    transition: background 0.15s ease;
     font-family: inherit;
+    cursor: pointer;
+    opacity: 0.85;
+    transition: opacity 0.15s ease;
 }
 
 .dropdownmenu > button:hover {
-    background: rgba(255, 255, 255, 0.08);
+    opacity: 1;
 }
 
 .dropdownmenu > button.dropdownmenu__danger {
     color: #fca5a5;
-}
-
-.dropdownmenu > button.dropdownmenu__danger:hover {
-    background: rgba(239, 68, 68, 0.12);
 }
