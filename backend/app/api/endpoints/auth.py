@@ -808,6 +808,51 @@ def register_user(
     db.commit()
     db.refresh(user)
 
+    # Auto-bind new customer to the kiosk's cafe.
+    #
+    # Kiosks attach an `X-License-Key` header on every request after the
+    # admin handshake. Each License row maps to exactly one cafe — that's
+    # the cafe a customer signing up on this kiosk should belong to.
+    #
+    # Without this block, customers who self-register at the kiosk land
+    # in the database with NO cafe binding (no `user.cafe_id`, no
+    # `UserCafeMap`). They can then never log in past the kiosk's
+    # cafe-binding check — every login returns "User does not have
+    # access to this cafe". Production-affecting: any cafe customer who
+    # signed up directly on a kiosk was effectively locked out until an
+    # admin ran a manual SQL INSERT.
+    try:
+        license_key_header = request.headers.get("X-License-Key")
+        if license_key_header:
+            from app.models import License, UserCafeMap
+            lic = (
+                db.query(License)
+                .filter_by(key=license_key_header, is_active=True)
+                .first()
+            )
+            if lic and lic.cafe_id:
+                already = (
+                    db.query(UserCafeMap)
+                    .filter_by(user_id=user.id, cafe_id=lic.cafe_id)
+                    .first()
+                )
+                if not already:
+                    db.add(UserCafeMap(
+                        user_id=user.id,
+                        cafe_id=lic.cafe_id,
+                        role="client",
+                    ))
+                    db.commit()
+                    logger.info(
+                        "[REGISTER] auto-bound user_id=%s to cafe_id=%s via license %s",
+                        user.id, lic.cafe_id, license_key_header[:8],
+                    )
+    except Exception as exc:
+        # Don't fail registration if auto-bind fails — an admin can still
+        # manually link via the admin portal afterward.
+        db.rollback()
+        logger.warning("register: auto-bind to cafe via X-License-Key failed: %s", exc)
+
     # Grant 5-minute starter credit as a UserOffer so the user can reach the
     # shop and buy a pack. Column is `minutes_remaining` (integer minutes) —
     # previously this was written as `hours_remaining=1.0`, which silently
