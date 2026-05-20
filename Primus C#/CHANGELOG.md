@@ -1,3 +1,7 @@
+## v1.4.1 — 2026-05-20
+
+- Icon extraction, WorkingDirectory for OBS, smarter installer detection
+
 ## v1.4.0 — 2026-05-20
 
 - Add real Windows app scanner for the Apps tab
