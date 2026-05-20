@@ -1,21 +1,24 @@
+import logging
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from app.api.endpoints.audit import log_action
-from app.api.endpoints.auth import get_current_user
+from app.api.endpoints.auth import authenticate_user, get_current_user
 from app.auth.context import AuthContext, get_auth_context
 from app.auth.tenant import scoped_query, enforce_cafe_ownership
 from app.db.dependencies import get_cafe_db as get_db
 from app.models import Game as GameModel
-from app.models import User
+from app.models import License, User, UserCafeMap
 from app.schemas import Game as GameSchema
 from app.schemas import GameCreate, GameUpdate
 from app.utils.cache import get_or_set, publish_invalidation
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("", response_model=list[GameSchema])
@@ -292,3 +295,162 @@ async def bulk_toggle_games(
     )
 
     return {"message": f"{affected} games {'enabled' if enabled else 'disabled'} successfully"}
+
+
+# ---------- Admin-supervised bulk add of locally-detected games ----------
+
+class DetectedGameIn(BaseModel):
+    """Minimal shape the kiosk's `detect_installed_games` bridge emits."""
+    name: str
+    exe_path: str | None = None
+    category: str = "game"
+    launcher: str | None = None
+
+
+class AdminCreateDetectedIn(BaseModel):
+    admin_email: str
+    admin_password: str
+    games: list[DetectedGameIn]
+
+
+@router.post("/admin-create-detected")
+async def admin_create_detected(
+    body: AdminCreateDetectedIn,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Bulk-create catalog entries for games the kiosk just scanned off the PC.
+
+    Designed for the kiosk's "Add games from this PC" flow:
+      1. React calls the C# bridge `detect_installed_games`, which scans
+         Steam/Epic/etc on the local machine and returns name + exe_path
+         + category per detected entry.
+      2. The customer can't add these alone — the kiosk pops a modal
+         asking the cafe admin to enter their credentials.
+      3. This endpoint validates the admin (role + cafe ownership) and
+         inserts a Game row per detected entry, skipping duplicates by
+         name. Games are created as `enabled=True` because the admin's
+         credentials are the approval.
+
+    The admin's session is NOT switched — this is a one-shot
+    authorisation tied to the form submission, the customer's JWT keeps
+    driving everything else on the kiosk. Same pattern as
+    `/auth/admin-bind-and-login`.
+    """
+    admin_email = (body.admin_email or "").strip()
+    admin_password = body.admin_password or ""
+
+    if not admin_email or not admin_password:
+        raise HTTPException(400, "Admin email and password are required")
+    if not body.games:
+        raise HTTPException(400, "No games provided to add")
+
+    # Step 1: validate admin (same logic as /auth/login + the admin-bind
+    # endpoint — exact-case email match, then role check).
+    admin = authenticate_user(db, admin_email, admin_password)
+    if not admin:
+        raise HTTPException(401, "Invalid admin credentials")
+    if admin.role not in ("admin", "superadmin"):
+        raise HTTPException(403, f"'{admin.role}' is not an admin role")
+
+    # Step 2: resolve kiosk's cafe from X-License-Key + verify admin
+    # owns it. The kiosk attaches X-License-Key on every request.
+    license_key_header = request.headers.get("X-License-Key")
+    if not license_key_header:
+        raise HTTPException(400, "Missing X-License-Key header — kiosk context required")
+    lic = db.query(License).filter_by(key=license_key_header, is_active=True).first()
+    if not lic or not lic.cafe_id:
+        raise HTTPException(400, "Invalid or unknown kiosk license")
+    kiosk_cafe_id = lic.cafe_id
+
+    if admin.role != "superadmin":
+        admin_mapping = (
+            db.query(UserCafeMap)
+            .filter_by(user_id=admin.id, cafe_id=kiosk_cafe_id)
+            .first()
+        )
+        if not admin_mapping and admin.cafe_id != kiosk_cafe_id:
+            raise HTTPException(
+                403,
+                "This admin doesn't own the cafe this kiosk is bound to",
+            )
+
+    # Step 3: bulk-insert games, skipping duplicates by name within the cafe.
+    def _insert_all():
+        # Build a set of existing names to dedupe in-process; cheaper
+        # than per-row IN-clause for typical scan sizes (10-30 games).
+        existing_names = {
+            n for (n,) in (
+                scoped_query(db, GameModel, ctx_fake_from_cafe(kiosk_cafe_id))
+                .with_entities(GameModel.name)
+                .all()
+            )
+        }
+        created, skipped = [], []
+        for g in body.games:
+            if g.name in existing_names:
+                skipped.append(g.name)
+                continue
+            kwargs = dict(
+                name=g.name,
+                exe_path=g.exe_path,
+                category=g.category or "game",
+                enabled=True,           # admin authorised → live immediately
+                last_updated=datetime.now(UTC),
+            )
+            if g.launcher:
+                kwargs["launchers"] = g.launcher
+            # Multi-DB: cafe_id is implicit via the DB router; legacy
+            # single-DB: scoped_query/enforce_cafe_ownership rely on a
+            # cafe_id column on Game so set it explicitly.
+            try:
+                from app.db.dependencies import MULTI_DB_ENABLED
+                if not MULTI_DB_ENABLED:
+                    kwargs["cafe_id"] = kiosk_cafe_id
+            except Exception:
+                pass
+            db.add(GameModel(**kwargs))
+            created.append(g.name)
+            existing_names.add(g.name)
+        db.commit()
+        log_action(
+            db,
+            admin.id,
+            "games_admin_bulk_added",
+            f"Admin {admin_email} added {len(created)} detected games, "
+            f"skipped {len(skipped)} (already in catalog).",
+        )
+        return created, skipped
+
+    created, skipped = await run_in_threadpool(_insert_all)
+
+    await publish_invalidation(
+        {
+            "scope": "games",
+            "items": [
+                {"type": "game_catalog", "id": "*"},
+                {"type": "game_count", "id": "*"},
+            ],
+        }
+    )
+
+    logger.info(
+        "[GAMES ADMIN-CREATE] admin=%s cafe=%s created=%d skipped=%d",
+        admin.id, kiosk_cafe_id, len(created), len(skipped),
+    )
+
+    return {
+        "created": created,
+        "skipped": skipped,
+        "cafe_id": kiosk_cafe_id,
+    }
+
+
+def ctx_fake_from_cafe(cafe_id: int):
+    """Lightweight AuthContext stand-in for `scoped_query` — only the
+    `.cafe_id` attribute is accessed."""
+    class _Ctx:
+        pass
+    c = _Ctx()
+    c.cafe_id = cafe_id
+    return c
