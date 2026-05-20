@@ -132,10 +132,6 @@ export default function ShopPage() {
     [cartTotal, happyHourDiscount],
   );
 
-  const balanceAfter = useMemo(
-    () => Math.max(0, Number(balance || 0) - payableTotal),
-    [balance, payableTotal],
-  );
 
   const addToCart = (pack) => {
     setCart((prev) => {
@@ -313,7 +309,6 @@ export default function ShopPage() {
                   {happyHourActive && happyHourDiscount > 0 && (
                     <p style={{ color: '#ff9a4a', fontWeight: 600 }}>Happy Hour -30%</p>
                   )}
-                  <p>Balance after </p>
                 </div>
                 <div className='costright'>
                   <h5>{cartTotal.toLocaleString()}</h5>
@@ -322,7 +317,6 @@ export default function ShopPage() {
                       -{happyHourDiscount.toLocaleString()}
                     </p>
                   )}
-                  <p>{balanceAfter.toLocaleString()}</p>
                 </div>
               </div>
               {happyHourActive && happyHourDiscount > 0 && (

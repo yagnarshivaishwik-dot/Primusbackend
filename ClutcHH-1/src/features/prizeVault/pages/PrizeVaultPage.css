@@ -274,16 +274,27 @@
     transition: width 0.4s ease;
 }
 
+/* Bottom row of the daily-card / challenge cards.
+   Originally a horizontal `space-between` row, but the coinsbtn's
+   orange glow (15px box-shadow) overlapped the wrapped reward text on
+   narrow cards — "Claimed" looked like it was eating the "Coins-25"
+   label. Stack vertically with the button as a full-width row so
+   neither element has to fight for horizontal space. */
 .bottom-section {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+}
+
+.bottom-section .coinsbtn {
+    width: 100%;
 }
 
 .reward {
     display: flex;
-    gap: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
     font-size: 14px;
     font-weight: 600;
     color: #ffb300;
