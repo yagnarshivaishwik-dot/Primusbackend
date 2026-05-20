@@ -53,6 +53,7 @@ export const ROUTES = {
   // Settings
   settingsHelp: '/settings/help',
   settingsSound: '/settings/sound',
+  settingsDisplay: '/settings/display',
   settingsInstalled: '/settings/installed',
 };
 

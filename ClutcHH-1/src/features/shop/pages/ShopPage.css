@@ -254,11 +254,28 @@
     border-radius: 4px;
 }
 
+.cartright .cartcard .cartlistitem .cartlistname {
+    /* Cap the name column so long pack titles don't push the +/-
+       qty controls off the right edge of the card. */
+    min-width: 0;
+    flex: 1;
+}
+
+.cartright .cartcard .cartlistitem .cartlistname h5 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
+    line-height: 1.25;
+}
+
 .cartright .cartcard .cartlistitem .cartlistname p {
     display: flex;
     align-items: center;
     color: rgba(245, 185, 66, 1);
-
 }
 
 .cartright .cartcard .cartlistitem .listquantity {

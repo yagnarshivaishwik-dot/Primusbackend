@@ -109,9 +109,33 @@ export default function ShopPage() {
     () => cart.reduce((sum, it) => sum + (it.priceRupees || it.price || 0) * it.quantity, 0),
     [cart],
   );
+
+  // Happy Hour: 30% off if the kiosk's local clock is in the 2-5 PM window.
+  // Re-evaluated every minute so a customer who checks out at 14:59:30 still
+  // gets the discount but a checkout at 17:00:01 doesn't. TECH_DEBT: backend
+  // should also enforce the window so a malicious client can't claim 30%
+  // off outside hours by sending a doctored amount.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  const happyHourActive = useMemo(() => {
+    const h = now.getHours();
+    return h >= 14 && h < 17;
+  }, [now]);
+  const happyHourDiscount = useMemo(
+    () => (happyHourActive ? Math.round(cartTotal * 0.30) : 0),
+    [happyHourActive, cartTotal],
+  );
+  const payableTotal = useMemo(
+    () => Math.max(0, cartTotal - happyHourDiscount),
+    [cartTotal, happyHourDiscount],
+  );
+
   const balanceAfter = useMemo(
-    () => Math.max(0, Number(balance || 0) - cartTotal),
-    [balance, cartTotal],
+    () => Math.max(0, Number(balance || 0) - payableTotal),
+    [balance, payableTotal],
   );
 
   const addToCart = (pack) => {
@@ -148,10 +172,12 @@ export default function ShopPage() {
     if (!user?.id) return;
     const pcId = await resolvePcId();
     setPayment({
-      amount: cartTotal,
+      amount: payableTotal, // discount already applied if Happy Hour is live
       pcId,
       packIds: cart.map((i) => ({ id: i.id, qty: i.quantity })),
-      note: `${cart.length} item${cart.length === 1 ? "" : "s"}`,
+      note: happyHourActive
+        ? `${cart.length} item${cart.length === 1 ? "" : "s"} (Happy Hour -30%)`
+        : `${cart.length} item${cart.length === 1 ? "" : "s"}`,
     });
   };
 
@@ -284,15 +310,40 @@ export default function ShopPage() {
               <div className='totalcost'>
                 <div className='costleft'>
                   <h5>Subtotal </h5>
+                  {happyHourActive && happyHourDiscount > 0 && (
+                    <p style={{ color: '#ff9a4a', fontWeight: 600 }}>Happy Hour -30%</p>
+                  )}
                   <p>Balance after </p>
                 </div>
                 <div className='costright'>
                   <h5>{cartTotal.toLocaleString()}</h5>
+                  {happyHourActive && happyHourDiscount > 0 && (
+                    <p style={{ color: '#ff9a4a', fontWeight: 600 }}>
+                      -{happyHourDiscount.toLocaleString()}
+                    </p>
+                  )}
                   <p>{balanceAfter.toLocaleString()}</p>
                 </div>
               </div>
+              {happyHourActive && happyHourDiscount > 0 && (
+                <div
+                  style={{
+                    margin: '4px 0 8px',
+                    padding: '6px 10px',
+                    borderRadius: 8,
+                    background: 'rgba(255, 154, 74, 0.12)',
+                    border: '1px solid rgba(255, 154, 74, 0.35)',
+                    color: '#ffb380',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    textAlign: 'center',
+                  }}
+                >
+                  Happy Hour active · save ₹{happyHourDiscount.toLocaleString()}
+                </div>
+              )}
               <button disabled={cart.length === 0 || !!payment} onClick={handleCheckout}>
-                {payment ? 'Awaiting payment…' : 'Checkout'}
+                {payment ? 'Awaiting payment…' : `Checkout · ₹${payableTotal.toLocaleString()}`}
               </button>
             </div>
           </div>

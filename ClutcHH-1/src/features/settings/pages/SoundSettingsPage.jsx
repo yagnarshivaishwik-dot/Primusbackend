@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import PlaceholderPage from '@/components/common/PlaceholderPage';
 import { Card } from '@/components/common';
 import { ROUTES } from '@/app/routes/paths';
+import { invoke, hasBridge } from '@/app/bridge/invoke';
 
 const STORAGE_KEY = 'clutchh.sound.settings';
 
@@ -29,8 +30,36 @@ export default function SoundSettingsPage() {
     ...load(),
   }));
 
+  // On mount, ask the C# host for the actual system volume so the
+  // slider starts where the OS already is. If the bridge isn't
+  // available (e.g. running in vite dev outside the kiosk), the local
+  // default + localStorage fall-through still works.
+  useEffect(() => {
+    if (!hasBridge()) return;
+    invoke('get_system_volume')
+      .then((res) => {
+        if (res && typeof res.percent === 'number') {
+          setSettings((prev) => ({
+            ...prev,
+            master: res.percent,
+            muted: !!res.muted,
+          }));
+        }
+      })
+      .catch(() => { /* bridge method not registered — fall back */ });
+  }, []);
+
   useEffect(() => {
     save(settings);
+    if (hasBridge()) {
+      // Best-effort push to OS volume. Silent no-op if the C# host
+      // hasn't registered the method yet (current state — see
+      // TECH_DEBT #25).
+      invoke('set_system_volume', {
+        percent: settings.master,
+        muted: settings.muted,
+      }).catch(() => {});
+    }
   }, [settings]);
 
   const Row = ({ label, keyName }) => (
@@ -67,7 +96,8 @@ export default function SoundSettingsPage() {
           Mute everything
         </label>
         <div style={{ color: '#6B7280', fontSize: 12, marginTop: 14 }}>
-          Saved locally in browser storage. Per-user server-side audio preferences aren't exposed by the backend yet.
+          Master volume + mute are pushed to the kiosk's system audio when the host
+          bridge is available. Music / effects sliders are local-only for now.
         </div>
       </Card>
     </PlaceholderPage>

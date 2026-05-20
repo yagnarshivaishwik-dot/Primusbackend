@@ -1,78 +1,276 @@
-/* Rewards page (PrizeVault route). Pavan's design for the daily/prize
-   card visuals, reused across both the Challenge carousel (kiosk-side
-   placeholder quests) and the Prize carousel (real prizesService data). */
+/* Rewards / Awards page (PrizeVault route).
+   Ports Pavan's full design: profile card, tab row, badges grid,
+   leaderboard, prize carousel. Colour values match Pavan's
+   pavansai_ui repo verbatim where the visual is intended to be his. */
 
-.prizeVaultContainer {
-    min-height: 100vh;
-    color: #fff;
-    padding-bottom: 160px;
+.AwardsContainer {
+    width: 75%;
+    margin: 0rem auto;
+    padding: 1rem 0;
+    padding-bottom: 160px; /* leave room for the floating BottomNav */
 }
 
-.prizeVaultBody {
-    width: 90%;
-    max-width: 1400px;
-    margin: 0 auto;
+/* ---- Profile card ---------------------------------------------- */
+.profile-card {
+    width: 100%;
+    border-radius: 22px;
+    padding: 18px 20px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.15),
+        0 20px 40px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(12px);
+    margin-bottom: 1rem;
+}
+
+.top-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+.profile-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.profile-img {
+    width: 62px;
+    height: 62px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+/* When no photo is set, render the user's initials in a circle so
+   the kiosk doesn't show a broken-image icon. */
+.profile-img--initials {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #ff3c3c, #ff8c00);
+    color: #fff;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.user-info h2 {
+    color: #fff;
+    font-size: 20px;
+    margin-bottom: 4px;
+}
+
+.user-info p {
+    color: #ff7a00;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.profile-tags {
     display: flex;
     flex-direction: column;
-    gap: 32px;
+    gap: 6px;
+    margin-top: 4px;
 }
 
-.prizeVaultIntro {
-    text-align: left;
-    margin: 8px 0 4px;
+.tag {
+    padding: 3px 14px;
+    border-radius: 5px;
+    border: 1px solid #ff5b00;
+    color: #fff;
+    font-size: 13px;
+    text-align: center;
+    background: #000;
+    width: fit-content;
 }
 
-.prizeVaultTitle {
-    font-size: 32px;
-    font-weight: 800;
-    margin: 0 0 4px;
-    letter-spacing: -0.01em;
+.experience {
+    flex: 1;
+    max-width: 340px;
+    margin-left: auto;
 }
 
-.prizeVaultSubtitle {
-    margin: 0;
-    color: #9CA3AF;
+.exp-top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    color: #ddd;
     font-size: 14px;
 }
 
-/* ---- Daily / challenge / prize card inner content ---- */
+.exp-top span {
+    color: #a7a7a7;
+}
 
+.statsbar {
+    width: 100%;
+    height: 6px;
+    background: #000;
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.statsprogress {
+    height: 100%;
+    border-radius: 20px;
+    background: linear-gradient(90deg, #ff6b00, #ff47a7);
+}
+
+.exp-text {
+    text-align: center;
+    color: #c8b6ff;
+    font-size: 14px;
+}
+
+/* ---- Stat boxes ------------------------------------------------ */
+.stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+}
+
+.stat-box {
+    padding: 16px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(10px);
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.12),
+        0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.stat-box p {
+    color: #d2d2d2;
+    font-size: 14px;
+    margin-bottom: 6px;
+}
+
+.stat-box h3 {
+    color: #fff;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+/* ---- Tab row + coins pill ------------------------------------- */
+.filtercoins {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.Awardstabs {
+    margin: 0;
+    align-items: center;
+}
+
+/* Tab buttons reuse `.tabs` / `.tab-btn` / `.tab-btn.active` already
+   defined in GamesPage.css (same dark-navy pill, same active outline). */
+
+/* Filters reuse `.filters` / `.filter-btn` / `.filter-btn.active`
+   from GamesPage.css. .challengefilters left-aligns the row. */
+.challengefilters {
+    justify-content: flex-start;
+}
+
+/* ---- Coins pill button --------------------------------------- */
+.coinsbtn {
+    border: none;
+    padding: 10px 28px;
+    border-radius: 25px;
+    font-size: 14px;
+    font-weight: 700;
+    color: white;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(22.93deg, #FE7B00 27.28%, #F7302F 66.92%);
+    box-shadow: 0 0 15px rgba(255, 94, 0, 0.7);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.coinsbtn span {
+    font-size: 12px;
+    padding-left: 5px;
+    font-weight: 600;
+    opacity: 0.85;
+}
+
+.coinsbtn:hover {
+    transform: scale(1.05);
+}
+
+.coinsbtn:disabled {
+    opacity: 0.5;
+    cursor: default;
+    transform: none;
+}
+
+.Prizesbtn {
+    width: 100%;
+    margin-top: 10px;
+}
+
+/* ---- Daily / challenge cards (Pavan's deeper orange→red palette) */
 .daily-card {
-    padding: 14px 16px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+    font-family: sans-serif;
+}
+
+.daily-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at bottom right,
+            rgba(255, 102, 0, 0.35),
+            transparent 40%);
+    pointer-events: none;
 }
 
 .daily-content {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    position: relative; /* sit on top of the ::before glow */
+    z-index: 1;
 }
 
 .daily-content h2 {
+    color: white;
     font-size: 16px;
     font-weight: 700;
     margin: 0;
-    color: #fff;
 }
 
 .daily-content p {
-    font-size: 13px;
-    color: #9CA3AF;
+    color: #bfc3dc;
+    font-size: 14px;
     margin: 0;
 }
 
-/* Progress bar for challenges (Pavan's class names). */
 .progress-bar {
     width: 100%;
-    height: 6px;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 999px;
+    height: 10px;
+    background: black;
+    border-radius: 20px;
     overflow: hidden;
 }
 
 .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #ff9a4a, #ff5b1f);
-    border-radius: inherit;
+    border-radius: 20px;
+    background: linear-gradient(90deg, #ff7a00, #ff2d2d);
     transition: width 0.4s ease;
 }
 
@@ -81,58 +279,218 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    flex-wrap: wrap;
 }
 
 .reward {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    color: #fff;
+    display: flex;
+    gap: 16px;
+    font-size: 14px;
     font-weight: 600;
-}
-
-.reward .coins {
-    color: var(--PrimaryOrange, #ff5b1f);
-    font-weight: 700;
+    color: #ffb300;
+    align-items: center;
 }
 
 .reward svg {
-    width: 18px;
-    height: 18px;
-    color: var(--PrimaryOrange, #ff5b1f);
-}
-
-.coinsbtn {
-    padding: 8px 16px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #ff9a4a, #ff5b1f);
+    font-size: 16px;
     color: #fff;
-    border: none;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: transform 0.1s ease, opacity 0.15s ease;
 }
 
-.coinsbtn:hover:not(:disabled) {
-    transform: translateY(-1px);
+.reward .coins {
+    font-size: 14px;
+    font-weight: 800;
+    background: linear-gradient(90deg, #ff7a00, #ff2d2d);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
 }
 
-.coinsbtn:disabled {
-    opacity: 0.5;
-    cursor: default;
-}
-
-.coinsbtn.Prizesbtn {
-    width: 100%;
-    padding: 10px 16px;
-}
-
-/* Filters row Pavan added on the prize carousel header — reuse the
-   existing .filter-btn styling from the games page. */
-.challengefilters {
+/* ---- Badge grid ------------------------------------------------ */
+.card-wrapper {
     display: flex;
-    gap: 8px;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+}
+
+.badge-card {
+    width: 175px;
+    padding: 20px;
+    border-radius: 22px;
+    text-align: center;
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.2),
+        0 10px 30px rgba(0, 0, 0, 0.25);
+    transition: 0.3s ease;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.badge-card:hover {
+    transform: translateY(-8px);
+}
+
+.badge-icon {
+    width: 100px;
+    height: 100px;
+    margin: auto;
+    border-radius: 50%;
+    background: #d9d9d9;
+    margin-bottom: 18px;
+}
+
+.badge-title {
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.stars {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    margin-bottom: 18px;
+}
+
+.stars svg {
+    color: #d9d9d9;
+    font-size: 18px;
+}
+
+.stars .active {
+    color: #f6c343;
+}
+
+.earned {
+    color: #c7c7c7;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* ---- Leaderboard --------------------------------------------- */
+.leaderboard {
+    width: 100%;
+    border-radius: 24px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.15),
+        0 20px 40px rgba(0, 0, 0, 0.35);
+    position: relative;
+    overflow: hidden;
+    padding-bottom: 0;
+}
+
+.leadertoptext {
+    text-align: center;
+    color: #d7d7d7;
+    font-size: 26px;
+    font-weight: 500;
+    margin-bottom: 10px;
+}
+
+.leadertoptext span {
+    font-weight: 700;
+    color: #fff;
+}
+
+.leaderbadge {
+    width: 150px;
+    margin: auto;
+    text-align: center;
+    padding: 5px 0;
+    border-radius: 30px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #15d866;
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    backdrop-filter: blur(10px);
+}
+
+.leaderplayers {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 32px;
+}
+
+.leaderplayer {
+    text-align: center;
+    color: #fff;
+    position: relative;
+}
+
+.leaderavatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    margin: auto;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 20px;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(8px);
+}
+
+.leadermedal {
+    font-size: 22px;
+    margin-bottom: 8px;
+}
+
+.leadername {
+    font-size: 18px;
+    margin-bottom: 6px;
+}
+
+.leadertime {
+    color: #cfcfcf;
+    font-size: 16px;
+    margin-bottom: 12px;
+}
+
+.leaderpodium {
+    width: 140px;
+    border-radius: 24px 24px 0 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 700;
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.2),
+        0 10px 20px rgba(0, 0, 0, 0.25);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+}
+
+.leaderfirst .leaderpodium {
+    height: 170px;
+    font-size: 30px;
+    background: linear-gradient(180deg, rgba(255, 215, 0, 0.25), rgba(255, 215, 0, 0.05));
+}
+
+.leadersecond .leaderpodium,
+.leaderthird .leaderpodium {
+    height: 120px;
+}
+
+/* ---- Responsive ---------------------------------------------- */
+@media (max-width: 900px) {
+    .stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .top-section {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .experience {
+        margin-left: 0;
+        max-width: none;
+    }
 }

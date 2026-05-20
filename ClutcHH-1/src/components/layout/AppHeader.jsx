@@ -127,6 +127,9 @@ export default function AppHeader() {
               <button type="button" role="menuitem" onClick={() => go(ROUTES.settingsSound)}>
                 Sound
               </button>
+              <button type="button" role="menuitem" onClick={() => go(ROUTES.settingsDisplay)}>
+                Display
+              </button>
             </div>
           </div>
 

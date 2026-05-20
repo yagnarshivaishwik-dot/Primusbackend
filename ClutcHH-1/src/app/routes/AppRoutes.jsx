@@ -47,6 +47,7 @@ import LeaderboardPage from '@/features/leaderboard/pages/LeaderboardPage';
 
 import HelpPage from '@/features/settings/pages/HelpPage';
 import SoundSettingsPage from '@/features/settings/pages/SoundSettingsPage';
+import DisplaySettingsPage from '@/features/settings/pages/DisplaySettingsPage';
 import InstalledPage from '@/features/settings/pages/InstalledPage';
 
 import NotFoundPage from '@/pages/NotFoundPage';
@@ -112,6 +113,7 @@ export default function AppRoutes() {
 
         <Route path={ROUTES.settingsHelp} element={<HelpPage />} />
         <Route path={ROUTES.settingsSound} element={<SoundSettingsPage />} />
+        <Route path={ROUTES.settingsDisplay} element={<DisplaySettingsPage />} />
         <Route path={ROUTES.settingsInstalled} element={<InstalledPage />} />
 
         <Route path="*" element={<NotFoundPage />} />

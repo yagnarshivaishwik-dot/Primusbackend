@@ -160,6 +160,34 @@ Then audit every reference to `WalletTransaction.cafe_id`, `Offer.cafe_id`, `Use
 **Effort:** ~10 min to reorder candidates in `App.xaml.cs:105-140`.
 **Risk:** Low. Could mildly affect the installed-layout case if anyone relies on the `.\web\` precedence — but that case is covered by candidate #3 (Program Files) anyway.
 
+### 25. Kiosk has no native bridge for system audio / display brightness
+**Symptom:** The Sound and Display settings pages (`SoundSettingsPage.jsx`, `DisplaySettingsPage.jsx`) render volume sliders and a brightness slider that look functional, but moving them only writes to `localStorage` — the kiosk PC's actual Windows volume mixer and monitor brightness never change. Both pages already TRY to call `invoke('set_system_volume', …)` / `invoke('set_display_brightness', …)` / `invoke('get_system_volume')` / `invoke('get_display_brightness')` via `@/app/bridge/invoke`, but the C# host hasn't registered those handlers, so every call silently no-ops. The customer sees the slider move and assumes it took effect.
+**Current workaround:** Status note on each page explains that values save locally when the bridge isn't available. No real OS effect today.
+**Proper fix (C# side):**
+  - **Volume**: hook the Windows Core Audio API. Cleanest path is the `NAudio` NuGet (`NAudio.CoreAudioApi.MMDeviceEnumerator` → default render device → `AudioEndpointVolume`). Two methods: `get_system_volume` returns `{percent, muted}` from `MasterVolumeLevelScalar` × 100 and `Mute`; `set_system_volume(percent, muted)` writes both. Register on the bridge alongside the existing kiosk lifecycle methods.
+  - **Brightness**: WMI's `WmiMonitorBrightness` class for laptops; `WmiMonitorBrightnessMethods.WmiSetBrightness(timeout, level)` to write. Desktops with external monitors need DDC-CI (libraries like `dccci-monitorapi` or P/Invoke into `HighLevelMonitorConfigurationAPI`). Start with WMI; add DDC-CI later if non-laptop deployments need it.
+  - **Wiring**: add the four invoke handlers in `JsBridge.cs` (or a new `SystemSettingsBridge.cs`), no React changes needed because both pages already speak to the same invoke names. Existing TODO comments in the pages point at this entry.
+**Effort:** ~2-3 hrs total (NuGet add, 4 methods, error handling for desktops without WMI brightness support, manual test on a laptop + desktop).
+**Risk:** Low. System audio is well-trodden ground via NAudio; brightness fails gracefully on desktops that don't expose WMI (the get* method returns null and the slider just reverts to localStorage). No backend/server impact.
+
+### 26. Rewards page is mostly hardcoded — XP/level, streak, badges, leaderboard, hours-played all missing from backend
+**Symptom:** [`PrizeVaultPage.jsx`](ClutcHH-1/src/features/prizeVault/pages/PrizeVaultPage.jsx) renders Pavan's full Awards design: profile card with LVL/XP/streak/hours-played and 4 stat tiles, plus Challenges / Badges / Leaderboard / Prize Vault tabs. Only **coins balance** and **user name/initials** are real today (sourced from `useWalletStore` and `useSessionStore`). The rest is hardcoded:
+  - **LVL 32 / 2,350 of 10,000 XP** — no `users.xp` column exists ([item #19](#19-quest-claim-credits-coins-but-xp-rewards-are-silently-dropped)).
+  - **7 days Streak** — no streak tracker; would need a daily-login progression check writing to a new column or table.
+  - **Hours Played: 156** — could be sourced from `sessions` table (sum of `end_time - start_time` for `user_id`) but no endpoint exists.
+  - **Badges 23/45 + the badge grid** — no badges domain model at all. Pavan's grid is 9 hardcoded `<div class="badge-card">`s.
+  - **Completed 12** — would be count of completed quests, but the quest progression engine doesn't exist ([item #21](#21-quest-system-has-no-operator-workflow--admin-crud--progression-engine-missing)).
+  - **Leaderboard top-3** — Pavan's mock data; we have a `LeaderboardService` and `LeaderboardPage` in the repo but they read totally different shapes than what this page expects.
+**Current workaround:** The visual is fully ported (so customers see something complete-looking), but every number except Coins Earned is a constant.
+**Proper fix (multiple sub-tasks):**
+  - (a) Add `users.xp` column + level computation (blocked on alembic_cafe chain repair — #13). Surface via `/api/v1/wallet/balance` next to coins.
+  - (b) Streak: add `users.login_streak_days` + `users.last_login_date` columns, update on `/auth/login` if the prior date was yesterday.
+  - (c) Hours played: `GET /api/v1/session/total-hours` summing the cafe-DB `sessions` table for `current_user`.
+  - (d) Badges: new `badges` table on the cafe schema + admin CRUD + an awarding rules engine. Bigger scope.
+  - (e) Leaderboard: thread the existing `leaderboard/router.py` into a "top-N by hours/score" call that the Rewards page can consume.
+**Effort:** (a) and (c) are each ~1 hr. (b) ~2 hrs. (d) is several days. (e) ~2-3 hrs.
+**Risk:** Mostly additive. Badges (d) is the biggest design lift; the others slot in cleanly.
+
 ### 24. Session timer is frontend-only, doesn't survive kiosk reload
 **Symptom:** The session pill in `AppHeader` (top-right of every full-screen page) shows time elapsed since login as `HH:MM:SS`. Today the clock starts from `sessionStartedAt = Date.now()` captured in `useSessionStore` at sign-in time and persisted to localStorage. That works for normal kiosk use but has two failure modes:
   1. **Kiosk relaunch mid-session**: the React `useSessionStore.persist` blob includes `sessionStartedAt`, so the clock survives a normal SPA reload. But if the C# host clears local app data (uninstall/reinstall, profile reset, recovery script) the customer's session timer resets to 0 even though their actual cafe session is mid-flight per the backend's `sessions` table.
