@@ -12,7 +12,12 @@ from app.api.endpoints.auth import authenticate_user, get_current_user
 from app.auth.context import AuthContext, get_auth_context
 from app.auth.tenant import scoped_query, enforce_cafe_ownership
 from app.db.dependencies import get_cafe_db as get_db, get_global_db
-from app.models import Game as GameModel
+# Multi-DB: the GameModel for `games.py` MUST be the cafe-DB one (no
+# cafe_id column) because every endpoint here runs against `cafe_db`.
+# The legacy `app.models.Game` still has cafe_id and breaks every ORM
+# query on per-cafe tables. License/User/UserCafeMap stay legacy —
+# they live on the global DB.
+from app.db.models_cafe import Game as GameModel
 from app.models import License, User, UserCafeMap
 from app.schemas import Game as GameSchema
 from app.schemas import GameCreate, GameUpdate
