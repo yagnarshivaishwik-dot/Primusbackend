@@ -39,7 +39,12 @@ const useSessionStore = create(
       async signIn({ email, password }) {
         // Clear any previously-persisted user BEFORE we hit the wire, so
         // that if login fails we don't keep showing the old identity.
-        set({ user: null, isAuthenticated: false, sessionStartedAt: null, loading: true, error: null });
+        // Also clear `avatar` so customer B doesn't inherit customer A's
+        // chosen avatar after a fresh kiosk launch on a shared PC. The
+        // avatar still persists across the SAME customer's reloads (it
+        // sits in localStorage), but a new sign-in resets it back to the
+        // initials fallback so each customer starts blank in Appearance.
+        set({ user: null, isAuthenticated: false, sessionStartedAt: null, avatar: null, loading: true, error: null });
         try {
           const user = await authService.signIn({ email, password });
 
@@ -127,10 +132,23 @@ const useSessionStore = create(
     }),
     {
       name: STORAGE_KEYS.session,
+      // Persistence policy for cafe-kiosk use:
+      //   * `user` and `isAuthenticated` are INTENTIONALLY NOT PERSISTED.
+      //     Each kiosk launch should land on the login screen regardless
+      //     of who used the PC last — otherwise a fresh install on a
+      //     machine with old localStorage rehydrates the previous
+      //     customer's identity and they appear "logged in" without ever
+      //     entering credentials. The auto-relaunch / WebView2 crash
+      //     recovery cases are rare and acceptable trade-off: a customer
+      //     mid-session who hits a reload just re-logs in, their wallet
+      //     and progress are server-side anyway.
+      //   * `sessionStartedAt` follows the same rule — meaningless
+      //     without a user, and shouldn't carry a stale timestamp into
+      //     the next customer's session.
+      //   * `avatar` IS persisted because it's a per-PC appearance
+      //     preference, not auth state. Cleared in signOut() so it
+      //     can't bleed between users on a shared kiosk.
       partialize: (s) => ({
-        user: s.user,
-        isAuthenticated: s.isAuthenticated,
-        sessionStartedAt: s.sessionStartedAt,
         avatar: s.avatar,
       }),
     },
