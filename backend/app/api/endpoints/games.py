@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
+from sqlalchemy import insert as sa_insert
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
@@ -156,10 +157,21 @@ async def create_game(
             raise HTTPException(
                 status_code=400, detail=f"Game with name '{game.name}' already exists"
             )
-        db_game = GameModel(**game.dict(), cafe_id=ctx.cafe_id)
-        db.add(db_game)
+        # See admin_create_detected for the why: ORM-style db.add lists
+        # every column on the class, including cafe_id, which breaks on
+        # multi-DB per-cafe tables that don't have it. Use Core INSERT
+        # so the SQL only references columns we actually set.
+        row = game.dict()
+        try:
+            from app.db.dependencies import MULTI_DB_ENABLED
+        except Exception:
+            MULTI_DB_ENABLED = True
+        if not MULTI_DB_ENABLED:
+            row["cafe_id"] = ctx.cafe_id
+        result = db.execute(sa_insert(GameModel.__table__).returning(GameModel.id), [row])
+        new_id = result.scalar_one()
         db.commit()
-        db.refresh(db_game)
+        db_game = db.query(GameModel).filter(GameModel.id == new_id).first()
         log_action(db, current_user.id, "game_created", f"Created game: {game.name}")
         return db_game
 
@@ -396,27 +408,33 @@ async def admin_create_detected(
             q = q.filter(GameModel.cafe_id == kiosk_cafe_id)
         existing_names = {n for (n,) in q.all()}
         created, skipped = [], []
+        rows_to_insert = []
         for g in body.games:
             if g.name in existing_names:
                 skipped.append(g.name)
                 continue
-            kwargs = dict(
-                name=g.name,
-                exe_path=g.exe_path,
-                category=g.category or "game",
-                enabled=True,           # admin authorised → live immediately
-                last_updated=datetime.now(UTC),
-            )
+            # Build the row as a plain dict. We INSERT via SQLAlchemy
+            # Core (insert(Table)) below rather than ORM (db.add) so
+            # the generated SQL only references the columns we actually
+            # set. ORM-style db.add(GameModel(...)) lists every column
+            # defined on the class, which breaks on multi-DB per-cafe
+            # tables that don't have a `cafe_id` column at all.
+            row = {
+                "name": g.name,
+                "exe_path": g.exe_path,
+                "category": g.category or "game",
+                "enabled": True,            # admin authorised → live immediately
+                "last_updated": datetime.now(UTC),
+            }
             if g.launcher:
-                kwargs["launchers"] = g.launcher
-            # Single-DB only: tag the row with cafe_id explicitly so
-            # tenant-scoping filters elsewhere still work. Multi-DB has
-            # no cafe_id column.
+                row["launchers"] = g.launcher
             if not MULTI_DB_ENABLED:
-                kwargs["cafe_id"] = kiosk_cafe_id
-            cafe_db.add(GameModel(**kwargs))
+                row["cafe_id"] = kiosk_cafe_id
+            rows_to_insert.append(row)
             created.append(g.name)
             existing_names.add(g.name)
+        if rows_to_insert:
+            cafe_db.execute(sa_insert(GameModel.__table__), rows_to_insert)
         cafe_db.commit()
         try:
             log_action(
