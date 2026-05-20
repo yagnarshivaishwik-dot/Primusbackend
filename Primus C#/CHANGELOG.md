@@ -1,3 +1,7 @@
+## v1.3.1 — 2026-05-20
+
+- Shop card sizing fix for PC screens
+
 ## v1.3.0 — 2026-05-20
 
 - Steam URI launch + Add games category normalization
