@@ -44,7 +44,7 @@ async def list_games(
         f"category={category or ''}|enabled={'' if enabled is None else str(enabled)}"
     )
 
-    async def _compute() -> list[GameSchema]:
+    async def _compute() -> list[dict]:
         def _query():
             query = scoped_query(db, GameModel, ctx)
             if search:
@@ -53,7 +53,13 @@ async def list_games(
                 query = query.filter(GameModel.category == category)
             if enabled is not None:
                 query = query.filter(GameModel.enabled == enabled)
-            return query.offset(skip).limit(limit).all()
+            rows = query.offset(skip).limit(limit).all()
+            # Convert ORM → JSON-safe dicts BEFORE caching: get_or_set
+            # pickles/JSON-encodes the result to write Redis, which fails
+            # on raw SQLAlchemy instances ("Object of type Game is not
+            # JSON serializable"). FastAPI's response_model=list[GameSchema]
+            # will then re-validate the dicts on the way out.
+            return [GameSchema.model_validate(r).model_dump(mode="json") for r in rows]
 
         return await run_in_threadpool(_query)
 
@@ -124,15 +130,17 @@ async def list_popular_games(
 
     cache_id = f"limit={limit}"
 
-    async def _compute() -> list[GameSchema]:
+    async def _compute() -> list[dict]:
         def _query():
-            return (
+            rows = (
                 scoped_query(db, GameModel, ctx)
                 .filter(GameModel.enabled.is_(True))
                 .order_by(GameModel.id.asc())
                 .limit(limit)
                 .all()
             )
+            # See list_games — Redis can't pickle ORM rows; serialize first.
+            return [GameSchema.model_validate(r).model_dump(mode="json") for r in rows]
 
         return await run_in_threadpool(_query)
 
