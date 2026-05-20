@@ -353,6 +353,108 @@ async def get_order_status(
     }
 
 
+# ---------- Payment Links ----------------------------------------------
+#
+# Workaround for the pending merchant-domain whitelist that blocks the
+# embedded checkout flow. See cashfree_service.create_payment_link for
+# the rationale. The kiosk side uses these two endpoints instead of
+# /create-order + /order/{id}, and renders the returned QR directly.
+
+
+class CreatePaymentLinkOut(BaseModel):
+    link_id: str
+    cf_link_id: str
+    link_url: str
+    qr_data_uri: str | None = None
+    amount: float
+    expiry: str
+    status: str
+
+
+@router.post("/create-payment-link", response_model=CreatePaymentLinkOut)
+async def create_payment_link(
+    body: CreateOrderIn,
+    current_user: User = Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+):
+    """Create a Cashfree Payment Link + return its QR for the kiosk to display.
+
+    Same shape of input as /create-order so the frontend can swap flows
+    with a one-line change. Notes (user_id / pc_id / pack_id / cafe_id)
+    are stashed in `link_notes` and surface back on the
+    PAYMENT_SUCCESS_WEBHOOK so the existing credit-the-wallet logic
+    works unchanged.
+    """
+    link_id = f"PRIMUS_{uuid.uuid4().hex[:20].upper()}"
+
+    try:
+        link = await cf.create_payment_link(
+            link_id=link_id,
+            amount=body.amount,
+            customer_phone=getattr(current_user, "phone", "") or "9999999999",
+            customer_email=current_user.email or None,
+            customer_name=getattr(current_user, "name", None),
+            purpose=body.note or "Primus kiosk payment",
+            notes={
+                "user_id": str(current_user.id),
+                "pc_id": str(body.pc_id or ""),
+                "pack_id": str(body.pack_id or ""),
+                "cafe_id": str(ctx.cafe_id),
+            },
+            expiry_minutes=15,
+        )
+    except cf.CashfreeNotConfiguredError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except httpx.HTTPStatusError as exc:
+        detail = exc.response.text or "Cashfree API error"
+        raise HTTPException(status_code=502, detail=detail) from exc
+
+    qr_b64 = link.get("link_qrcode")
+    qr_data_uri = f"data:image/png;base64,{qr_b64}" if qr_b64 else None
+
+    return CreatePaymentLinkOut(
+        link_id=link.get("link_id") or link_id,
+        cf_link_id=link.get("cf_link_id") or "",
+        link_url=link.get("link_url") or "",
+        qr_data_uri=qr_data_uri,
+        amount=body.amount,
+        expiry=link.get("link_expiry_time") or "",
+        status=link.get("link_status") or "ACTIVE",
+    )
+
+
+@router.get("/link/{link_id}")
+async def get_link_status(
+    link_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    """Polling fallback for Payment Link status. Same shape as /order/{id}."""
+    try:
+        link = await cf.get_payment_link(link_id)
+    except cf.CashfreeNotConfiguredError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=exc.response.status_code,
+            detail=exc.response.text,
+        ) from exc
+
+    status_s = link.get("link_status", "UNKNOWN")
+    amount_paid = float(link.get("link_amount_paid", 0) or 0)
+    amount = float(link.get("link_amount", 0) or 0)
+    return {
+        "link_id": link.get("link_id") or link_id,
+        "status": status_s,
+        "amount": amount,
+        "amount_paid": amount_paid,
+        # A link is "paid" when it's marked PAID OR (best-effort) when the
+        # amount_paid reaches the requested amount — some Cashfree responses
+        # show ACTIVE briefly after the first payment until the link is
+        # marked complete by their settlement service.
+        "paid": status_s == "PAID" or (amount > 0 and amount_paid >= amount),
+    }
+
+
 @router.post("/webhook", status_code=status.HTTP_200_OK)
 async def webhook(request: Request):
     import ipaddress
@@ -504,10 +606,25 @@ async def webhook(request: Request):
     data = event.get("data") or {}
     order = data.get("order") or {}
     payment = data.get("payment") or {}
-    tags = order.get("order_tags") or {}
+    # Payment Link events carry their metadata in `link_notes` (sometimes
+    # nested under data.payment_link, sometimes flattened to data.link_notes
+    # depending on event variant). order_tags is empty for these. Merge
+    # both sources so the rest of the handler doesn't care which flow
+    # originated the payment.
+    payment_link = data.get("payment_link") or {}
+    link_notes = (
+        payment_link.get("link_notes")
+        or data.get("link_notes")
+        or {}
+    )
+    tags = {**(order.get("order_tags") or {}), **link_notes}
 
-    order_id = order.get("order_id")
-    order_amount = float(order.get("order_amount") or 0)
+    order_id = order.get("order_id") or payment_link.get("link_id")
+    order_amount = float(
+        order.get("order_amount")
+        or payment_link.get("link_amount")
+        or 0
+    )
     payment_status = (payment.get("payment_status") or "").upper()
 
     # Only act on terminal success events; ignore PENDING / DROPPED.
