@@ -18,10 +18,16 @@ function LoginPage() {
   const [needsAdminSetup, setNeedsAdminSetup] = useState(false);
 
   /**
-   * Reset device credentials and reload. App.jsx's boot effect will
-   * then find no device.bin and show SetupPage (which gates the
-   * handshake to admin / superadmin accounts after the recent fix).
-   * Confirmation prompt because this WIPES the current cafe binding.
+   * Reset device credentials and reboot the React app so App.jsx's
+   * boot effect re-runs, finds no device.bin, and shows SetupPage.
+   *
+   * IMPORTANT: we navigate to `/index.html` (a real file the WebView2
+   * virtual host can serve) instead of calling `window.location.reload()`.
+   * The kiosk runs under SetVirtualHostNameToFolderMapping, which serves
+   * files literally — there is no `/auth/login` file on disk; React
+   * routing only works once `index.html` has loaded and BrowserRouter
+   * takes over client-side. A `.reload()` on any non-root URL produces
+   * ERR_FILE_NOT_FOUND because WebView2 tries to fetch the literal path.
    */
   const handleAdminSetup = async () => {
     if (!hasBridge()) {
@@ -38,7 +44,10 @@ function LoginPage() {
     } catch {
       /* even if the bridge call fails, reload — App.jsx will re-evaluate */
     }
-    window.location.reload();
+    // Navigate to the bundle's entry point. The C# host's virtual host
+    // mapping serves this from the local `web/` folder; React then
+    // takes over and lands on SetupPage because device.bin is gone.
+    window.location.href = '/index.html';
   };
 
   const handleSubmit = async (e) => {

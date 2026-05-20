@@ -63,11 +63,19 @@ export const authService = {
     setJwt(token);
 
     const me = await apiGet('/api/v1/auth/me').catch(() => null);
-    // Fall back to the login response itself if /me failed — make sure
-    // cafe_id/role still come through so the kiosk's binding check
-    // doesn't false-positive a no-cafe rejection just because /me 500'd.
-    const fallback = { email, role: res?.role, cafe_id: res?.cafe_id };
-    return normalizeUser(me) || normalizeUser(fallback);
+    // Merge /me's user fields with the login response's RESOLVED cafe_id.
+    // Why: /auth/me returns only `User.cafe_id` (the direct column on the
+    // global users table), which is NULL for customers added to a cafe
+    // via the many-to-many `UserCafeMap`. The login endpoint already
+    // resolves cafe_id via device → UserCafeMap → User.cafe_id fallback,
+    // so its response carries the authoritative value. Without this
+    // merge, every UserCafeMap-bound customer hits the kiosk's
+    // "not registered with this cafe" check and gets auto-redirected to
+    // admin setup even though they're correctly bound in the DB.
+    const merged = me
+      ? { ...me, cafe_id: res?.cafe_id ?? me.cafe_id, role: me.role || res?.role }
+      : { email, role: res?.role, cafe_id: res?.cafe_id };
+    return normalizeUser(merged);
   },
 
   async signOut() {
