@@ -6,6 +6,8 @@ import { IoIosArrowDown } from 'react-icons/io';
 import useSessionStore from '@/app/store/useSessionStore';
 import { ROUTES } from '@/app/routes/paths';
 
+import SettingsPanel from './SettingsPanel';
+
 import './AppHeader.css';
 
 /**
@@ -120,15 +122,19 @@ export default function AppHeader() {
             >
               <IoSettingsOutline />
             </button>
-            <div className="dropdownmenu" role="menu">
-              <button type="button" role="menuitem" onClick={() => go(ROUTES.settingsHelp)}>
+            {/* Volume + Display controls now live INSIDE the dropdown
+                instead of navigating to dedicated pages — the customer
+                can manage them inline. Help stays as a link at the
+                bottom for the rare case where they need it. */}
+            <div className="dropdownmenu dropdownmenu--wide" role="menu">
+              <SettingsPanel />
+              <button
+                type="button"
+                role="menuitem"
+                className="dropdownmenu__link"
+                onClick={() => go(ROUTES.settingsHelp)}
+              >
                 Help
-              </button>
-              <button type="button" role="menuitem" onClick={() => go(ROUTES.settingsSound)}>
-                Sound
-              </button>
-              <button type="button" role="menuitem" onClick={() => go(ROUTES.settingsDisplay)}>
-                Display
               </button>
             </div>
           </div>

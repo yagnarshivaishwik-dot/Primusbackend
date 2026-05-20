@@ -158,14 +158,13 @@
    inheriting the menu's typography, no per-item background or border
    radius. Hover gives subtle opacity feedback, matching his style. */
 .dropdownmenu {
-    cursor: pointer;
     position: absolute;
     top: 58px;
     right: 0;
     min-width: 190px;
     padding: 10px;
     border-radius: 18px;
-    background: rgba(15, 23, 42, 0.7);
+    background: rgba(15, 23, 42, 0.85);
     backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
@@ -174,6 +173,14 @@
     transform: translateY(10px);
     transition: 0.3s ease;
     z-index: 50;
+}
+
+/* The settings cog dropdown is wider because it holds inline controls
+   (sliders + toggles) instead of just a list of items. */
+.dropdownmenu--wide {
+    min-width: 340px;
+    padding: 14px;
+    cursor: default;
 }
 
 .dropdownwrapper.is-open > .dropdownmenu {
@@ -207,4 +214,25 @@
 
 .dropdownmenu > button.dropdownmenu__danger {
     color: #fca5a5;
+}
+
+/* Plain link-style row inside the wide settings panel
+   (Help below the volume/display controls). */
+.dropdownmenu > button.dropdownmenu__link {
+    margin-top: 6px;
+    padding: 10px 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    text-align: left;
+    width: 100%;
+    background: transparent;
+    border-radius: 0;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.dropdownmenu > button.dropdownmenu__link:hover {
+    color: #fff;
+    opacity: 1;
 }
