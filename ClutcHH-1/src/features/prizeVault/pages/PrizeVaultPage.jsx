@@ -75,6 +75,7 @@ function StarRow({ stars = 0 }) {
 
 export default function PrizeVaultPage() {
   const user = useSessionStore((s) => s.user);
+  const avatar = useSessionStore((s) => s.avatar);
   const coins = useWalletStore((s) => s.coins);
   const hydrate = useWalletStore((s) => s.hydrate);
 
@@ -252,7 +253,11 @@ export default function PrizeVaultPage() {
       <div className="profile-card glassyfinish">
         <div className="top-section">
           <div className="profile-left">
-            <div className="profile-img profile-img--initials">{initials}</div>
+            {avatar ? (
+              <img className="profile-img" src={avatar} alt="" />
+            ) : (
+              <div className="profile-img profile-img--initials">{initials}</div>
+            )}
             <div className="user-info">
               <h2>{displayName}</h2>
               <p>Veteran Gamer</p>

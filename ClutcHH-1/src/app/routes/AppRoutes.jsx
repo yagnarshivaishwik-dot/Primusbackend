@@ -50,6 +50,8 @@ import SoundSettingsPage from '@/features/settings/pages/SoundSettingsPage';
 import DisplaySettingsPage from '@/features/settings/pages/DisplaySettingsPage';
 import InstalledPage from '@/features/settings/pages/InstalledPage';
 
+import AppearancePage from '@/features/appearance/pages/AppearancePage';
+
 import NotFoundPage from '@/pages/NotFoundPage';
 
 export default function AppRoutes() {
@@ -76,6 +78,7 @@ export default function AppRoutes() {
         <Route path={ROUTES.mainShop} element={<ShopPage />} />
         <Route path={ROUTES.mainGames} element={<GamesPage />} />
         <Route path={ROUTES.mainPrizeVault} element={<PrizeVaultPage />} />
+        <Route path={ROUTES.appearance} element={<AppearancePage />} />
       </Route>
 
       {/* Main layout (shell) — other pages keep the shared Navbar. */}

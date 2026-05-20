@@ -160,6 +160,17 @@ Then audit every reference to `WalletTransaction.cafe_id`, `Offer.cafe_id`, `Use
 **Effort:** ~10 min to reorder candidates in `App.xaml.cs:105-140`.
 **Risk:** Low. Could mildly affect the installed-layout case if anyone relies on the `.\web\` precedence — but that case is covered by candidate #3 (Program Files) anyway.
 
+### 27. Avatar picker (Appearance page) only persists per-kiosk
+**Symptom:** The kiosk's Appearance page lets a customer pick a curated Dicebear preset or generate an identicon. The chosen URL is written to `useSessionStore.avatar` and persisted via the existing localStorage middleware — so it survives the customer's session on THIS kiosk PC, but moving to another PC in the same cafe (or coming back tomorrow on a different machine) shows their initials again. The avatar never reaches the backend.
+**Current workaround:** Acceptable for v1 — most customers use the same kiosk repeatedly. The trade-off was: ship a working in-app avatar picker today, defer the persistence work.
+**Proper fix:**
+  - Add `avatar_url` column to `CafeUser` (cafe schema migration — blocked on alembic_cafe chain repair, item #13) and/or `User` (global schema).
+  - New `PATCH /api/v1/user/avatar { url }` endpoint that writes the column. Validate URL is a Dicebear API URL or a local preset path to keep arbitrary URLs out of the schema.
+  - `authService.me()` returns `avatar_url`; kiosk reads it on login and hydrates `useSessionStore.avatar`.
+  - Appearance page Save button calls the PATCH alongside the existing `setAvatar` store call.
+**Effort:** ~1 hr once #13 unblocks. Otherwise ~2 hrs with a raw SQL helper script to add the column manually.
+**Risk:** Low — additive column, validation on write.
+
 ### 25. [Resolved 2026-05-20] Kiosk native bridge for system audio / display brightness
 
 **Status:** Implemented. `NAudio.Wasapi` + WMI wiring shipped in `SystemSettingsBridge.cs`; four handlers (`get_system_volume`, `set_system_volume`, `get_display_brightness`, `set_display_brightness`) registered in `JsBridge.DispatchAsync`. React `SettingsPanel` already speaks to these handlers, so the dropdown's sliders/toggles now drive the kiosk PC's actual master volume + mute + monitor brightness.

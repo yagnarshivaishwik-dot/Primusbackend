@@ -27,6 +27,12 @@ const useSessionStore = create(
       // TECH_DEBT #24: source this from a backend session record so the
       // counter survives a kiosk reload and reflects real session time.
       sessionStartedAt: null,
+      // Customer-chosen avatar URL — written by the Appearance page,
+      // rendered by AppHeader's top-right circle and the Rewards
+      // profile card. Falls back to initials when null.
+      // TECH_DEBT #27: should persist server-side (users.avatar_url)
+      // so a customer's chosen avatar follows them across kiosks.
+      avatar: null,
       loading: false,
       error: null,
 
@@ -53,7 +59,13 @@ const useSessionStore = create(
         }
         // Wipe both in-memory state AND the persisted blob so a refresh
         // can't rehydrate the signed-out identity.
-        set({ user: null, isAuthenticated: false, sessionStartedAt: null, error: null });
+        set({
+          user: null,
+          isAuthenticated: false,
+          sessionStartedAt: null,
+          avatar: null,
+          error: null,
+        });
         try {
           useSessionStore.persist.clearStorage();
         } catch {
@@ -93,6 +105,7 @@ const useSessionStore = create(
           sessionStartedAt: user ? (current.sessionStartedAt || Date.now()) : null,
         });
       },
+      setAvatar: (avatar) => set({ avatar: avatar || null }),
       clearError: () => set({ error: null }),
     }),
     {
@@ -101,6 +114,7 @@ const useSessionStore = create(
         user: s.user,
         isAuthenticated: s.isAuthenticated,
         sessionStartedAt: s.sessionStartedAt,
+        avatar: s.avatar,
       }),
     },
   ),

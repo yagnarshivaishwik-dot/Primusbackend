@@ -37,6 +37,7 @@ function formatElapsed(ms) {
 export default function AppHeader() {
   const navigate = useNavigate();
   const user = useSessionStore((s) => s.user);
+  const avatar = useSessionStore((s) => s.avatar);
   const sessionStartedAt = useSessionStore((s) => s.sessionStartedAt);
   const signOut = useSessionStore((s) => s.signOut);
 
@@ -143,13 +144,17 @@ export default function AppHeader() {
           <div className={`userlogin dropdownwrapper ${openMenu === 'avatar' ? 'is-open' : ''}`}>
             <button
               type="button"
-              className="useravatar"
+              className={`useravatar${avatar ? ' useravatar--image' : ''}`}
               aria-haspopup="menu"
               aria-expanded={openMenu === 'avatar'}
               aria-label="Profile menu"
               onClick={() => toggleMenu('avatar')}
             >
-              {initials}
+              {avatar ? (
+                <img src={avatar} alt="" />
+              ) : (
+                initials
+              )}
             </button>
             <button
               type="button"
@@ -162,8 +167,8 @@ export default function AppHeader() {
               <IoIosArrowDown />
             </button>
             <div className="dropdownmenu" role="menu">
-              <button type="button" role="menuitem" onClick={() => go(ROUTES.mainProfile)}>
-                Profile
+              <button type="button" role="menuitem" onClick={() => go(ROUTES.appearance)}>
+                Appearance
               </button>
               <button type="button" role="menuitem" className="dropdownmenu__danger" onClick={handleSignOut}>
                 Log out

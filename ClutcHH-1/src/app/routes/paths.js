@@ -55,6 +55,11 @@ export const ROUTES = {
   settingsSound: '/settings/sound',
   settingsDisplay: '/settings/display',
   settingsInstalled: '/settings/installed',
+
+  // Appearance — pick a curated avatar or generate an identicon.
+  // Replaces the customer-facing "Profile" entry in the avatar dropdown;
+  // the existing /main/profile page stays for direct deep-linking.
+  appearance: '/appearance',
 };
 
 // Helpers for dynamic paths
