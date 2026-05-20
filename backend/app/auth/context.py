@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 from fastapi import Depends, HTTPException, Request
@@ -9,6 +10,8 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.db.dependencies import get_global_db as get_db
 from app.models import User
+
+logger = logging.getLogger(__name__)
 
 # Role hierarchy for permission checks
 ROLE_HIERARCHY: dict[str, int] = {
@@ -63,6 +66,7 @@ async def get_auth_context(
     # Get raw token
     token = _extract_token(request)
     if token is None:
+        logger.warning("[AUTH 401] path=%s no token extracted (no cookie, no Bearer header)", request.url.path)
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     # Try enriched token first (this also checks jti revocation).
@@ -70,6 +74,7 @@ async def get_auth_context(
     if claims and claims.get("user_id"):
         user = db.query(User).filter(User.id == claims["user_id"]).first()
         if user is None:
+            logger.warning("[AUTH 401] path=%s enriched token user_id=%s not found in DB", request.url.path, claims.get("user_id"))
             raise HTTPException(status_code=401, detail="User not found")
 
         resolved_cafe_id = claims.get("cafe_id") or user.cafe_id
@@ -120,21 +125,42 @@ async def get_auth_context(
     # rotation grace window also covers legacy tokens.
     from app.auth.tokens import _decode_with_keys  # internal helper
 
+    # If we got here, decode_access_token_async returned None or claims
+    # without user_id — log so we know which.
+    logger.warning(
+        "[AUTH 401-debug] path=%s falling back to legacy decode: "
+        "async_claims=%s",
+        request.url.path,
+        ("None" if claims is None else f"keys={list(claims.keys())}"),
+    )
+
     payload = _decode_with_keys(token)
     if payload is None:
+        logger.warning(
+            "[AUTH 401] path=%s legacy _decode_with_keys returned None "
+            "(bad signature / expired / wrong key)",
+            request.url.path,
+        )
         raise HTTPException(status_code=401, detail="Could not validate credentials")
     email = payload.get("sub")
     if email is None:
+        logger.warning(
+            "[AUTH 401] path=%s legacy token missing 'sub' claim (keys=%s)",
+            request.url.path,
+            list(payload.keys()),
+        )
         raise HTTPException(status_code=401, detail="Invalid token")
 
     # Even legacy tokens can have a jti if they were re-issued during rolling
     # deploy. Check revocation defensively.
     legacy_jti = payload.get("jti")
     if legacy_jti and await _jti_is_revoked(legacy_jti):
+        logger.warning("[AUTH 401] path=%s legacy token jti=%s is in revocation set", request.url.path, legacy_jti)
         raise HTTPException(status_code=401, detail="Token revoked")
 
     user = db.query(User).filter(User.email == email).first()
     if user is None:
+        logger.warning("[AUTH 401] path=%s legacy token email=%s not found", request.url.path, email)
         raise HTTPException(status_code=401, detail="User not found")
 
     resolved_cafe_id = user.cafe_id
