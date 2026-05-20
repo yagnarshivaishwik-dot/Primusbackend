@@ -58,6 +58,13 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path={ROUTES.root} element={<Navigate to={ROUTES.initializing} replace />} />
+      {/* WebView2 navigates to `https://kiosk.primustech.in/index.html` on
+          launch, which BrowserRouter sees as the literal path `/index.html`.
+          That path doesn't match any of our routes, so without this alias
+          the kiosk would land on MainLayout's catch-all NotFoundPage. Alias
+          it back to root so the normal initializing → login chain takes
+          over. */}
+      <Route path="/index.html" element={<Navigate to={ROUTES.root} replace />} />
        {/* <Route path={ROUTES.root} element={<LoginPage/>} /> */}
 
       {/* Auth layout */}
