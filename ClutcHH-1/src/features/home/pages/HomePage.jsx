@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { ROUTES } from '@/app/routes/paths';
@@ -6,6 +6,55 @@ import useWalletStore from '@/app/store/useWalletStore';
 import { homeService } from '@/features/home/services/homeService';
 
 import '../../../styles/homepage.css';
+
+/* Hardcoded Happy Hour window (TECH_DEBT #20 — no backend summary endpoint
+   yet). Times are in the kiosk's local timezone so they match the customer's
+   wall clock. 14:00 → 17:00 = 2 PM to 5 PM. */
+const HAPPY_HOUR_START_HOUR = 14;
+const HAPPY_HOUR_END_HOUR = 17;
+const HAPPY_HOUR_PERCENT = 30;
+
+/* Compute current Happy Hour state from the kiosk's local clock.
+   Returns { active, label, sub, fillPct } updated by the caller on a
+   1-minute interval so the countdown stays accurate without a backend
+   ping. */
+function computeHappyHour(now = new Date()) {
+  const hour = now.getHours();
+  const minute = now.getMinutes();
+  const totalMins = hour * 60 + minute;
+  const startMins = HAPPY_HOUR_START_HOUR * 60;
+  const endMins = HAPPY_HOUR_END_HOUR * 60;
+
+  // Inside the window — show "Active · Ends in Xh Ym".
+  if (totalMins >= startMins && totalMins < endMins) {
+    const remaining = endMins - totalMins;
+    const eh = Math.floor(remaining / 60);
+    const em = remaining % 60;
+    const endLabel = eh > 0 ? `${eh}h ${em}m` : `${em}m`;
+    const fillPct = ((totalMins - startMins) / (endMins - startMins)) * 100;
+    return { active: true, label: `Active · Ends in ${endLabel}`, fillPct };
+  }
+
+  // Before the window — show "Starts in Xh Ym".
+  if (totalMins < startMins) {
+    const remaining = startMins - totalMins;
+    const sh = Math.floor(remaining / 60);
+    const sm = remaining % 60;
+    const startLabel = sh > 0 ? `${sh}h ${sm}m` : `${sm}m`;
+    return { active: false, label: `Starts in ${startLabel}`, fillPct: 0 };
+  }
+
+  // After the window — next instance is tomorrow at 2 PM.
+  const remaining = (24 * 60 - totalMins) + startMins;
+  const sh = Math.floor(remaining / 60);
+  const sm = remaining % 60;
+  return {
+    active: false,
+    label: `Starts tomorrow at ${HAPPY_HOUR_START_HOUR}:00`,
+    sub: `in ${sh}h ${sm}m`,
+    fillPct: 0,
+  };
+}
 
 /* ============================================================
    NeoG Dashboard — Guna's design.
@@ -187,18 +236,12 @@ function Carousel({ slide }) {
 
           <ul className="neog-links">
             <li>
-              <Link
-                to={ROUTES.challenges}
-                style={{ color: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}
-              >
+              <Link to={ROUTES.challenges} style={{ color: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                 <I.Diamond style={{ color: '#ff6b35' }} /> EXPLORE CHALLENGES
               </Link>
             </li>
             <li>
-              <Link
-                to={ROUTES.quests}
-                style={{ color: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}
-              >
+              <Link to={ROUTES.quests} style={{ color: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                 <I.Spark style={{ color: '#ff6b35' }} /> EXPLORE QUESTS
               </Link>
             </li>
@@ -274,39 +317,73 @@ function CarouselControls({ index, total, onPrev, onNext, onJump }) {
 /* ============================================================
    Right Panel — hardcoded happy hour + hardcoded quests
 ============================================================ */
-function RightPanel({ open, claimedKinds, claimingKind, claimError, onClaim }) {
+function RightPanel({ open, claimedKinds, claimingKind, claimError, onClaim, happyHour, learnMoreOpen, onToggleLearnMore }) {
+  const arcLen = 251;
+  const filled = Math.round((arcLen * (happyHour?.fillPct || 0)) / 100);
   return (
     <aside className={`neog-rightpanel ${open ? 'is-open' : 'is-closed'} glass`}>
       {/* Happy Hour card — visual mock; no /happy-hour/current endpoint yet
-          (see TECH_DEBT.md #20). */}
+          (TECH_DEBT.md #20). Countdown derived from kiosk's local clock. */}
       <div className="neog-hh">
         <div className="neog-hh__head">
-          <span className="neog-hh__title">Happy Hour: 2-5 PM</span>
+          <span className="neog-hh__title">
+            Happy Hour: {HAPPY_HOUR_START_HOUR}-{HAPPY_HOUR_END_HOUR} PM
+          </span>
           <span className="neog-hh__clock"><I.Clock /></span>
         </div>
 
         <div className="neog-hh__arc">
           <svg viewBox="0 0 200 110" className="neog-hh__arc-svg">
             <path d="M20,100 A80,80 0 0,1 180,100" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="10" strokeLinecap="round" strokeDasharray="6 8" />
-            <path d="M20,100 A80,80 0 0,1 180,100" fill="none" stroke="rgba(255,255,255,0.95)" strokeWidth="10" strokeLinecap="round" strokeDasharray="180 251" />
+            <path d="M20,100 A80,80 0 0,1 180,100" fill="none" stroke="rgba(255,255,255,0.95)" strokeWidth="10" strokeLinecap="round" strokeDasharray={`${filled} ${arcLen}`} />
           </svg>
-          <span className="neog-hh__arc-label">2 – 5 PM</span>
+          <span className="neog-hh__arc-label">
+            {HAPPY_HOUR_START_HOUR} – {HAPPY_HOUR_END_HOUR} PM
+          </span>
         </div>
 
         <div className="neog-hh__pct">
-          <span className="neog-hh__pct-num">30%</span>
+          <span className="neog-hh__pct-num">{HAPPY_HOUR_PERCENT}%</span>
           <span className="neog-hh__pct-text">EXTRA on all sessions</span>
         </div>
 
         <div className="neog-hh__meta">
           <span className="neog-hh__meta-dot" />
-          Starts in 53m
+          {happyHour?.label || ''}
         </div>
 
+        {learnMoreOpen && (
+          <div
+            role="region"
+            aria-label="Happy Hour details"
+            style={{
+              background: 'rgba(0, 0, 0, 0.45)',
+              borderRadius: 12,
+              padding: '12px 14px',
+              fontSize: 12,
+              lineHeight: 1.5,
+              color: 'rgba(255, 255, 255, 0.92)',
+            }}
+          >
+            <strong style={{ display: 'block', marginBottom: 4 }}>How it works</strong>
+            <p style={{ margin: 0 }}>
+              Buy any time pack between {HAPPY_HOUR_START_HOUR}:00 and {HAPPY_HOUR_END_HOUR}:00 to get{' '}
+              {HAPPY_HOUR_PERCENT}% extra session time at no extra cost. Auto-applied at
+              checkout — no code needed.
+            </p>
+          </div>
+        )}
+
         <div className="neog-hh__footer">
-          <Link to={ROUTES.mainShop} className="neog-hh__btn" style={{ textDecoration: 'none' }}>
-            Learn More
-          </Link>
+          <button
+            type="button"
+            className="neog-hh__btn"
+            onClick={onToggleLearnMore}
+            aria-expanded={learnMoreOpen}
+            style={{ border: 'none', cursor: 'pointer' }}
+          >
+            {learnMoreOpen ? 'Close' : 'Learn More'}
+          </button>
           <div className="neog-hh__dots">
             <span className="neog-hh__dot is-active" />
             <span className="neog-hh__dot" />
@@ -417,7 +494,19 @@ export default function HomePage() {
   const [claimedKinds, setClaimedKinds] = useState([]);
   const [claimingKind, setClaimingKind] = useState(null);
   const [claimError, setClaimError] = useState(null);
+  const [now, setNow] = useState(() => new Date());
+  const [learnMoreOpen, setLearnMoreOpen] = useState(false);
   const startRef = useRef(Date.now());
+
+  // Re-render every minute so the Happy Hour countdown stays current
+  // without any backend polling. One-minute granularity is enough for
+  // the label format ("Starts in 53m", "Active · Ends in 12m").
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const happyHour = useMemo(() => computeHappyHour(now), [now]);
 
   const next = useCallback(() => setIndex((i) => (i + 1) % SLIDES.length), []);
   const prev = useCallback(() => setIndex((i) => (i - 1 + SLIDES.length) % SLIDES.length), []);
@@ -485,6 +574,9 @@ export default function HomePage() {
         claimingKind={claimingKind}
         claimError={claimError}
         onClaim={handleClaim}
+        happyHour={happyHour}
+        learnMoreOpen={learnMoreOpen}
+        onToggleLearnMore={() => setLearnMoreOpen((v) => !v)}
       />
     </div>
   );

@@ -152,6 +152,25 @@ export default function ShopPage() {
     });
   };
 
+  // Wallet top-up flow ("Add Coins"). Reuses the same CashfreePaymentModal
+  // as cart checkout — backend accepts pack_id=null for a generic top-up,
+  // so no new endpoint needed. Simple prompt for the amount keeps the
+  // scope tight; a designed amount picker is a future iteration.
+  const handleAddCoins = async () => {
+    if (!user?.id) return;
+    const raw = window.prompt('Amount to add to wallet (₹)', '100');
+    if (raw == null) return;
+    const amount = Number(String(raw).replace(/[^0-9.]/g, ''));
+    if (!amount || amount < 1) return;
+    const pcId = await resolvePcId();
+    setPayment({
+      amount,
+      pcId,
+      packIds: [],
+      note: 'Wallet top-up',
+    });
+  };
+
   const handlePaymentSuccess = async () => {
     setCart([]);
     setPayment(null);
@@ -230,7 +249,12 @@ export default function ShopPage() {
             <h3 className="wallettitle">WALLET BALANCE</h3>
             <h1 className="walletamount"><span><MdOutlineCurrencyRupee /></span>{Number(balance ?? 0).toLocaleString()}</h1>
             <p className="walletsubtitle">{balance > 0 ? 'Last recharge: recent' : 'No recharges yet'}</p>
-            <button className="walletadd">
+            <button
+              type="button"
+              className="walletadd"
+              onClick={handleAddCoins}
+              disabled={!user?.id}
+            >
               <span>+</span>
               <p>Add Coins</p>
             </button>

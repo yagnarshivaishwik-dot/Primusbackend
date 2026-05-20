@@ -460,6 +460,21 @@ async def login(
         role=resolved_role,
     )
 
+    # Auto-provision cafe-local user row (TECH_DEBT #23). Best-effort: the
+    # helper swallows its own exceptions, and the band-aid in home.py /
+    # quests.py is still there for users who logged in before this lands.
+    try:
+        from app.services.cafe_user_provisioning import ensure_cafe_user
+        ensure_cafe_user(
+            global_user_id=user.id,
+            cafe_id=resolved_cafe_id,
+            name=getattr(user, "name", None),
+            email=user.email,
+            role=resolved_role,
+        )
+    except Exception as exc:
+        logger.warning("login: ensure_cafe_user failed (non-fatal): %s", exc)
+
     # Create refresh token, binding it to the access token's jti so a future
     # force-logout can revoke both at once.
     refresh_token = create_refresh_token(
@@ -599,6 +614,21 @@ async def refresh_tokens(
         device_id=rt.device_id,
         role=resolved_role,
     )
+
+    # Belt-and-suspenders provisioning for users whose original login
+    # predated the auth.py auto-provision change. Same helper, idempotent.
+    try:
+        from app.services.cafe_user_provisioning import ensure_cafe_user
+        ensure_cafe_user(
+            global_user_id=user.id,
+            cafe_id=rt.cafe_id,
+            name=getattr(user, "name", None),
+            email=user.email,
+            role=resolved_role,
+        )
+    except Exception as exc:
+        logger.warning("refresh: ensure_cafe_user failed (non-fatal): %s", exc)
+
     new_refresh = create_refresh_token(
         db,
         user_id=user.id,
