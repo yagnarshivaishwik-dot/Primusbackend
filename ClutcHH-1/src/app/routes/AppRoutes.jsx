@@ -4,6 +4,7 @@ import { ROUTES } from '@/app/routes/paths';
 import AuthLayout from '@/layouts/AuthLayout';
 import MainLayout from '@/layouts/MainLayout';
 import FullScreenLayout from '@/layouts/FullScreenLayout';
+import PackageGuard from '@/components/guards/PackageGuard';
 
 import InitializingPage from '@/features/auth/pages/InitializingPage';
 import LoginPage from '@/features/auth/pages/LoginPage';
@@ -76,6 +77,14 @@ export default function AppRoutes() {
         <Route path={ROUTES.resetPassword} element={<ResetPasswordPage />} />
       </Route>
 
+      {/* PackageGuard wraps every signed-in route. When the customer
+          holds no active time package the guard force-redirects every
+          protected path to /main/shop and pins the persistent paywall
+          banner. When a package gets credited (Phase 3 cash / UPI) the
+          guard's false → true transition auto-navigates to /main/home —
+          no log-out/in cycle. Auth routes stay OUTSIDE this wrapper so
+          the login screen itself isn't gated by package state. */}
+      <Route element={<PackageGuard />}>
       {/* FullScreenLayout — Guna's NoLag home, Pavan's NoLag shop, and the
           Games & Apps page bring their own internal chrome (tabs, filters)
           so we render them without the shared top Navbar and let the
@@ -128,6 +137,7 @@ export default function AppRoutes() {
 
         <Route path="*" element={<NotFoundPage />} />
       </Route>
+      </Route>{/* /PackageGuard wrapper */}
     </Routes>
   );
 }

@@ -176,6 +176,35 @@ public sealed class PrimusHttpClient : IPrimusApiClient
                ?? new WalletDto();
     }
 
+    /// <summary>
+    /// Phase 1 paywall gate. Returns true when the signed-in customer holds
+    /// an active package; false when they're paywalled. Fails OPEN — any
+    /// backend error or transient failure returns true so a network blip
+    /// doesn't lock customers out of games they legitimately paid for. The
+    /// React UI's PackageGuard provides the real source-of-truth gate;
+    /// this is the secondary "don't even spawn the .exe" check.
+    /// </summary>
+    public async Task<bool> HasActivePackageAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var resp = await _http.GetAsync(
+                "api/v1/billing/active-package",
+                cancellationToken).ConfigureAwait(false);
+            if (!resp.IsSuccessStatusCode) return true; // fail-open
+            var payload = await resp.Content
+                .ReadFromJsonAsync<ActivePackageResponse>(JsonOptions, cancellationToken)
+                .ConfigureAwait(false);
+            return payload?.has_active ?? true;
+        }
+        catch
+        {
+            return true; // fail-open
+        }
+    }
+
+    private sealed record ActivePackageResponse(bool has_active, int minutes_remaining, int package_count);
+
     // ---------------------- Games ----------------------------------------
 
     public async Task<IReadOnlyList<GameDto>> ListGamesAsync(CancellationToken cancellationToken)

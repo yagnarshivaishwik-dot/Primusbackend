@@ -27,6 +27,16 @@ public interface IPrimusApiClient
     // --- Wallet ---------------------------------------------------------
     Task<WalletDto> GetWalletBalanceAsync(CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Phase 1 paywall gate. Returns true when the signed-in customer holds an
+    /// active (non-zero) time package. The kiosk host calls this before
+    /// spawning any external process (game / app) to refuse the launch when
+    /// the customer is paywalled. The React UI uses the same endpoint via
+    /// the JS fetch path. Fails OPEN on any error (returning true) so a
+    /// backend hiccup doesn't lock customers out of games they paid for.
+    /// </summary>
+    Task<bool> HasActivePackageAsync(CancellationToken cancellationToken);
+
     // --- Games ----------------------------------------------------------
     Task<IReadOnlyList<GameDto>> ListGamesAsync(CancellationToken cancellationToken);
 

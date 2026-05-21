@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.auth import get_current_user, require_role
-from app.db.dependencies import get_cafe_db as get_db
+from app.db.dependencies import MULTI_DB_ENABLED, get_cafe_db as get_db
 from app.models import (
     ClientPC,
     CoinTransaction,
@@ -21,6 +21,56 @@ from app.models import (
 from app.schemas import PricingRuleIn, PricingRuleOut
 
 router = APIRouter()
+
+
+@router.get("/active-package")
+def get_active_package(
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Does the current user hold any active (non-zero) time package?
+
+    Used by the kiosk's PackageGuard (Phase 1 — block access to non-Shop
+    routes until a package is bought) and by the C# host's launch_game
+    handler (Phase 2 — refuse to spawn games when minutes hit zero).
+
+    Multi-DB: UserOffer.user_id FKs to the cafe-local users.id, not the
+    global user id. If the customer has never been mirrored into this
+    cafe yet, no UserOffer rows could exist — short-circuit to false.
+    Single-DB: UserOffer.user_id IS the global users.id, so use it directly.
+
+    Aggregates across multiple UserOffer rows so stacking purchases work:
+    two 30-minute offers means 60 minutes total; has_active becomes false
+    only when every row has zero/negative minutes.
+
+    Response shape is intentionally tiny — the kiosk polls this every 30 s
+    as a WS-hiccup safety net, so it has to be cheap.
+    """
+    if MULTI_DB_ENABLED:
+        from app.db.models_cafe import CafeUser
+        cafe_user = (
+            db.query(CafeUser)
+            .filter(CafeUser.global_user_id == current_user.id)
+            .first()
+        )
+        if cafe_user is None:
+            return {"has_active": False, "minutes_remaining": 0, "package_count": 0}
+        user_fk = cafe_user.id
+    else:
+        user_fk = current_user.id
+
+    rows = (
+        db.query(UserOffer)
+        .filter(UserOffer.user_id == user_fk)
+        .filter(UserOffer.minutes_remaining > 0)
+        .all()
+    )
+    total = sum(int(r.minutes_remaining or 0) for r in rows)
+    return {
+        "has_active": total > 0,
+        "minutes_remaining": total,
+        "package_count": len(rows),
+    }
 
 
 # Admin: create pricing rule
