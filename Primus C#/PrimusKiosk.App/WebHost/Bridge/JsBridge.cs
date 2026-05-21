@@ -825,6 +825,33 @@ public sealed class JsBridge : IDisposable
         var launcher = _sp.GetRequiredService<IGameLauncher>();
         var catalog  = _sp.GetRequiredService<IGameCatalog>();
 
+        // Phase 1 paywall gate (secondary check — the React PackageGuard is
+        // the primary source-of-truth). Refuse to spawn the .exe at all
+        // when the customer has no active time package. Fails OPEN if the
+        // backend can't be reached (network blip / VM restart) so people
+        // who paid don't get locked out of their game by a transient error.
+        try
+        {
+            var api = _sp.GetRequiredService<IPrimusApiClient>();
+            var hasPackage = await api.HasActivePackageAsync(CancellationToken.None).ConfigureAwait(false);
+            if (!hasPackage)
+            {
+                return new
+                {
+                    success = false,
+                    pid = 0,
+                    reason = "no_active_package",
+                    message = "Buy a time package before launching games.",
+                };
+            }
+        }
+        catch
+        {
+            // fail-open: backend unavailable → allow the launch. The React
+            // PackageGuard still gates UI navigation, so the only path
+            // around this check is also already gated upstream.
+        }
+
         var gameId  = args["game_id"]?.GetValue<long?>();
         var exePath = args["executable_path"]?.GetValue<string>();
         var name    = args["game_name"]?.GetValue<string>() ?? args["name"]?.GetValue<string>() ?? "Game";
