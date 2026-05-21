@@ -5,6 +5,10 @@ import { MdOutlineCurrencyRupee } from "react-icons/md";
 
 import { shopService } from "@/features/shop/services/shopService";
 import CashfreePaymentModal from "@/features/shop/components/CashfreePaymentModal";
+// TEMPORARY: ENABLE_MANUAL_PAYMENT — Phase 3 cash flow imports.
+import PaymentMethodChooser from "@/features/shop/components/PaymentMethodChooser";
+import CashAdminConfirmModal from "@/features/shop/components/CashAdminConfirmModal";
+import { manualPaymentEnabled } from "@/features/shop/services/paymentCashService";
 import useWalletStore from "@/app/store/useWalletStore";
 import useSessionStore from "@/app/store/useSessionStore";
 import { invoke, hasBridge, listen as listenBridge } from "@/app/bridge/invoke";
@@ -42,6 +46,14 @@ export default function ShopPage() {
   const [error, setError] = useState(null);
   const [cart, setCart] = useState([]);
   const [payment, setPayment] = useState(null);
+  // TEMPORARY: ENABLE_MANUAL_PAYMENT — Phase 3 chooser + cash modal state.
+  // paymentChoice holds the cart payload while the chooser is open;
+  // cashFlow holds it while the cash-admin-confirm modal is open. Both
+  // null when no payment is in progress. Going through this two-step
+  // routing instead of straight to setPayment lets the customer pick
+  // Cash without us touching the existing UPI/Cashfree path.
+  const [paymentChoice, setPaymentChoice] = useState(null);
+  const [cashFlow, setCashFlow] = useState(null);
   const [topUp, setTopUp] = useState(null); // null | { amount: string }
 
   // Live fetch + admin sync
@@ -166,15 +178,45 @@ export default function ShopPage() {
     if (cart.length === 0) return;
     if (!user?.id) return;
     const pcId = await resolvePcId();
-    setPayment({
+    const sessionInfo = {
       amount: payableTotal, // discount already applied if Happy Hour is live
       pcId,
       packIds: cart.map((i) => ({ id: i.id, qty: i.quantity })),
       note: happyHourActive
         ? `${cart.length} item${cart.length === 1 ? "" : "s"} (Happy Hour -30%)`
         : `${cart.length} item${cart.length === 1 ? "" : "s"}`,
-    });
+    };
+    // TEMPORARY: ENABLE_MANUAL_PAYMENT — flag off → legacy UPI direct path.
+    if (!manualPaymentEnabled()) {
+      setPayment(sessionInfo);
+      return;
+    }
+    // Flag on → show the "How are you paying?" chooser first.
+    setPaymentChoice(sessionInfo);
   };
+
+  // TEMPORARY: ENABLE_MANUAL_PAYMENT — Phase 3 chooser handlers.
+  const handleChoiceUpi = () => {
+    const session = paymentChoice;
+    setPaymentChoice(null);
+    setPayment(session); // hand off to the untouched CashfreePaymentModal.
+  };
+  const handleChoiceCash = () => {
+    const session = paymentChoice;
+    setPaymentChoice(null);
+    setCashFlow(session);
+  };
+  const handleChoiceCancel = () => setPaymentChoice(null);
+
+  const handleCashSuccess = async () => {
+    setCart([]);
+    setCashFlow(null);
+    // refreshActivePackage inside the modal already nudged the store.
+    // hydrate refreshes balance + coins too. PackageGuard sees the
+    // has_active false→true transition and auto-navigates to Home.
+    try { await hydrate({}); } catch { /* ignore */ }
+  };
+  const handleCashClose = () => setCashFlow(null);
 
   // Wallet top-up flow ("Add Coins"). Opens a styled inline modal where
   // the customer picks an amount, then routes through the same
@@ -336,13 +378,40 @@ export default function ShopPage() {
                   Happy Hour active · save ₹{happyHourDiscount.toLocaleString()}
                 </div>
               )}
-              <button disabled={cart.length === 0 || !!payment} onClick={handleCheckout}>
-                {payment ? 'Awaiting payment…' : `Checkout · ₹${payableTotal.toLocaleString()}`}
+              <button
+                disabled={cart.length === 0 || !!payment || !!paymentChoice || !!cashFlow}
+                onClick={handleCheckout}
+              >
+                {(payment || paymentChoice || cashFlow)
+                  ? 'Awaiting payment…'
+                  : `Checkout · ₹${payableTotal.toLocaleString()}`}
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* TEMPORARY: ENABLE_MANUAL_PAYMENT — Phase 3 chooser shown
+          immediately after Checkout, ahead of the existing CashfreePaymentModal. */}
+      {paymentChoice && (
+        <PaymentMethodChooser
+          amount={paymentChoice.amount}
+          onCash={handleChoiceCash}
+          onUpi={handleChoiceUpi}
+          onClose={handleChoiceCancel}
+        />
+      )}
+
+      {/* TEMPORARY: ENABLE_MANUAL_PAYMENT — Phase 3 cash admin modal. */}
+      {cashFlow && (
+        <CashAdminConfirmModal
+          amount={cashFlow.amount}
+          packs={cashFlow.packIds}
+          note={cashFlow.note}
+          onSuccess={handleCashSuccess}
+          onClose={handleCashClose}
+        />
+      )}
 
       {payment && (
         <CashfreePaymentModal
