@@ -253,7 +253,71 @@ async def pc_heartbeat(
         except Exception:
             pass
 
-    return {"status": "ok", "server_time": datetime.now(UTC).isoformat()}
+    # Phase 2 paywall — run a debit pass for whoever is signed in on this PC.
+    # The heartbeat is our primary tick trigger (every ~20 s). We compute
+    # elapsed since session.last_tick_at on the SERVER's wall clock — never
+    # trusting the kiosk's clock — and debit up to PAYWALL_OFFLINE_CAP_MINUTES
+    # from the user's oldest UserOffer. If the kiosk was offline beyond the
+    # KICK threshold the session is force-ended; the kiosk catches that via
+    # the next /active-package poll showing has_active=false. Wrapped in a
+    # try so a paywall hiccup never breaks the PC's online-status update.
+    remaining_minutes_for_response: int | None = None
+    try:
+        if pc.current_user_id is not None:
+            from app.services.paywall_tick import (
+                debit_session,
+                end_session_for_kick,
+                find_active_session_for_user,
+            )
+            session = find_active_session_for_user(db, pc.current_user_id, pc_id=pc.id)
+            if session is not None:
+                result = debit_session(db, session.id)
+                if result["should_kick"]:
+                    end_session_for_kick(db, session.id)
+                db.commit()
+                remaining_minutes_for_response = result["total_remaining"]
+
+                # Broadcast time_updated when minutes were actually debited
+                # (or session ended) so the kiosk pill snaps to truth and
+                # the PackageGuard reacts within one heartbeat cycle.
+                if result["debited_minutes"] > 0 or result["should_kick"]:
+                    try:
+                        from app.ws import pc as ws_pc
+                        envelope = json.dumps({
+                            "event": "time_updated",
+                            "payload": {
+                                "remaining_seconds": int(result["total_remaining"]) * 60,
+                                "minutes_remaining": int(result["total_remaining"]),
+                                "session_id": session.id,
+                                "kicked": bool(result["should_kick"]),
+                            },
+                        })
+                        await ws_pc.notify_pc(pc.id, envelope)
+                    except Exception:
+                        # Polling fallback in the kiosk picks up the new
+                        # state within 30 s if the WS push hiccups.
+                        pass
+    except Exception:
+        # Never let paywall logic poison a heartbeat — the kiosk needs the
+        # heartbeat response to keep itself marked online.
+        try:
+            db.rollback()
+        except Exception:
+            pass
+
+    return {
+        "status": "ok",
+        "server_time": datetime.now(UTC).isoformat(),
+        # Surface the authoritative remaining time when we have it so the
+        # kiosk can snap its visible pill without waiting for the WS
+        # event. None means "no active session" — kiosk leaves its
+        # current value alone.
+        "remaining_time_seconds": (
+            remaining_minutes_for_response * 60
+            if remaining_minutes_for_response is not None
+            else None
+        ),
+    }
 
 
 # Simple heartbeat with pc_id as path parameter (SECURED with signature)

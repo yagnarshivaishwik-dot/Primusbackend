@@ -26,6 +26,8 @@ import { useNavigate } from 'react-router-dom';
 import useWalletStore from '@/app/store/useWalletStore';
 import { ROUTES } from '@/app/routes/paths';
 
+const REFRESH_ON_ZERO_DELAY_MS = 250;
+
 const REMINDER_MINUTES = [15, 10, 5, 1];
 
 function formatRemaining(minutes) {
@@ -41,6 +43,7 @@ export default function PackageCountdownPill() {
   const minutesLeft = useWalletStore((s) => s.minutesLeft);
   const hasActivePackage = useWalletStore((s) => s.hasActivePackage);
   const tickDown = useWalletStore((s) => s.tickDown);
+  const refreshActivePackage = useWalletStore((s) => s.refreshActivePackage);
 
   // Local 1-minute tick. Server pushes the authoritative value on every
   // time_updated WS event, so drift stays bounded to under 60 s.
@@ -81,13 +84,22 @@ export default function PackageCountdownPill() {
     [],
   );
 
-  // Hit zero → bounce to Shop. PackageGuard's /active-package poll
-  // will catch the has_active=false transition and slam the gate.
+  // Hit zero → bounce to Shop AND force an immediate refresh so the
+  // hasActivePackage flag flips false right away. Without the explicit
+  // refresh the kiosk's cached `true` value lingers until the next 30 s
+  // poll cycle, which means the customer briefly sees Shop without the
+  // banner (the gate visually under-reacts to the timer). The small
+  // delay gives the navigate() a tick to settle before we hit the API.
   useEffect(() => {
     if (hasActivePackage === true && minutesLeft === 0) {
       navigate(ROUTES.mainShop, { replace: true });
+      const t = window.setTimeout(() => {
+        refreshActivePackage?.();
+      }, REFRESH_ON_ZERO_DELAY_MS);
+      return () => window.clearTimeout(t);
     }
-  }, [minutesLeft, hasActivePackage, navigate]);
+    return undefined;
+  }, [minutesLeft, hasActivePackage, navigate, refreshActivePackage]);
 
   if (hasActivePackage !== true) return null;
 
@@ -97,9 +109,15 @@ export default function PackageCountdownPill() {
         aria-label="time remaining"
         style={{
           position: 'fixed',
-          top: 18,
+          // Sit below the AppHeader bar so the avatar / settings dropdowns
+          // (which open downward from the header) render on top of us
+          // instead of behind us. Otherwise customers couldn't see the
+          // Log out menu while paywalled — it was hidden under the pill.
+          top: 76,
           right: 18,
-          zIndex: 4500,
+          // Above page content, below header dropdowns (typical z-index
+          // 1000-2000 in the codebase).
+          zIndex: 800,
           background:
             'linear-gradient(135deg, rgba(20,26,46,0.9), rgba(13,18,36,0.9))',
           border: '1px solid rgba(255,255,255,0.10)',
@@ -128,10 +146,12 @@ export default function PackageCountdownPill() {
           aria-live="assertive"
           style={{
             position: 'fixed',
-            top: 72,
+            // Pushed further down so the pill and the toast don't
+            // overlap each other or the AppHeader dropdowns.
+            top: 128,
             right: 18,
             maxWidth: 360,
-            zIndex: 4600,
+            zIndex: 810,
             background:
               'linear-gradient(135deg, rgba(245,158,11,0.95), rgba(220,38,38,0.95))',
             color: '#fff',

@@ -46,6 +46,18 @@ export default function PackageGuard() {
     prevHasActiveRef.current = hasActivePackage;
   }, [hasActivePackage, navigate]);
 
+  // Fire one immediate refresh on mount so the gate kicks in within ~200ms
+  // of the user landing on any signed-in route — without this the guard
+  // had to wait for the first 30 s poll cycle (or an external hydrate
+  // call) before flipping hasActivePackage off `null`. That meant a
+  // zero-minute user could see Home for up to 30 seconds before being
+  // bounced to Shop. Run-once via the empty-ish dep array; the polling
+  // effect below handles ongoing reconciliation.
+  useEffect(() => {
+    refreshActivePackage?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Belt-and-suspenders 30 s poll fallback. The WS time_updated push is
   // the primary signal; this catches the rare case where the WS
   // reconnected and missed an event in-flight.

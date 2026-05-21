@@ -402,10 +402,13 @@ async def confirm_payment(
         if pc:
             pc.status = "in_use"
             pc.current_user_id = body.user_id
+            _now = datetime.now(UTC)
             new_session = PCSession(
                 user_id=body.user_id,
                 pc_id=body.client_id,
-                start_time=datetime.now(UTC),
+                start_time=_now,
+                # Phase 2 paywall — see app/services/paywall_tick.py.
+                last_tick_at=_now,
             )
             db.add(new_session)
             db.commit()

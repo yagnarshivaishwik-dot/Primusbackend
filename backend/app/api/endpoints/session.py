@@ -80,8 +80,9 @@ async def start_session(
             cafe_id=ctx.cafe_id,
             start_time=now,
             # Phase 2 paywall — anchor the per-minute decrementer at
-            # session start. paywall_tick.debit_session advances this
-            # by debit_minutes*60s on every heartbeat.
+            # session start so the very first heartbeat (~20 s in)
+            # debits ~0 minutes, not 0 forever. paywall_tick.debit_session
+            # advances this column by exactly debit_minutes*60s per call.
             last_tick_at=now,
             paid=False,
             amount=0.0,
