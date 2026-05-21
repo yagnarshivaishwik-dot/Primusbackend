@@ -110,6 +110,9 @@ class Session(Base):
     paid = Column(Boolean, default=False)
     paid = Column(Boolean, default=False)
     amount = Column(Float, default=0.0)
+    # Phase 2 paywall — see app/db/models_cafe.py Session.last_tick_at
+    # for the design notes. Nullable for backward compat.
+    last_tick_at = Column(DateTime, nullable=True)
 
 
 class WalletTransaction(Base):

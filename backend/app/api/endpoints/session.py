@@ -28,11 +28,17 @@ async def start_session(
     db: Session = Depends(get_db),
 ):
     def _create() -> PCSession:
+        now = datetime.now(UTC)
         session = PCSession(
             pc_id=data.pc_id,
             user_id=data.user_id,
             cafe_id=ctx.cafe_id,
-            start_time=datetime.now(UTC),
+            start_time=now,
+            # Phase 2 paywall — anchor the per-minute decrementer at
+            # session start so the very first heartbeat (~20 s in)
+            # debits ~0 minutes, not 0 forever. paywall_tick.debit_session
+            # advances this column by exactly debit_minutes*60s per call.
+            last_tick_at=now,
             paid=False,
             amount=0.0,
         )

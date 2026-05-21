@@ -59,6 +59,29 @@ def get_active_package(
     else:
         user_fk = current_user.id
 
+    # Phase 2 paywall — belt-and-suspenders debit pass. Heartbeat is the
+    # primary tick trigger; this catches any case where heartbeat missed
+    # (kiosk briefly offline, container restart, etc.) so the visible
+    # remaining-minutes number the kiosk gets back is fresh. Wrapped in
+    # try so a paywall hiccup never 500s a read endpoint.
+    try:
+        from app.services.paywall_tick import (
+            debit_session,
+            end_session_for_kick,
+            find_active_session_for_user,
+        )
+        session = find_active_session_for_user(db, user_fk)
+        if session is not None:
+            result = debit_session(db, session.id)
+            if result["should_kick"]:
+                end_session_for_kick(db, session.id)
+            db.commit()
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+
     rows = (
         db.query(UserOffer)
         .filter(UserOffer.user_id == user_fk)

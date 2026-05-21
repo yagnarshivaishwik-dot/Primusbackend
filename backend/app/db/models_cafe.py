@@ -108,6 +108,14 @@ class Session(CafeBase):
     end_time = Column(DateTime, nullable=True)
     paid = Column(Boolean, default=False)
     amount = Column(Numeric(12, 2), default=0)
+    # Phase 2 paywall — server-authoritative "minutes already debited up
+    # to this timestamp". On every heartbeat / /active-package poll the
+    # backend computes elapsed = utcnow() - last_tick_at, debits up to
+    # PAYWALL_OFFLINE_CAP_MINUTES, then advances last_tick_at by
+    # debit_minutes*60 (NOT utcnow — preserves the fractional carry).
+    # Nullable for backward compat with rows that pre-date the column;
+    # the service treats NULL as session.start_time on first touch.
+    last_tick_at = Column(DateTime, nullable=True)
 
 
 class PricingRule(CafeBase):
