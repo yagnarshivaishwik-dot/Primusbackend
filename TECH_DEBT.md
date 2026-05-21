@@ -280,6 +280,58 @@ Known follow-up (smaller): DDC-CI for desktop monitors that don't expose WMI bri
 
 ---
 
+### 23. Cafe-scoped models silently break on `cafe_id=ctx.cafe_id` kwarg in multi-DB
+
+**Symptom:** Endpoints that construct cafe-scoped rows with the legacy
+single-DB pattern `Model(cafe_id=ctx.cafe_id, ...)` raise
+`'cafe_id' is an invalid keyword argument for <Model>` at INSERT time in
+multi-DB mode. The cafe-DB schema explicitly has NO `cafe_id` column on
+any table (each database IS the cafe — see `app/db/models_cafe.py` module
+docstring); the model classes mirror that and reject the kwarg.
+
+**Where it bites:** Confirmed at `session.py:80` (fixed 2026-05-21,
+commit da92aeb). Same pre-existing latent bug pattern exists at:
+- `admin_sessions.py:65`
+- `announcement.py:31`
+- `booking.py:41`
+- `event.py:46`
+- `game.py:34`
+- `hardware.py:30`
+- `leaderboard.py:26`
+- `membership.py:24`
+- `notification.py:27`
+- (and possibly more — full grep is `grep -rn 'cafe_id=ctx' backend/app/api/endpoints/`)
+
+These endpoints will 500 the first time anyone calls them in multi-DB
+mode. They haven't surfaced yet because the kiosk customer flow doesn't
+hit them — but admin / staff flows would.
+
+**Proposed fix (single file, ~6 lines):** Patch `CafeBase` in
+`backend/app/db/cafe_db.py` so every cafe-scoped model silently drops
+`cafe_id` from constructor kwargs:
+
+```python
+class _CafeModelBase:
+    def __init__(self, **kwargs):
+        kwargs.pop("cafe_id", None)
+        super().__init__(**kwargs)
+
+CafeBase = declarative_base(cls=_CafeModelBase)
+```
+
+**Trade-off:** Code that reads `instance.cafe_id` AFTER inserting on a
+cafe-scoped model would AttributeError. Grep for that pattern before
+shipping. Dominant read pattern in the codebase is `ctx.cafe_id` from
+the JWT, not row-level reads, so collateral should be minimal.
+
+**Why it doesn't matter for single-DB:** The legacy `app.models.*`
+classes inherit from `Base`, NOT `CafeBase`. Behavior preserved.
+
+**Effort:** ~30 min including the grep audit for `.cafe_id` reads.
+**Risk:** Low. Single-file mixin change, one rollback point.
+
+---
+
 ## Resolved
 
 (Move items here with date + commit hash when fixed.)
