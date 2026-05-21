@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import AppProviders from '@/app/providers/AppProviders';
 import AppRoutes from '@/app/routes/AppRoutes';
 import SetupPage from '@/features/auth/pages/SetupPage';
@@ -198,6 +198,48 @@ export default function App() {
       });
     };
   }, [setupState]);
+
+  // Phase 2 paywall bootstrap. The historical kiosk flow had "login" and
+  // "start session" as two separate user actions, so neither /login nor
+  // /admin-bind-and-login sets pc.current_user_id or creates a PCSession
+  // row — meaning paywall_tick.debit_session (on the heartbeat) has
+  // nothing to operate on, and minutes never decrement on the server.
+  //
+  // Fix: as soon as we have BOTH a known pcId (from device.bin) AND a
+  // signed-in customer, kick off /api/v1/session/start once per login.
+  // The endpoint atomically sets pc.current_user_id and inserts the
+  // PCSession; subsequent heartbeats then decrement properly. Idempotent
+  // via the ref guard — re-render storms don't spawn duplicate sessions.
+  // Subscribe to the signed-in user.id so the bootstrap effect re-runs
+  // when a customer signs in (or out). Reading via the hook (not
+  // useSessionStore.getState()) is what makes React track the
+  // dependency for re-runs.
+  const signedInUserId = useSessionStore((s) => s.user?.id);
+  const sessionBootstrappedFor = useRef(null);
+  useEffect(() => {
+    if (setupState !== 'ready') return;
+    if (!pcId) return;
+    if (!signedInUserId) return;
+    const key = `${pcId}:${signedInUserId}`;
+    if (sessionBootstrappedFor.current === key) return;
+    sessionBootstrappedFor.current = key;
+
+    (async () => {
+      try {
+        const { apiPost } = await import('@/app/api/client');
+        await apiPost('/api/v1/session/start', { pc_id: pcId, user_id: signedInUserId });
+        // Re-hydrate so the paywall guard / countdown pill see the new
+        // server-side state (notably last_tick_at now exists).
+        try { await useWalletStore.getState().hydrate({ pcId }); } catch { /* ignore */ }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('[paywall] session/start failed:', err?.message || err);
+        // Clear the ref so a later re-render retries (e.g. backend was
+        // briefly unhealthy). Subsequent renders re-attempt; not fatal.
+        sessionBootstrappedFor.current = null;
+      }
+    })();
+  }, [setupState, pcId, signedInUserId]);
 
   // Forced logout on any 401 from an authenticated API call. The api()
   // client dispatches `auth:unauthorized` whenever a non-login request
