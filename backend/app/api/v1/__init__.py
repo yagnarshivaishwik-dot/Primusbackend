@@ -35,6 +35,7 @@ from app.api.endpoints import (
     notification,
     offer,
     payment,
+    payment_cash,
     pc,
     pc_admin,
     pc_ban,
@@ -92,6 +93,10 @@ v1_router.include_router(analytics.router, prefix="/analytics", tags=["v1-analyt
 # Wallet & Payments
 v1_router.include_router(wallet.router, prefix="/wallet", tags=["v1-wallet"])
 v1_router.include_router(payment.router, prefix="/payment", tags=["v1-payment"])
+# TEMPORARY: ENABLE_MANUAL_PAYMENT — cash payment fallback while Cashfree
+# embedded checkout is gated on whitelist. Remove this line + delete
+# payment_cash.py once flag is flipped to false in production.
+v1_router.include_router(payment_cash.router, prefix="/payment", tags=["v1-payment-cash"])
 v1_router.include_router(billing.router, prefix="/billing", tags=["v1-billing"])
 
 # Commerce & Offers
