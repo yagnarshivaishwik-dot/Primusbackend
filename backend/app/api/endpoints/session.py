@@ -74,10 +74,16 @@ async def start_session(
             user_fk = cafe_user.id
 
         now = datetime.now(UTC)
+        # IMPORTANT: do NOT pass cafe_id here. In multi-DB mode the cafe
+        # `Session` model has no cafe_id column (each database IS the
+        # cafe — see app/db/models_cafe.py Session). Passing cafe_id
+        # raises `'cafe_id' is an invalid keyword argument for Session`
+        # at INSERT time. The legacy single-DB Session has it nullable,
+        # so omitting it is safe in both modes — and matches what
+        # shop.py:405 already does for the Cashfree-success session.
         session = PCSession(
             pc_id=data.pc_id,
             user_id=user_fk,
-            cafe_id=ctx.cafe_id,
             start_time=now,
             # Phase 2 paywall — anchor the per-minute decrementer at
             # session start so the very first heartbeat (~20 s in)
