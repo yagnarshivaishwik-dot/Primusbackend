@@ -78,25 +78,46 @@
 
 /* Card */
 .shopcard {
-    height: 365px;
+    /* Auto-size to content. The previous fixed 365px made the card
+       enormous on PC screens when the placeholder image stretched to
+       fill — content was crammed at the bottom and the Add to Cart
+       button got clipped. Flex column lets cardtop stay bounded and
+       cardbottom auto-size. */
+    display: flex;
+    flex-direction: column;
     border-radius: 20px;
     color: #fff;
     font-size: 28px;
     font-weight: 600;
+    overflow: hidden;
 }
 
 .shopcard .cardtop {
-    /* height: 175px;
-    background: green; */
     position: relative;
     border-top-left-radius: 20px;
     border-top-right-radius: 20px;
+    /* Bound the image area so the card stays compact on wide PC
+       screens. 180px gives the thumbnail enough presence without
+       letting it dominate the card. */
+    height: 180px;
+    overflow: hidden;
+    flex-shrink: 0;
 }
 
 .shopcard .cardtop img {
     width: 100%;
+    height: 100%;
+    object-fit: cover;
     border-top-left-radius: 20px;
     border-top-right-radius: 20px;
+}
+
+/* The placeholder fallback (no thumbnailUrl) needs the same height
+   constraint — its inline `aspectRatio: 1` style would otherwise
+   make it a giant square on wide columns. */
+.shopcard .cardtop > div {
+    height: 100% !important;
+    aspect-ratio: auto !important;
 }
 
 .shopcard .badge {
@@ -122,7 +143,30 @@
 .cardbottom .carddetails h5 {
     font-size: 1rem;
     padding-bottom: 0.5rem;
+}
 
+/* Long names like "Cool Refreshing Cola Drink Premium" used to overflow
+   the card width and break the layout. Clamp to two lines + ellipsis so
+   the card never grows wider than its slot regardless of pack name. */
+.cardbottom .carddetails h4 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
+    line-height: 1.25;
+    min-height: 2.5em;
+}
+
+.cardbottom .carddetails h6 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .cardbottom .carddetails h6 {
@@ -147,4 +191,49 @@
 .cardbottom .cardbutton button {
     font-size: 14px;
 
+}
+
+/* Inline +/- counter (replaces "Add to Cart" once the pack is in the cart).
+   Matches the existing cardbutton glassyfinish style so the swap looks
+   intentional, not jumpy. */
+.cardbottom .cardcounter {
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    gap: 8px;
+}
+
+.cardbottom .cardcounter .cardcounter__btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #fff;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.cardbottom .cardcounter .cardcounter__btn:hover {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.cardbottom .cardcounter .cardcounter__btn:active {
+    transform: scale(0.95);
+}
+
+.cardbottom .cardcounter .cardcounter__qty {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    min-width: 24px;
+    text-align: center;
 }

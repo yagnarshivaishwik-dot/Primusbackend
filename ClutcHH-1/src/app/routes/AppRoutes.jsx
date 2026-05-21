@@ -47,7 +47,10 @@ import LeaderboardPage from '@/features/leaderboard/pages/LeaderboardPage';
 
 import HelpPage from '@/features/settings/pages/HelpPage';
 import SoundSettingsPage from '@/features/settings/pages/SoundSettingsPage';
+import DisplaySettingsPage from '@/features/settings/pages/DisplaySettingsPage';
 import InstalledPage from '@/features/settings/pages/InstalledPage';
+
+import AppearancePage from '@/features/appearance/pages/AppearancePage';
 
 import NotFoundPage from '@/pages/NotFoundPage';
 
@@ -55,6 +58,13 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path={ROUTES.root} element={<Navigate to={ROUTES.initializing} replace />} />
+      {/* WebView2 navigates to `https://kiosk.primustech.in/index.html` on
+          launch, which BrowserRouter sees as the literal path `/index.html`.
+          That path doesn't match any of our routes, so without this alias
+          the kiosk would land on MainLayout's catch-all NotFoundPage. Alias
+          it back to root so the normal initializing → login chain takes
+          over. */}
+      <Route path="/index.html" element={<Navigate to={ROUTES.root} replace />} />
        {/* <Route path={ROUTES.root} element={<LoginPage/>} /> */}
 
       {/* Auth layout */}
@@ -74,6 +84,8 @@ export default function AppRoutes() {
         <Route path={ROUTES.home} element={<HomePage />} />
         <Route path={ROUTES.mainShop} element={<ShopPage />} />
         <Route path={ROUTES.mainGames} element={<GamesPage />} />
+        <Route path={ROUTES.mainPrizeVault} element={<PrizeVaultPage />} />
+        <Route path={ROUTES.appearance} element={<AppearancePage />} />
       </Route>
 
       {/* Main layout (shell) — other pages keep the shared Navbar. */}
@@ -81,7 +93,6 @@ export default function AppRoutes() {
         <Route path={ROUTES.mainApps} element={<AppsPage />} />
         <Route path={ROUTES.mainArcade} element={<ArcadePage />} />
 
-        <Route path={ROUTES.mainPrizeVault} element={<PrizeVaultPage />} />
         <Route path={ROUTES.mainProfile} element={<ProfilePage />} />
 
         <Route path={ROUTES.gameDetail} element={<GameDetailPage />} />
@@ -112,6 +123,7 @@ export default function AppRoutes() {
 
         <Route path={ROUTES.settingsHelp} element={<HelpPage />} />
         <Route path={ROUTES.settingsSound} element={<SoundSettingsPage />} />
+        <Route path={ROUTES.settingsDisplay} element={<DisplaySettingsPage />} />
         <Route path={ROUTES.settingsInstalled} element={<InstalledPage />} />
 
         <Route path="*" element={<NotFoundPage />} />

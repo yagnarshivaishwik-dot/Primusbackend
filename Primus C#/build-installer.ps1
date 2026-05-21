@@ -78,12 +78,21 @@ $webDir        = Join-Path $root 'web'           # staged React dist/ (shipped t
 #   2. Any PrimusClient/dist fallback (legacy Tauri UI)
 #   3. Already-staged web/ dir next to this script
 $repoRoot       = Split-Path -Parent (Split-Path -Parent $root)
-$sticRoot       = Split-Path -Parent $repoRoot
+$sticRoot       = if ($repoRoot) { Split-Path -Parent $repoRoot } else { $null }
+$repoGrandparent = if ($repoRoot) { Split-Path -Parent $repoRoot } else { $null }
+
+function Join-PathSafe([string]$Base, [string]$Child) {
+    if ([string]::IsNullOrWhiteSpace($Base)) { return $null }
+    return (Join-Path $Base $Child)
+}
+
 $reactCandidates = @(
-    (Join-Path $sticRoot 'ClutcHH-1\dist'),
-    (Join-Path $repoRoot 'ClutcHH-1\dist'),
-    (Join-Path $repoRoot 'Primusbackend\.claude\worktrees\nervous-goldwasser\PrimusClient\dist'),
-    (Join-Path (Split-Path -Parent $repoRoot) 'PrimusClient\dist')
+    (Join-PathSafe $sticRoot 'ClutcHH-1\dist'),
+    (Join-PathSafe $repoRoot 'ClutcHH-1\dist'),
+    # Sudheendra's local layout: C:\Primusbackend\ClutcHH-1\dist
+    (Join-PathSafe (Split-Path -Parent $root) 'ClutcHH-1\dist'),
+    (Join-PathSafe $repoRoot 'Primusbackend\.claude\worktrees\nervous-goldwasser\PrimusClient\dist'),
+    (Join-PathSafe $repoGrandparent 'PrimusClient\dist')
 )
 $reactDistDir = $null
 foreach ($c in $reactCandidates) {

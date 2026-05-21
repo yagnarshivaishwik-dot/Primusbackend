@@ -6,7 +6,7 @@
  * (`launch_game` in JsBridge.cs).
  */
 
-import { apiGet } from '@/app/api/client';
+import { apiGet, apiPost } from '@/app/api/client';
 import { invoke, hasBridge } from '@/app/bridge/invoke';
 import { audit } from '@/app/api/audit';
 
@@ -81,6 +81,39 @@ export const gamesService = {
     return all.slice(0, n);
   },
 };
+
+/**
+ * Admin-gated bulk add of locally-detected games.
+ *
+ * Used by GamesPage's "Add games from this PC" modal. The list of
+ * `games` comes from the C# bridge `detect_installed_games` (Steam /
+ * Epic / etc scan). Backend validates the admin's credentials + that
+ * they own the kiosk's cafe before inserting any rows.
+ */
+export async function adminCreateDetected({ adminEmail, adminPassword, games }) {
+  if (!adminEmail || !adminPassword) {
+    throw new Error('Admin credentials are required.');
+  }
+  if (!Array.isArray(games) || games.length === 0) {
+    throw new Error('No games selected.');
+  }
+  return apiPost('/api/v1/games/admin-create-detected', {
+    admin_email: adminEmail,
+    admin_password: adminPassword,
+    games: games.map((g) => ({
+      name: g.name,
+      exe_path: g.executable_path || g.exe_path || null,
+      category: g.category || 'game',
+      launcher: g.launcher || null,
+      // base64 data URI extracted from the .exe icon by the C# scanner;
+      // backend stores it on `Game.logo_url` so catalog tiles render
+      // real icons instead of the placeholder.
+      logo_url: g.logo_url || g.logoDataUri || null,
+    })),
+  });
+}
+
+gamesService.adminCreateDetected = adminCreateDetected;
 
 export async function launch(game) {
   if (!hasBridge()) throw new Error('Game launcher is only available on the kiosk host.');

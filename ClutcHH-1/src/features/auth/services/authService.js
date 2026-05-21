@@ -33,6 +33,11 @@ function normalizeUser(u) {
     name,
     email: u.email || '',
     role: u.role || 'user',
+    // Surface cafe_id so the kiosk can reject sign-ins from accounts
+    // that aren't bound to any cafe. Backend includes it on /auth/me
+    // and on the /auth/login response itself; we prefer the former
+    // because it's the canonical source after a token refresh.
+    cafe_id: u.cafe_id ?? null,
     avatar,
     fullName: u.full_name || null,
     raw: u,
@@ -58,7 +63,19 @@ export const authService = {
     setJwt(token);
 
     const me = await apiGet('/api/v1/auth/me').catch(() => null);
-    return normalizeUser(me) || normalizeUser({ email, role: res?.role });
+    // Merge /me's user fields with the login response's RESOLVED cafe_id.
+    // Why: /auth/me returns only `User.cafe_id` (the direct column on the
+    // global users table), which is NULL for customers added to a cafe
+    // via the many-to-many `UserCafeMap`. The login endpoint already
+    // resolves cafe_id via device → UserCafeMap → User.cafe_id fallback,
+    // so its response carries the authoritative value. Without this
+    // merge, every UserCafeMap-bound customer hits the kiosk's
+    // "not registered with this cafe" check and gets auto-redirected to
+    // admin setup even though they're correctly bound in the DB.
+    const merged = me
+      ? { ...me, cafe_id: res?.cafe_id ?? me.cafe_id, role: me.role || res?.role }
+      : { email, role: res?.role, cafe_id: res?.cafe_id };
+    return normalizeUser(merged);
   },
 
   async signOut() {
@@ -69,6 +86,45 @@ export const authService = {
     }
     setJwt(null);
     return true;
+  },
+
+  /**
+   * Admin-supervised customer login + cafe binding.
+   *
+   * Used by LoginPage when a customer fails the kiosk's cafe-access
+   * check (403 from /auth/login). The admin physically present at the
+   * kiosk enters THEIR credentials; combined with the customer's
+   * already-entered credentials, the backend creates a UserCafeMap
+   * binding the customer to this kiosk's cafe AND mints customer
+   * tokens in one round-trip.
+   *
+   * Form-encoded to match the existing /auth/login style.
+   */
+  async adminBindAndLogin({ adminEmail, adminPassword, userEmail, userPassword }) {
+    if (!adminEmail || !adminPassword || !userEmail || !userPassword) {
+      throw new Error('Admin and customer credentials are both required.');
+    }
+    const form = new URLSearchParams();
+    form.append('admin_email', adminEmail);
+    form.append('admin_password', adminPassword);
+    form.append('user_email', userEmail);
+    form.append('user_password', userPassword);
+
+    const res = await api('/api/v1/auth/admin-bind-and-login', {
+      method: 'POST',
+      body: form,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+
+    const token = res?.access_token;
+    if (!token) throw new Error('Admin-bind succeeded but returned no token.');
+    setJwt(token);
+
+    const me = await apiGet('/api/v1/auth/me').catch(() => null);
+    const merged = me
+      ? { ...me, cafe_id: res?.cafe_id ?? me.cafe_id, role: me.role || res?.role }
+      : { email: userEmail, role: res?.role, cafe_id: res?.cafe_id };
+    return normalizeUser(merged);
   },
 
   async me() {

@@ -160,6 +160,69 @@ Then audit every reference to `WalletTransaction.cafe_id`, `Offer.cafe_id`, `Use
 **Effort:** ~10 min to reorder candidates in `App.xaml.cs:105-140`.
 **Risk:** Low. Could mildly affect the installed-layout case if anyone relies on the `.\web\` precedence — but that case is covered by candidate #3 (Program Files) anyway.
 
+### 27. Avatar picker (Appearance page) only persists per-kiosk
+**Symptom:** The kiosk's Appearance page lets a customer pick a curated Dicebear preset or generate an identicon. The chosen URL is written to `useSessionStore.avatar` and persisted via the existing localStorage middleware — so it survives the customer's session on THIS kiosk PC, but moving to another PC in the same cafe (or coming back tomorrow on a different machine) shows their initials again. The avatar never reaches the backend.
+**Current workaround:** Acceptable for v1 — most customers use the same kiosk repeatedly. The trade-off was: ship a working in-app avatar picker today, defer the persistence work.
+**Proper fix:**
+  - Add `avatar_url` column to `CafeUser` (cafe schema migration — blocked on alembic_cafe chain repair, item #13) and/or `User` (global schema).
+  - New `PATCH /api/v1/user/avatar { url }` endpoint that writes the column. Validate URL is a Dicebear API URL or a local preset path to keep arbitrary URLs out of the schema.
+  - `authService.me()` returns `avatar_url`; kiosk reads it on login and hydrates `useSessionStore.avatar`.
+  - Appearance page Save button calls the PATCH alongside the existing `setAvatar` store call.
+**Effort:** ~1 hr once #13 unblocks. Otherwise ~2 hrs with a raw SQL helper script to add the column manually.
+**Risk:** Low — additive column, validation on write.
+
+### 25. [Resolved 2026-05-20] Kiosk native bridge for system audio / display brightness
+
+**Status:** Implemented. `NAudio.Wasapi` + WMI wiring shipped in `SystemSettingsBridge.cs`; four handlers (`get_system_volume`, `set_system_volume`, `get_display_brightness`, `set_display_brightness`) registered in `JsBridge.DispatchAsync`. React `SettingsPanel` already speaks to these handlers, so the dropdown's sliders/toggles now drive the kiosk PC's actual master volume + mute + monitor brightness.
+
+Known follow-up (smaller): DDC-CI for desktop monitors that don't expose WMI brightness. Today on those rigs the brightness slider falls back to localStorage (silent no-op at the OS layer). Adding DDC-CI would be a separate PR — touches a different Win32 API surface (`HighLevelMonitorConfigurationAPI` or a third-party lib).
+
+---
+
+### 25-old. Kiosk has no native bridge for system audio / display brightness
+**Symptom:** The Sound and Display settings pages (`SoundSettingsPage.jsx`, `DisplaySettingsPage.jsx`) render volume sliders and a brightness slider that look functional, but moving them only writes to `localStorage` — the kiosk PC's actual Windows volume mixer and monitor brightness never change. Both pages already TRY to call `invoke('set_system_volume', …)` / `invoke('set_display_brightness', …)` / `invoke('get_system_volume')` / `invoke('get_display_brightness')` via `@/app/bridge/invoke`, but the C# host hasn't registered those handlers, so every call silently no-ops. The customer sees the slider move and assumes it took effect.
+**Current workaround:** Status note on each page explains that values save locally when the bridge isn't available. No real OS effect today.
+**Proper fix (C# side):**
+  - **Volume**: hook the Windows Core Audio API. Cleanest path is the `NAudio` NuGet (`NAudio.CoreAudioApi.MMDeviceEnumerator` → default render device → `AudioEndpointVolume`). Two methods: `get_system_volume` returns `{percent, muted}` from `MasterVolumeLevelScalar` × 100 and `Mute`; `set_system_volume(percent, muted)` writes both. Register on the bridge alongside the existing kiosk lifecycle methods.
+  - **Brightness**: WMI's `WmiMonitorBrightness` class for laptops; `WmiMonitorBrightnessMethods.WmiSetBrightness(timeout, level)` to write. Desktops with external monitors need DDC-CI (libraries like `dccci-monitorapi` or P/Invoke into `HighLevelMonitorConfigurationAPI`). Start with WMI; add DDC-CI later if non-laptop deployments need it.
+  - **Wiring**: add the four invoke handlers in `JsBridge.cs` (or a new `SystemSettingsBridge.cs`), no React changes needed because both pages already speak to the same invoke names. Existing TODO comments in the pages point at this entry.
+**Effort:** ~2-3 hrs total (NuGet add, 4 methods, error handling for desktops without WMI brightness support, manual test on a laptop + desktop).
+**Risk:** Low. System audio is well-trodden ground via NAudio; brightness fails gracefully on desktops that don't expose WMI (the get* method returns null and the slider just reverts to localStorage). No backend/server impact.
+
+### 26. Rewards page is mostly hardcoded — XP/level, streak, badges, leaderboard, hours-played all missing from backend
+**Symptom:** [`PrizeVaultPage.jsx`](ClutcHH-1/src/features/prizeVault/pages/PrizeVaultPage.jsx) renders Pavan's full Awards design: profile card with LVL/XP/streak/hours-played and 4 stat tiles, plus Challenges / Badges / Leaderboard / Prize Vault tabs. Only **coins balance** and **user name/initials** are real today (sourced from `useWalletStore` and `useSessionStore`). The rest is hardcoded:
+  - **LVL 32 / 2,350 of 10,000 XP** — no `users.xp` column exists ([item #19](#19-quest-claim-credits-coins-but-xp-rewards-are-silently-dropped)).
+  - **7 days Streak** — no streak tracker; would need a daily-login progression check writing to a new column or table.
+  - **Hours Played: 156** — could be sourced from `sessions` table (sum of `end_time - start_time` for `user_id`) but no endpoint exists.
+  - **Badges 23/45 + the badge grid** — no badges domain model at all. Pavan's grid is 9 hardcoded `<div class="badge-card">`s.
+  - **Completed 12** — would be count of completed quests, but the quest progression engine doesn't exist ([item #21](#21-quest-system-has-no-operator-workflow--admin-crud--progression-engine-missing)).
+  - **Leaderboard top-3** — Pavan's mock data; we have a `LeaderboardService` and `LeaderboardPage` in the repo but they read totally different shapes than what this page expects.
+**Current workaround:** The visual is fully ported (so customers see something complete-looking), but every number except Coins Earned is a constant.
+**Proper fix (multiple sub-tasks):**
+  - (a) Add `users.xp` column + level computation (blocked on alembic_cafe chain repair — #13). Surface via `/api/v1/wallet/balance` next to coins.
+  - (b) Streak: add `users.login_streak_days` + `users.last_login_date` columns, update on `/auth/login` if the prior date was yesterday.
+  - (c) Hours played: `GET /api/v1/session/total-hours` summing the cafe-DB `sessions` table for `current_user`.
+  - (d) Badges: new `badges` table on the cafe schema + admin CRUD + an awarding rules engine. Bigger scope.
+  - (e) Leaderboard: thread the existing `leaderboard/router.py` into a "top-N by hours/score" call that the Rewards page can consume.
+**Effort:** (a) and (c) are each ~1 hr. (b) ~2 hrs. (d) is several days. (e) ~2-3 hrs.
+**Risk:** Mostly additive. Badges (d) is the biggest design lift; the others slot in cleanly.
+
+### 24. Session timer is frontend-only, doesn't survive kiosk reload
+**Symptom:** The session pill in `AppHeader` (top-right of every full-screen page) shows time elapsed since login as `HH:MM:SS`. Today the clock starts from `sessionStartedAt = Date.now()` captured in `useSessionStore` at sign-in time and persisted to localStorage. That works for normal kiosk use but has two failure modes:
+  1. **Kiosk relaunch mid-session**: the React `useSessionStore.persist` blob includes `sessionStartedAt`, so the clock survives a normal SPA reload. But if the C# host clears local app data (uninstall/reinstall, profile reset, recovery script) the customer's session timer resets to 0 even though their actual cafe session is mid-flight per the backend's `sessions` table.
+  2. **Multi-device**: a customer who logs in on PC #1, then walks to PC #2 (same JWT, both bound to same cafe), gets two independent timers — neither matches the real session start.
+**Current workaround:** Accept the drift. Frontend timer is "approximate elapsed time on this PC", not "real session duration".
+**Proper fix:** Add `GET /api/v1/session/current` returning `{ session_id, started_at }` for the authenticated user's active session row (from the cafe DB's `sessions` table). `AppHeader` (or `useSessionStore.refreshMe`) hits it on mount and uses `now - started_at` instead of the locally-captured timestamp. Backend already has the row — billing.py / `sessions` table is the source of truth.
+**Effort:** ~30 min — one read endpoint + small frontend swap.
+**Risk:** Low. Read-only endpoint; existing local-timestamp path stays as a fallback if the endpoint 404s.
+
+### 23. Kiosk customer login doesn't auto-provision a CafeUser row
+**Symptom:** When a customer (or admin) logs in on a kiosk, their global user record exists but no corresponding row is written to the device's bound cafe-DB `users` table. Any endpoint that needs to credit coins / wallet / track per-cafe state will fail with "User not found in cafe DB" until something else provisions the row. We worked around this on 2026-05-19 by auto-provisioning inside [home.py](backend/app/api/endpoints/home.py) and [quests.py](backend/app/api/endpoints/quests.py) claim endpoints — but that's a band-aid, every new endpoint that touches a cafe-local user has to remember to do the same dance.
+**Current workaround:** In-endpoint auto-provision with `role="client"` and zero balances. Logged via `logger.info` so we can spot how often it fires in prod.
+**Proper fix:** Do the auto-provision once in [auth.py](backend/app/api/endpoints/auth.py) at customer-login time. When `login` (or `register`) succeeds AND the JWT carries a `cafe_id`, insert a `CafeUser` row keyed by `global_user_id` for that cafe before issuing the token. Idempotent on conflict. Removes the workaround from every consumer endpoint.
+**Effort:** ~1 hr (one helper + two call sites). Needs a small migration if we want a uniqueness constraint on `(cafe_id-implicit-via-DB, global_user_id)` to make it conflict-safe.
+**Risk:** Low. Additive — endpoints that already work continue to work.
+
 ### 19. Quest claim credits coins but XP rewards are silently dropped
 **Symptom:** `POST /api/v1/quests/{event_id}/claim` (`backend/app/api/endpoints/quests.py`) now credits coin rewards into `CafeUser.coins_balance` and writes a `CoinTransaction` row. XP rewards (e.g. quests with `rule_json.reward.kind="xp"`) are logged to the server log but **never banked anywhere** — `CafeUser` has no `xp` / `experience_points` column. The kiosk home page renders the XP reward badge ("+50 XP") so customers expect XP to accumulate, but no user-visible counter exists and the value is discarded.
 **Current workaround:** Author quests with `reward.kind="coins"` only. Anything authored with `kind="xp"` is effectively decorative.

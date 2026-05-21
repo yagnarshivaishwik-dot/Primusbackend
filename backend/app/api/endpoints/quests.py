@@ -205,11 +205,43 @@ def claim_quest(
         xp_skipped = 0
 
         if reward_kind == "coins" and reward_amount > 0:
-            user_row = (
-                db.query(_UserModel)
-                .filter(_UserModel.id == current_user.id)
-                .first()
-            )
+            # Same gotcha as home.claim_placeholder: in multi-DB mode the
+            # cafe-side user is keyed by `global_user_id`, not the local
+            # `id` PK. Without this branch we silently skip the credit
+            # because no row matches.
+            if MULTI_DB_ENABLED:
+                user_row = (
+                    db.query(_UserModel)
+                    .filter(_UserModel.global_user_id == current_user.id)
+                    .first()
+                )
+            else:
+                user_row = (
+                    db.query(_UserModel)
+                    .filter(_UserModel.id == current_user.id)
+                    .first()
+                )
+
+            # See home.claim_placeholder for why this auto-provisioning
+            # exists. Kiosk customer-login doesn't seed the cafe-side users
+            # table yet, so the first time an endpoint needs the row we
+            # create it.
+            if user_row is None and MULTI_DB_ENABLED:
+                user_row = _UserModel(
+                    global_user_id=current_user.id,
+                    name=getattr(current_user, "name", None) or getattr(current_user, "email", None),
+                    email=getattr(current_user, "email", None),
+                    role="client",
+                    wallet_balance=0,
+                    coins_balance=0,
+                )
+                db.add(user_row)
+                db.flush()
+                logger.info(
+                    "[QUEST CLAIM] auto-provisioned CafeUser for global_user_id=%s event=%s",
+                    current_user.id, event_id,
+                )
+
             if user_row is not None:
                 user_row.coins_balance = (user_row.coins_balance or 0) + reward_amount
                 db.add(

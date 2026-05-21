@@ -385,6 +385,13 @@ public sealed class JsBridge : IDisposable
                 // WebView so an admin can reach the desktop. Auto re-locks.
                 "kiosk_exit_temp"           => await KioskExitTemp(args).ConfigureAwait(false),
 
+                // Settings dropdown — system volume + display brightness.
+                // SettingsPanel.jsx in the React app talks to these directly.
+                "get_system_volume"         => SystemSettingsBridge.GetSystemVolume(),
+                "set_system_volume"         => SystemSettingsBridge.SetSystemVolume(args),
+                "get_display_brightness"    => SystemSettingsBridge.GetDisplayBrightness(),
+                "set_display_brightness"    => SystemSettingsBridge.SetDisplayBrightness(args),
+
                 // Internal (emit from React) — no-op on C# side; browser handles it
                 "__emit"                    => null,
 
@@ -784,20 +791,32 @@ public sealed class JsBridge : IDisposable
             category        = g.Category,
             executable_path = g.ExecutablePath,
             enabled         = g.Enabled,
+            // base64 PNG data URI extracted from the .exe icon —
+            // GamesPage.openAddModal forwards this to the backend's
+            // admin-create-detected endpoint as `logo_url` so the
+            // kiosk catalog tiles render real app icons.
+            logo_url        = g.LogoDataUri,
         }).ToArray();
     }
 
     private async Task<object?> DetectInstalledApps(JsonObject _)
     {
-        var catalog = _sp.GetRequiredService<IGameCatalog>();
-        var games   = await catalog.GetGamesAsync(CancellationToken.None).ConfigureAwait(false);
-        return games.Select(g => new
+        // Use the dedicated AppRegistryScanner — was previously calling
+        // IGameCatalog.GetGamesAsync which returned the games list (so
+        // the Apps tab on "+ Add games from this PC" was broken). The
+        // new scanner walks the Uninstall keys and surfaces real
+        // applications (Office, browsers, productivity tools), filtering
+        // out runtimes, drivers, updates, and game launchers.
+        var scanner = _sp.GetRequiredService<AppRegistryScanner>();
+        var apps    = await scanner.ScanAsync(CancellationToken.None).ConfigureAwait(false);
+        return apps.Select(g => new
         {
             id              = g.Id,
             name            = g.Name,
             category        = g.Category,
             executable_path = g.ExecutablePath,
             enabled         = g.Enabled,
+            logo_url        = g.LogoDataUri,
         }).ToArray();
     }
 

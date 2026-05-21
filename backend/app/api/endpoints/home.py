@@ -60,6 +60,60 @@ def _open_db(ctx: AuthContext) -> Session:
     return SessionLocal()
 
 
+@router.get("/claim-status")
+def claim_status(
+    current_user=Depends(get_current_user),
+    ctx: AuthContext = Depends(get_auth_context),
+):
+    """Return which placeholder kinds the current user has already claimed today.
+
+    Sourced from CoinTransaction rows whose `reason` matches
+    `placeholder_{kind}:{today}` — same key the claim endpoint writes. The
+    kiosk home page calls this on mount so the "Claimed" badge survives
+    navigation away and back, without a separate state table.
+    """
+    today = datetime.utcnow().date().isoformat()
+    result = {kind: False for kind in PLACEHOLDER_REWARDS}
+
+    if not MULTI_DB_ENABLED:
+        # Legacy single-DB layouts share the user record, but we still need
+        # the cafe-scoped CoinTransaction query. Best-effort: return all
+        # false rather than crashing.
+        return result
+
+    db = _open_db(ctx)
+    try:
+        # Look up the cafe-local user. If missing, nothing has been claimed
+        # by definition (no rows could have been written for them yet).
+        user_row = (
+            db.query(_UserModel)
+            .filter(_UserModel.global_user_id == current_user.id)
+            .first()
+        )
+        if user_row is None:
+            return result
+
+        rows = (
+            db.query(CoinTransaction)
+            .filter(
+                CoinTransaction.user_id == user_row.id,
+                CoinTransaction.reason.like(f"placeholder_%:{today}"),
+            )
+            .all()
+        )
+        for r in rows:
+            # reason format: "placeholder_{kind}:{date}"
+            try:
+                kind = r.reason.split("placeholder_", 1)[1].split(":", 1)[0]
+            except (IndexError, AttributeError):
+                continue
+            if kind in result:
+                result[kind] = True
+        return result
+    finally:
+        db.close()
+
+
 @router.post("/claim-placeholder/{kind}", response_model=ClaimResult)
 def claim_placeholder(
     kind: PlaceholderKind,
@@ -83,11 +137,46 @@ def claim_placeholder(
 
     db = _open_db(ctx)
     try:
-        user_row = (
-            db.query(_UserModel)
-            .filter(_UserModel.id == current_user.id)
-            .first()
-        )
+        # `current_user.id` is the GLOBAL user id (auth resolves against the
+        # global users table). In multi-DB mode the cafe-side row joins via
+        # `global_user_id`, NOT the cafe-local `id` PK. Looking up by `id`
+        # against the cafe schema is what gave us "User not found in cafe DB"
+        # in QA. In legacy single-DB mode they're the same row, so `id`
+        # works.
+        if MULTI_DB_ENABLED:
+            user_row = (
+                db.query(_UserModel)
+                .filter(_UserModel.global_user_id == current_user.id)
+                .first()
+            )
+        else:
+            user_row = (
+                db.query(_UserModel)
+                .filter(_UserModel.id == current_user.id)
+                .first()
+            )
+
+        # Auto-provision the cafe-side row if missing. Customer login on the
+        # kiosk doesn't currently create a CafeUser entry in the device's
+        # bound cafe DB (TECH_DEBT: auth.py should provision on first login).
+        # Until that's fixed, every kiosk endpoint that needs a cafe-local
+        # user row would fail forever. Provisioning here on first interaction
+        # is the recovery path.
+        if user_row is None and MULTI_DB_ENABLED:
+            user_row = _UserModel(
+                global_user_id=current_user.id,
+                name=getattr(current_user, "name", None) or getattr(current_user, "email", None),
+                email=getattr(current_user, "email", None),
+                role="client",
+                wallet_balance=0,
+                coins_balance=0,
+            )
+            db.add(user_row)
+            db.flush()  # populate user_row.id for the CoinTransaction FK below
+            logger.info(
+                "[HOME CLAIM] auto-provisioned CafeUser for global_user_id=%s cafe_id=%s",
+                current_user.id, ctx.cafe_id,
+            )
         if user_row is None:
             raise HTTPException(status_code=404, detail="User not found in cafe DB")
 

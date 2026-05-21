@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { createOrder, getOrderStatus } from '../services/cashfreeService';
-import { invoke, listen as listenBridge, hasBridge } from '@/app/bridge/invoke';
+import { createPaymentLink, getLinkStatus } from '../services/cashfreeService';
+import { listen as listenBridge } from '@/app/bridge/invoke';
 import { audit } from '@/app/api/audit';
 
 /**
@@ -50,32 +50,39 @@ export default function CashfreePaymentModal({
   onClose,
 }) {
   const [phase, setPhase] = useState('creating'); // creating | awaiting | paid | error | timeout
-  const [order, setOrder] = useState(null);
+  // `link` holds the Payment Link response (link_id, qr_data_uri, link_url, …).
+  // Variable kept named generically to minimise diff in the success/poll paths.
+  const [link, setLink] = useState(null);
   const [error, setError] = useState(null);
   const [elapsed, setElapsed] = useState(0);
   const pollRef = useRef(null);
   const timerRef = useRef(null);
-  const checkoutOpenedRef = useRef(false);
 
-  // 1. Create the order via the backend.
+  // 1. Create a Payment Link via the backend. The link's QR is what the
+  //    customer scans on their phone; payment happens on Cashfree's own
+  //    hosted page (no merchant origin involved → no whitelist needed).
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const o = await createOrder({ amount, pcId, packId, note });
+        const l = await createPaymentLink({ amount, pcId, packId, note });
         if (cancelled) return;
-        if (!o.payment_link) {
-          // Backwards-compat: older backends still return only
-          // payment_session_id without payment_link.
-          setError('Payment provider did not return a checkout URL. Try again.');
+        if (!l.qr_data_uri) {
+          // Backend reached Cashfree but Cashfree didn't return a QR —
+          // we can't usefully render the modal in that case. Surface
+          // the link_url in the error so an operator can debug.
+          setError(
+            l.link_url
+              ? `Payment provider didn't return a QR. Open this on a phone: ${l.link_url}`
+              : 'Payment provider did not return a QR. Try again.',
+          );
           setPhase('error');
           return;
         }
-        setOrder(o);
+        setLink(l);
         setPhase('awaiting');
-        audit('payment.cashfree.session_created', {
-          order_id: o.order_id,
-          env: o.environment,
+        audit('payment.cashfree.link_created', {
+          link_id: l.link_id,
           amount,
         });
       } catch (err) {
@@ -90,70 +97,12 @@ export default function CashfreePaymentModal({
     };
   }, [amount, pcId, packId, note]);
 
-  // 2. UPI-QR mode: backend already returned a base64 QR (qr_data_uri).
-  //    We render it inline below — no bridge invoke, no redirect.
-  //    Customer scans with phone, completes UPI payment out-of-band,
-  //    polling + WebSocket pick up the SUCCESS event.
-
-  // 3. Listen for the bridge's payment_completed event (fired when the
-  //    child WebView intercepts Cashfree's return URL).
+  // 2. Listen for the backend's webhook-driven payment_confirmed event.
+  //    The order_id key on the event payload contains the Cashfree-side
+  //    order id that gets auto-created behind the link, OR the link_id
+  //    if the webhook is for a Payment Link directly. We compare both.
   useEffect(() => {
-    if (phase !== 'awaiting' || !order?.order_id) return undefined;
-    let unlisten = null;
-    let cancelled = false;
-    (async () => {
-      try {
-        const off = await listenBridge('payment_completed', (ev) => {
-          const p = ev?.payload;
-          if (!p) return;
-          if (p.order_id && p.order_id !== order.order_id) return;
-          const status = (p.status || '').toUpperCase();
-          if (status === 'PAID') {
-            setPhase('paid');
-            audit('payment.cashfree.success', {
-              order_id: order.order_id,
-              via: 'bridge',
-            });
-            return;
-          }
-          if (status === 'CANCELLED') {
-            setError('Payment was cancelled.');
-            setPhase('error');
-            audit('payment.cashfree.cancelled', { order_id: order.order_id });
-            return;
-          }
-          if (status === 'FAILED') {
-            setError(p.error || 'Payment failed.');
-            setPhase('error');
-            audit('payment.cashfree.failed', {
-              order_id: order.order_id,
-              error: p.error,
-            });
-            return;
-          }
-          // UNKNOWN — fall through to poll/realtime to confirm.
-        });
-        if (!cancelled) unlisten = off;
-      } catch {
-        /* bridge unavailable — polling still covers us */
-      }
-    })();
-    return () => {
-      cancelled = true;
-      if (typeof unlisten === 'function') {
-        try {
-          unlisten();
-        } catch {
-          /* ignore */
-        }
-      }
-    };
-  }, [phase, order?.order_id]);
-
-  // 4. Listen for the backend's webhook-driven payment_confirmed event
-  //    on the existing realtime channel.
-  useEffect(() => {
-    if (phase !== 'awaiting' || !order?.order_id) return undefined;
+    if (phase !== 'awaiting' || !link?.link_id) return undefined;
     let unlisten = null;
     let cancelled = false;
     (async () => {
@@ -161,11 +110,15 @@ export default function CashfreePaymentModal({
         const off = await listenBridge('payment_confirmed', (ev) => {
           const p = ev?.payload;
           if (!p) return;
-          if (p.order_id && p.order_id !== order.order_id) return;
+          const pid = p.order_id || p.link_id;
+          // Accept events whose id matches OR which carry no id at all
+          // (some Cashfree webhook variants omit it when the link
+          // generates a fresh per-payment order).
+          if (pid && pid !== link.link_id && pid !== link.cf_link_id) return;
           if ((p.status || '').toUpperCase() === 'PAID' || p.amount > 0) {
             setPhase('paid');
             audit('payment.cashfree.success', {
-              order_id: order.order_id,
+              link_id: link.link_id,
               via: 'webhook',
             });
           }
@@ -185,20 +138,22 @@ export default function CashfreePaymentModal({
         }
       }
     };
-  }, [phase, order?.order_id]);
+  }, [phase, link?.link_id, link?.cf_link_id]);
 
-  // 5. Polling fallback + elapsed clock + 10-minute timeout.
+  // 3. Polling fallback + elapsed clock + 10-minute timeout. Same shape
+  //    as the order-status polling we replaced — just queries the link
+  //    endpoint instead. Covers any webhook delivery hiccup.
   useEffect(() => {
-    if (phase !== 'awaiting' || !order?.order_id) return undefined;
+    if (phase !== 'awaiting' || !link?.link_id) return undefined;
 
     timerRef.current = window.setInterval(() => setElapsed((s) => s + 1), 1000);
     const poll = async () => {
       try {
-        const s = await getOrderStatus(order.order_id);
+        const s = await getLinkStatus(link.link_id);
         if (s?.paid) {
           setPhase('paid');
           audit('payment.cashfree.success', {
-            order_id: order.order_id,
+            link_id: link.link_id,
             via: 'poll',
           });
         }
@@ -215,35 +170,32 @@ export default function CashfreePaymentModal({
       pollRef.current = null;
       timerRef.current = null;
     };
-  }, [phase, order?.order_id]);
+  }, [phase, link?.link_id]);
 
-  // 6. onSuccess firing.
+  // 4. onSuccess firing.
   useEffect(() => {
     if (phase === 'paid') {
-      const t = window.setTimeout(() => onSuccess?.(order), 1200);
+      const t = window.setTimeout(() => onSuccess?.(link), 1200);
       return () => window.clearTimeout(t);
     }
     return undefined;
-  }, [phase, onSuccess, order]);
+  }, [phase, onSuccess, link]);
 
-  // 7. 10-minute timeout cap.
+  // 5. 10-minute timeout cap. Note: the Cashfree link itself expires
+  //    after 15 min, so we time out slightly earlier and tell the user
+  //    to retry rather than letting them scan an already-dead link.
   useEffect(() => {
     if (phase !== 'awaiting') return undefined;
     if (elapsed >= 600) {
       setPhase('timeout');
-      audit('payment.cashfree.timeout', { order_id: order?.order_id });
+      audit('payment.cashfree.timeout', { link_id: link?.link_id });
     }
     return undefined;
-  }, [elapsed, phase, order?.order_id]);
+  }, [elapsed, phase, link?.link_id]);
 
-  // 8. If user clicks Cancel while awaiting, ask the host to close the
-  //    child WebView too.
+  // 6. User-cancel. No child WebView to close in the Payment Link flow —
+  //    nothing was opened in the first place.
   const handleCancel = () => {
-    if (hasBridge()) {
-      invoke('payment_close', {}).catch(() => {
-        /* host might already be gone; UI close is what matters */
-      });
-    }
     onClose?.();
   };
 
@@ -305,12 +257,12 @@ export default function CashfreePaymentModal({
           <div style={{ padding: '40px 0' }}>
             <Spinner />
             <div style={{ marginTop: 18, color: '#9CA3AF', fontSize: 14 }}>
-              Creating secure Cashfree order…
+              Creating secure Cashfree payment link…
             </div>
           </div>
         )}
 
-        {phase === 'awaiting' && order && (
+        {phase === 'awaiting' && link && (
           <div style={{ padding: '20px 0' }}>
             <div
               style={{
@@ -329,10 +281,10 @@ export default function CashfreePaymentModal({
                 marginBottom: 18,
               }}
             >
-              Order #{order.order_id} · Order stays open for 10 min
+              Link #{link.link_id} · Link active for 15 min
             </div>
 
-            {order.qr_data_uri ? (
+            {link.qr_data_uri ? (
               <div
                 style={{
                   display: 'inline-block',
@@ -343,8 +295,8 @@ export default function CashfreePaymentModal({
                 }}
               >
                 <img
-                  src={order.qr_data_uri}
-                  alt="UPI QR code"
+                  src={link.qr_data_uri}
+                  alt="Cashfree payment QR code"
                   style={{ display: 'block', width: 280, height: 280 }}
                 />
               </div>

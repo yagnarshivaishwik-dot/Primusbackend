@@ -105,6 +105,31 @@
     -webkit-backdrop-filter: blur(28px);
 }
 
+/* Night Mode (toggled from the settings panel). Applies a warm-shift
+   filter to the entire page so the kiosk reads less blue at night. We
+   use `filter` on body rather than per-element overrides — keeps every
+   page looking consistent without rewriting palettes. */
+body.night-mode {
+    filter: sepia(0.25) hue-rotate(-10deg) saturate(0.95);
+}
+
+/* ----- Hidden-but-scrollable scrollbars -----
+   Kiosk preference: content should still scroll naturally but the
+   scrollbar chrome shouldn't be visible (looks cleaner on a touch /
+   full-screen surface). Combination below covers Firefox + Chromium +
+   legacy IE/Edge. Scrolling itself (wheel, touch, keyboard) is
+   unaffected. */
+* {
+    scrollbar-width: none;          /* Firefox */
+    -ms-overflow-style: none;        /* IE / legacy Edge */
+}
+
+*::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;                   /* Chromium, Safari, WebView2 */
+}
+
 /* ----- Animated dark background (from AnimatedBackground.css) ----- */
 html, body { width: 100%; height: 100%; }
 

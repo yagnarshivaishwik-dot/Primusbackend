@@ -1,0 +1,252 @@
+/* Shared top header for full-screen pages.
+   Ports Pavan's PageHeader.css visual language — the class names map to
+   the same selectors the existing ShopPage cartheader used, so applying
+   <AppHeader /> visually matches what was already there. */
+
+.appheader {
+    width: 75%;
+    margin: 0rem auto;
+    padding: 1rem 0;
+}
+
+.appheader__bar {
+    margin-bottom: 1rem;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    height: 60px;
+    border-radius: 25px;
+    box-shadow:
+        0px 20px 48px -12px rgba(0, 0, 0, 0.5),
+        0px 1px 0.5px 0px rgba(255, 255, 255, 0.45) inset;
+}
+
+/* The sessionbadge / shoplogo / headerright / useravatar / iconbtn
+   selectors below are intentionally NOT scoped under .appheader because
+   ShopPage already uses them on its `cartheader`. Keeping them global
+   means we can either swap ShopPage's cartheader for <AppHeader /> or
+   leave it as-is — both will pick up the same styling. */
+
+.sessionbadge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: #fff;
+}
+
+.sessionbadge .indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--PrimaryOrange, #ff5b1f);
+    box-shadow: 0 0 8px var(--PrimaryOrange, #ff5b1f);
+    animation: appheader-pulse 1.5s infinite;
+}
+
+@keyframes appheader-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.sessionbadge p {
+    color: rgba(127, 127, 127, 1);
+    margin: 0;
+}
+
+.sessionbadge span {
+    color: #fff;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums; /* keep the timer width stable */
+}
+
+.shoplogo {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.shoplogo span {
+    color: var(--PrimaryOrange, #ff5b1f);
+}
+
+.headerright {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.iconbtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    padding: 4px;
+    color: inherit;
+}
+
+.iconbtn svg {
+    width: 22px;
+    height: 22px;
+    color: #fff;
+}
+
+.useravatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff3c3c, #ff8c00);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    border: 0;
+    overflow: hidden;
+    padding: 0;
+}
+
+.useravatar.useravatar--image {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.useravatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+    display: block;
+}
+
+/* ---- Header dropdowns (settings cog, avatar) ----
+   Click-triggered via the `.is-open` class set by AppHeader's state.
+   The CSS visual matches Pavan's design (glass background, blur, fade
+   in from below). */
+
+.dropdownwrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.userlogin {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.avatardropdown {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    color: #fff;
+    font-size: 16px;
+}
+
+.avatardropdown svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* Pavan's exact dropdown values — only the trigger swapped from
+   :hover to React-state `.is-open` (so it works on touch). Item
+   visual mirrors his minimal `<p>Settings</p>` rows — plain text
+   inheriting the menu's typography, no per-item background or border
+   radius. Hover gives subtle opacity feedback, matching his style. */
+.dropdownmenu {
+    position: absolute;
+    top: 58px;
+    right: 0;
+    min-width: 190px;
+    padding: 10px;
+    border-radius: 18px;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px);
+    transition: 0.3s ease;
+    z-index: 50;
+}
+
+/* The settings cog dropdown is wider because it holds inline controls
+   (sliders + toggles) instead of just a list of items. */
+.dropdownmenu--wide {
+    min-width: 340px;
+    padding: 14px;
+    cursor: default;
+}
+
+.dropdownwrapper.is-open > .dropdownmenu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* Items rendered as transparent buttons (for keyboard nav) but styled
+   to look like Pavan's <p> rows: no per-item bg, no rounded corners,
+   subtle opacity hover. */
+.dropdownmenu > button {
+    display: block;
+    text-align: left;
+    width: 100%;
+    padding: 8px 6px;
+    background: transparent;
+    border: 0;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    opacity: 0.85;
+    transition: opacity 0.15s ease;
+}
+
+.dropdownmenu > button:hover {
+    opacity: 1;
+}
+
+.dropdownmenu > button.dropdownmenu__danger {
+    color: #fca5a5;
+}
+
+/* Plain link-style row inside the wide settings panel
+   (Help below the volume/display controls). */
+.dropdownmenu > button.dropdownmenu__link {
+    margin-top: 6px;
+    padding: 10px 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    text-align: left;
+    width: 100%;
+    background: transparent;
+    border-radius: 0;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.dropdownmenu > button.dropdownmenu__link:hover {
+    color: #fff;
+    opacity: 1;
+}

@@ -1,0 +1,146 @@
+/* Volume + Display controls rendered inline inside the settings cog
+   dropdown. Visual matches Pavan's reference: orange-red gradient
+   slider fill, dark track, white thumb, orange pill toggles. */
+
+.settingspanel {
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 4px 2px;
+}
+
+.sp-section-title {
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    margin-bottom: 10px;
+    padding-left: 2px;
+}
+
+.sp-section {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 12px 14px;
+}
+
+/* ---- Slider row ----------------------------------------------- */
+.sp-slider-row {
+    display: grid;
+    grid-template-columns: 1fr 130px auto;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+}
+
+.sp-slider-label {
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.sp-slider-value {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: right;
+    min-width: 38px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* The range input is fully restyled. The `--fill` CSS variable comes
+   from the JS (computed % from the value), and we use a horizontal
+   linear-gradient to draw the orange-red filled portion up to the
+   thumb and a dark portion after — same trick Pavan uses. */
+.sp-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 999px;
+    outline: none;
+    cursor: pointer;
+    background:
+        linear-gradient(
+            90deg,
+            #ff7a00 0%,
+            #ff2d2d var(--fill, 50%),
+            #000 var(--fill, 50%),
+            #000 100%
+        );
+}
+
+.sp-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    border: 0;
+}
+
+.sp-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    border: 0;
+}
+
+.sp-slider:focus-visible {
+    box-shadow: 0 0 0 2px rgba(255, 122, 0, 0.4);
+}
+
+/* ---- Toggle row ----------------------------------------------- */
+.sp-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0 2px;
+}
+
+.sp-toggle-label {
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.sp-toggle {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    border-radius: 999px;
+    border: 0;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.2s ease;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.sp-toggle.is-on {
+    background: linear-gradient(90deg, #ff7a00, #ff2d2d);
+}
+
+.sp-toggle-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    transition: transform 0.2s ease;
+}
+
+.sp-toggle.is-on .sp-toggle-knob {
+    transform: translateX(20px);
+}

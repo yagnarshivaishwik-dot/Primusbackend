@@ -40,6 +40,15 @@
          shared Evergreen runtime (preinstalled on Win11 / installed with Edge
          updates on Win10). Not bundled per-app like Electron/Tauri. -->
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2792.45" />
+    <!-- System volume control via the Windows Core Audio API (WASAPI).
+         Used by the settings dropdown's Volume Controls sliders.
+         `NAudio.Wasapi` is the smaller subset that ships just
+         CoreAudioApi (MMDeviceEnumerator + AudioEndpointVolume) without
+         pulling in the full NAudio media stack. -->
+    <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
+    <!-- WMI brightness control for laptops (WmiMonitorBrightnessMethods).
+         Used by the settings dropdown's Brightness slider. -->
+    <PackageReference Include="System.Management" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>

@@ -171,9 +171,21 @@ public sealed class NativeBridge : INativeBridge
             FileName = executable,
             Arguments = arguments ?? string.Empty,
             UseShellExecute = true,
+            // Set WorkingDirectory to the .exe's own folder so apps that
+            // resolve data paths relative to their cwd start correctly.
+            // OBS Studio is the canonical case: without this it bombs
+            // with "Failed to find locale/en-US.ini" because it expects
+            // its working directory to be its bin folder.
+            WorkingDirectory = SafeGetDirectory(executable),
         };
         using var proc = System.Diagnostics.Process.Start(psi);
         return proc?.Id ?? -1;
+    }
+
+    private static string SafeGetDirectory(string path)
+    {
+        try { return Path.GetDirectoryName(path) ?? string.Empty; }
+        catch { return string.Empty; }
     }
 
     // ---------------- Window / shell -----------------------------------

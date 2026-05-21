@@ -4,6 +4,7 @@ import AppRoutes from '@/app/routes/AppRoutes';
 import SetupPage from '@/features/auth/pages/SetupPage';
 import { readDeviceCredentials } from '@/features/auth/services/handshakeService';
 import { invoke, hasBridge, listen } from '@/app/bridge/invoke';
+import { setJwt } from '@/app/bridge/config';
 import useWalletStore from '@/app/store/useWalletStore';
 import useSessionStore from '@/app/store/useSessionStore';
 import useNotificationsStore from '@/app/store/useNotificationsStore';
@@ -49,8 +50,16 @@ export default function App() {
   }, []);
 
   // Hydrate wallet + refresh user profile when setup is ready.
+  //
+  // Drop any stale JWT from a previous customer / install before we ask
+  // /auth/me who's "signed in". Combined with useSessionStore no longer
+  // persisting `user` (only `avatar`), this guarantees every fresh
+  // kiosk launch lands on the login screen — no rehydration of the
+  // last customer's identity. Mid-session reloads are rare and the
+  // customer's wallet + progress are server-side, so re-login is cheap.
   useEffect(() => {
     if (setupState !== 'ready') return;
+    setJwt(null);
     useWalletStore.getState().hydrate({ pcId });
     useSessionStore.getState().refreshMe().catch(() => {});
   }, [setupState, pcId]);

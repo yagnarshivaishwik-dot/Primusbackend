@@ -152,11 +152,30 @@ Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName} now"; Flags: no
 ; doesn't leave the user locked out of Explorer.
 Filename: "reg.exe"; Parameters: "import ""{commonappdata}\Primus\recovery\unkiosk.reg"""; Flags: runhidden; RunOnceId: "PrimusRestoreShell"
 
+; Pre-install: wipe device credentials so every install starts at the
+; admin handshake (SetupPage). This was a deliberate behaviour change
+; from the original "keep device.bin on re-install" pattern — admins
+; testing fresh deployments shouldn't have to manually nuke
+; ProgramData\Primus\device.bin before each test.
+;
+; Trade-off: a legitimate VERSION UPGRADE of an in-use kiosk now also
+; loses the cafe binding and requires admin re-handshake at the cafe.
+; If/when kiosks are being updated frequently in production and
+; re-handshake becomes a deployment pain, swap this for a Pascal-
+; `Check:` that exempts upgrades (RegQueryStringValue against the
+; product's previous DisplayVersion) so only fresh-after-uninstall
+; installs nuke the binding.
+[InstallDelete]
+Type: files; Name: "{commonappdata}\Primus\device.bin"
+Type: files; Name: "{commonappdata}\Primus\token.bin"
+
 [UninstallDelete]
-; Keep ProgramData\Primus (logs, data, device.bin, etc.) by default so a re-install
-; retains the device registration. Only the install-tree logs scratch dir is removed.
+; Also clear the device binding on uninstall so a future install on
+; the same PC (whether next month or next year) lands on SetupPage.
 Type: filesandordirs; Name: "{app}\logs"
 Type: filesandordirs; Name: "{app}\uninstall"
+Type: files; Name: "{commonappdata}\Primus\device.bin"
+Type: files; Name: "{commonappdata}\Primus\token.bin"
 
 [Code]
 // ---- WebView2 Evergreen runtime detection ----------------------------------

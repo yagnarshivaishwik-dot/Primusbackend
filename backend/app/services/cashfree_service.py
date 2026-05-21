@@ -18,11 +18,16 @@ import base64
 import hashlib
 import hmac
 import os
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
 
 _API_VERSION = "2023-08-01"
+# Payment Links use a newer API surface. Pinning explicitly here so a
+# future bump of _API_VERSION (for the legacy orders flow) doesn't
+# silently break link creation.
+_PAYMENT_LINK_API_VERSION = "2025-01-01"
 
 _BASE_URLS = {
     "sandbox": "https://sandbox.cashfree.com/pg",
@@ -173,6 +178,112 @@ async def get_order(order_id: str) -> dict[str, Any]:
     async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.get(
             f"{_base_url()}/orders/{order_id}", headers=_headers()
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+
+# ---------- Payment Links ----------------------------------------------
+#
+# Why this exists alongside the orders API:
+#   Cashfree's embedded checkout (the JS SDK that drives create_order
+#   above) needs the merchant's domain whitelisted before it'll accept
+#   payments. For Primus the whitelist approval is pending and the
+#   workaround Cashfree themselves recommend is the Payment Links API:
+#   server-side POST /pg/links with a dynamic amount returns a link_url
+#   AND a base64 PNG QR code (link_qrcode). The customer scans on their
+#   phone, pays on Cashfree's hosted page (no merchant origin involved),
+#   and the standard PAYMENT_SUCCESS_WEBHOOK fires the same way orders do.
+#
+# Key differences from create_order:
+#   - Uses x-api-version 2025-01-01 (Payment Links spec)
+#   - Auth headers are the same x-client-id / x-client-secret
+#   - Per-link expiry (default 15 min for kiosk use — links shouldn't
+#     outlive an abandoned cart)
+#   - Metadata goes in `link_notes` (not order_tags); the webhook handler
+#     reads both.
+
+def _payment_link_headers() -> dict[str, str]:
+    h = _headers()
+    h["x-api-version"] = _PAYMENT_LINK_API_VERSION
+    return h
+
+
+async def create_payment_link(
+    *,
+    link_id: str,
+    amount: float,
+    customer_phone: str,
+    customer_email: str | None = None,
+    customer_name: str | None = None,
+    purpose: str = "Primus kiosk payment",
+    notes: dict | None = None,
+    expiry_minutes: int = 15,
+    payment_methods: str | None = None,
+) -> dict[str, Any]:
+    """Create a Cashfree Payment Link and return the full response.
+
+    Response shape (relevant fields):
+      - link_id           merchant-side id we passed in
+      - cf_link_id        Cashfree-side id (used in webhook lookups)
+      - link_url          customer-facing hosted checkout URL
+      - link_qrcode       base64-encoded PNG (NOT a data URI — add the
+                          prefix yourself in the endpoint)
+      - link_status       ACTIVE / PAID / EXPIRED / CANCELLED
+      - link_amount       echoes back the amount
+      - link_expiry_time  ISO 8601 timestamp
+
+    `notes` becomes link_notes on the Cashfree side and rides along on
+    every webhook for the link. We use it to carry user_id / pack_id /
+    pc_id / cafe_id so the webhook handler can credit the right user
+    without any DB lookup of its own.
+    """
+    expiry = (datetime.now(UTC) + timedelta(minutes=expiry_minutes)).isoformat()
+
+    body: dict[str, Any] = {
+        "link_id": link_id,
+        "link_amount": round(float(amount), 2),
+        "link_currency": "INR",
+        "link_purpose": purpose,
+        "customer_details": {
+            "customer_phone": customer_phone or "9999999999",
+        },
+        "link_expiry_time": expiry,
+        # No SMS / email — kiosk customer is right there at the
+        # machine. Saves on Cashfree-side spam too.
+        "link_notify": {"send_sms": False, "send_email": False},
+        "link_meta": {
+            "notify_url": _env("CASHFREE_NOTIFY_URL", "")
+            or "https://api.primustech.in/api/v1/payment/cashfree/webhook",
+        },
+    }
+    if customer_email:
+        body["customer_details"]["customer_email"] = customer_email
+    if customer_name:
+        body["customer_details"]["customer_name"] = customer_name
+    if notes:
+        # Cashfree's API caps link_notes at 5 keys; everything we need
+        # fits in that budget (user_id, pc_id, pack_id, cafe_id, note).
+        body["link_notes"] = {str(k): str(v) for k, v in list(notes.items())[:5]}
+    if payment_methods:
+        body["link_meta"]["payment_methods"] = payment_methods
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        resp = await client.post(
+            f"{_base_url()}/links",
+            headers=_payment_link_headers(),
+            json=body,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def get_payment_link(link_id: str) -> dict[str, Any]:
+    """Look up a Payment Link's current status. Used by the polling fallback."""
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.get(
+            f"{_base_url()}/links/{link_id}",
+            headers=_payment_link_headers(),
         )
         resp.raise_for_status()
         return resp.json()

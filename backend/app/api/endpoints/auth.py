@@ -380,12 +380,13 @@ async def login(
         create_access_token as create_enriched_token,
         create_refresh_token,
     )
-    from app.models import ClientPC, UserCafeMap
+    from app.models import ClientPC, License, UserCafeMap
     from app.config import REQUIRE_DEVICE_ID_ON_LOGIN
 
     # Extract device_id from form data (optional for backwards compat)
     form = await request.form()
     device_id = form.get("device_id")
+    license_key_header = request.headers.get("X-License-Key")
     resolved_cafe_id = user.cafe_id
     resolved_role = user.role
 
@@ -416,6 +417,45 @@ async def login(
                 status_code=403,
                 detail="User does not have access to this cafe",
             )
+    elif license_key_header:
+        # KIOSK LOGIN PATH: the React kiosk doesn't send `device_id` in the
+        # form — it sends X-License-Key on every request (set after the
+        # admin handshake). For a customer registered via the many-to-many
+        # `UserCafeMap` (the typical kiosk-signup path), `user.cafe_id` is
+        # NULL on the global users row, so without this branch the token
+        # would be minted with cafe_id=null and the kiosk's frontend
+        # binding check would reject the login.
+        #
+        # Each License row carries the cafe it belongs to. Looking up the
+        # license gives us the kiosk's cafe; we then validate the user has
+        # access to it (UserCafeMap OR direct cafe_id OR admin/superadmin
+        # role) before stamping that cafe_id onto the token.
+        lic = db.query(License).filter_by(key=license_key_header, is_active=True).first()
+        if lic and lic.cafe_id:
+            kiosk_cafe_id = lic.cafe_id
+            if user.role in ("admin", "superadmin"):
+                # Admins/superadmins can sign into any kiosk in their org
+                # tree — gate them on role only, not UserCafeMap.
+                resolved_cafe_id = kiosk_cafe_id
+            else:
+                mapping = (
+                    db.query(UserCafeMap)
+                    .filter(
+                        UserCafeMap.user_id == user.id,
+                        UserCafeMap.cafe_id == kiosk_cafe_id,
+                    )
+                    .first()
+                )
+                if mapping:
+                    resolved_cafe_id = kiosk_cafe_id
+                    resolved_role = mapping.role
+                elif user.cafe_id == kiosk_cafe_id:
+                    resolved_cafe_id = kiosk_cafe_id
+                else:
+                    raise HTTPException(
+                        status_code=403,
+                        detail="User does not have access to this cafe",
+                    )
     elif REQUIRE_DEVICE_ID_ON_LOGIN:
         raise HTTPException(status_code=400, detail="device_id is required for login")
 
@@ -460,6 +500,21 @@ async def login(
         role=resolved_role,
     )
 
+    # Auto-provision cafe-local user row (TECH_DEBT #23). Best-effort: the
+    # helper swallows its own exceptions, and the band-aid in home.py /
+    # quests.py is still there for users who logged in before this lands.
+    try:
+        from app.services.cafe_user_provisioning import ensure_cafe_user
+        ensure_cafe_user(
+            global_user_id=user.id,
+            cafe_id=resolved_cafe_id,
+            name=getattr(user, "name", None),
+            email=user.email,
+            role=resolved_role,
+        )
+    except Exception as exc:
+        logger.warning("login: ensure_cafe_user failed (non-fatal): %s", exc)
+
     # Create refresh token, binding it to the access token's jti so a future
     # force-logout can revoke both at once.
     refresh_token = create_refresh_token(
@@ -502,6 +557,174 @@ async def login(
         "cafe_id": resolved_cafe_id,
         "role": resolved_role,
         "msg": "Cookie set",
+    }
+
+
+@router.post("/admin-bind-and-login")
+async def admin_bind_and_login(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+    _rate_limited: None = Depends(LOGIN_LIMIT),
+):
+    """Admin-supervised customer login + cafe binding (kiosk-side flow).
+
+    When a customer tries to sign in on a kiosk but isn't bound to the
+    kiosk's cafe, the kiosk LoginPage surfaces an "Admin approval"
+    panel. The admin physically present at the kiosk enters their own
+    credentials. This endpoint:
+
+      1. Verifies the admin's credentials (must be admin / superadmin).
+      2. Resolves the kiosk's cafe from the X-License-Key header.
+      3. Verifies the admin has access to that cafe.
+      4. Verifies the customer's credentials.
+      5. Creates a `UserCafeMap(user_id=customer, cafe_id=kiosk_cafe,
+         role='client')` if missing — the actual binding.
+      6. Mints customer access + refresh tokens scoped to the kiosk's
+         cafe (mirrors `/login`'s token shape so the frontend can use
+         the same code path).
+
+    Form fields:  admin_email, admin_password, user_email, user_password
+    Header:       X-License-Key   (set by every kiosk request)
+    """
+    from app.auth.tokens import (
+        create_access_token as _unused_alias,  # noqa: F401
+        create_refresh_token,
+        mint_access_token,
+    )
+    from app.models import License, RefreshToken as RefreshTokenModel, UserCafeMap
+
+    form = await request.form()
+    # NOTE: do NOT .lower() these emails. `authenticate_user` does an
+    # exact-string match against `User.email`, and email values are
+    # stored with their original casing (registration doesn't normalize).
+    # The /auth/login endpoint follows the same pattern — it lowercases
+    # only for lockout-tracking but passes the original casing to
+    # `authenticate_user`. Lowercasing here was the cause of "Invalid
+    # admin credentials" rejections for any account whose email was
+    # registered with capital letters.
+    admin_email = (form.get("admin_email") or "").strip()
+    admin_password = form.get("admin_password") or ""
+    user_email = (form.get("user_email") or "").strip()
+    user_password = form.get("user_password") or ""
+
+    if not (admin_email and admin_password and user_email and user_password):
+        raise HTTPException(
+            status_code=400,
+            detail="admin_email, admin_password, user_email and user_password are all required",
+        )
+
+    # Step 1: validate admin
+    admin = authenticate_user(db, admin_email, admin_password)
+    if not admin:
+        raise HTTPException(status_code=401, detail="Invalid admin credentials")
+    if admin.role not in ("admin", "superadmin"):
+        raise HTTPException(
+            status_code=403,
+            detail=f"'{admin.role}' is not an admin role — kiosk approval requires an admin login",
+        )
+
+    # Step 2: resolve kiosk's cafe from X-License-Key
+    license_key_header = request.headers.get("X-License-Key")
+    if not license_key_header:
+        raise HTTPException(
+            status_code=400,
+            detail="Missing X-License-Key header — admin approval is only valid from a kiosk",
+        )
+    lic = db.query(License).filter_by(key=license_key_header, is_active=True).first()
+    if not lic or not lic.cafe_id:
+        raise HTTPException(status_code=400, detail="Invalid or unknown kiosk license")
+    kiosk_cafe_id = lic.cafe_id
+
+    # Step 3: verify admin owns / belongs to this kiosk's cafe (superadmins exempt)
+    if admin.role != "superadmin":
+        admin_mapping = (
+            db.query(UserCafeMap)
+            .filter_by(user_id=admin.id, cafe_id=kiosk_cafe_id)
+            .first()
+        )
+        if not admin_mapping and admin.cafe_id != kiosk_cafe_id:
+            raise HTTPException(
+                status_code=403,
+                detail="This admin doesn't own the cafe this kiosk is bound to",
+            )
+
+    # Step 4: validate the customer's credentials
+    target = authenticate_user(db, user_email, user_password)
+    if not target:
+        raise HTTPException(status_code=401, detail="Invalid customer credentials")
+
+    # Step 5: bind the customer to the kiosk's cafe (idempotent)
+    existing = (
+        db.query(UserCafeMap)
+        .filter_by(user_id=target.id, cafe_id=kiosk_cafe_id)
+        .first()
+    )
+    if not existing:
+        db.add(UserCafeMap(user_id=target.id, cafe_id=kiosk_cafe_id, role="client"))
+        db.commit()
+        logger.info(
+            "[ADMIN_BIND] admin=%s bound customer=%s to cafe=%s via kiosk",
+            admin.id, target.id, kiosk_cafe_id,
+        )
+
+    # Step 6: mint customer tokens scoped to kiosk's cafe
+    customer_role = "client"  # forced for safety — admin can't accidentally elevate
+    access_token, access_jti, _exp = mint_access_token(
+        email=target.email,
+        user_id=target.id,
+        cafe_id=kiosk_cafe_id,
+        device_id=None,
+        role=customer_role,
+    )
+
+    try:
+        from app.services.cafe_user_provisioning import ensure_cafe_user
+        ensure_cafe_user(
+            global_user_id=target.id,
+            cafe_id=kiosk_cafe_id,
+            name=getattr(target, "name", None),
+            email=target.email,
+            role=customer_role,
+        )
+    except Exception as exc:
+        logger.warning("admin-bind-and-login: ensure_cafe_user failed: %s", exc)
+
+    client_ip = str(request.client.host) if request and request.client else None
+    refresh_token = create_refresh_token(
+        db,
+        user_id=target.id,
+        cafe_id=kiosk_cafe_id,
+        device_id=None,
+        ip_address=client_ip,
+        access_jti=access_jti,
+    )
+
+    response.set_cookie(
+        key="access_token",
+        value=f"Bearer {access_token}",
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=60 * 60 * 24 * 7,
+        path="/api/auth/refresh",
+    )
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "cafe_id": kiosk_cafe_id,
+        "role": customer_role,
+        "bound_just_now": existing is None,
     }
 
 
@@ -599,6 +822,21 @@ async def refresh_tokens(
         device_id=rt.device_id,
         role=resolved_role,
     )
+
+    # Belt-and-suspenders provisioning for users whose original login
+    # predated the auth.py auto-provision change. Same helper, idempotent.
+    try:
+        from app.services.cafe_user_provisioning import ensure_cafe_user
+        ensure_cafe_user(
+            global_user_id=user.id,
+            cafe_id=rt.cafe_id,
+            name=getattr(user, "name", None),
+            email=user.email,
+            role=resolved_role,
+        )
+    except Exception as exc:
+        logger.warning("refresh: ensure_cafe_user failed (non-fatal): %s", exc)
+
     new_refresh = create_refresh_token(
         db,
         user_id=user.id,

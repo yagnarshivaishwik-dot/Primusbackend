@@ -7,15 +7,27 @@ import '../../../styles/LoginPage.css';
 function LoginPage() {
   const navigate = useNavigate();
   const signIn = useSessionStore((s) => s.signIn);
+  const adminBindAndLogin = useSessionStore((s) => s.adminBindAndLogin);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
+  // True after the backend (or signIn) rejected the customer with the
+  // "User does not have access to this cafe" / cafe-binding error.
+  // Surfaces an inline admin-approval panel: the admin physically
+  // present at the kiosk enters THEIR credentials, the backend binds
+  // the customer to the kiosk's cafe via UserCafeMap, and the
+  // customer (whose creds we still have in state) is signed in.
+  const [needsAdminApproval, setNeedsAdminApproval] = useState(false);
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (submitting) return;
     setError(null);
+    setNeedsAdminApproval(false);
     const trimmedEmail = email.trim();
     if (!trimmedEmail || !password) {
       setError('Please enter your email and password.');
@@ -26,10 +38,61 @@ function LoginPage() {
       await signIn({ email: trimmedEmail, password });
       navigate(ROUTES.home, { replace: true });
     } catch (err) {
-      setError(err?.message || 'Sign in failed. Check credentials and try again.');
+      const message = err?.message || 'Sign in failed. Check credentials and try again.';
+      // The backend returns 403 + "User does not have access to this
+      // cafe" when the customer's account isn't bound to this kiosk's
+      // cafe. Surface the admin-approval panel instead of just dumping
+      // an error — that's the documented kiosk flow.
+      const isCafeBindingError =
+        err?.status === 403 ||
+        err?.requiresAdminApproval === true ||
+        /does not have access to this cafe|registered with this cafe/i.test(message);
+      if (isCafeBindingError) {
+        setNeedsAdminApproval(true);
+        setError(null); // the panel itself is the messaging
+      } else {
+        setError(message);
+      }
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleAdminApprove = async (e) => {
+    e.preventDefault();
+    if (submitting) return;
+    setError(null);
+    const trimmedAdminEmail = adminEmail.trim();
+    const trimmedCustomerEmail = email.trim();
+    if (!trimmedAdminEmail || !adminPassword) {
+      setError('Admin email and password are required.');
+      return;
+    }
+    if (!trimmedCustomerEmail || !password) {
+      setError('Customer credentials are missing — re-enter them above first.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await adminBindAndLogin({
+        adminEmail: trimmedAdminEmail,
+        adminPassword,
+        userEmail: trimmedCustomerEmail,
+        userPassword: password,
+      });
+      navigate(ROUTES.home, { replace: true });
+    } catch (err) {
+      setError(err?.message || 'Admin approval failed. Check the admin credentials.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCancelAdminApproval = () => {
+    setNeedsAdminApproval(false);
+    setAdminEmail('');
+    setAdminPassword('');
+    setError(null);
   };
 
   return (
@@ -119,7 +182,7 @@ function LoginPage() {
               </Link>
             </div>
 
-            {error && (
+            {error && !needsAdminApproval && (
               <div role="alert" style={{
                 background: 'rgba(239,68,68,0.1)',
                 border: '1px solid rgba(239,68,68,0.3)',
@@ -132,9 +195,125 @@ function LoginPage() {
                 {error}
               </div>
             )}
-            <button type="submit" className="btn-primary" disabled={submitting}>
-              {submitting ? 'Signing in…' : 'Sign In'}
-            </button>
+
+            {!needsAdminApproval && (
+              <button type="submit" className="btn-primary" disabled={submitting}>
+                {submitting ? 'Signing in…' : 'Sign In'}
+              </button>
+            )}
+
+            {/* Admin approval panel — appears when the backend rejected
+                the customer's login because they aren't bound to this
+                kiosk's cafe yet. Admin physically present at the kiosk
+                enters their credentials; backend creates the
+                UserCafeMap row and logs the customer in. */}
+            {needsAdminApproval && (
+              <div
+                role="region"
+                aria-label="Admin approval required"
+                style={{
+                  marginTop: 4,
+                  marginBottom: 8,
+                  padding: '14px 16px',
+                  borderRadius: 12,
+                  background: 'rgba(255, 154, 74, 0.08)',
+                  border: '1px solid rgba(255, 154, 74, 0.35)',
+                  color: '#fff',
+                }}
+              >
+                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>
+                  Admin approval required
+                </div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginBottom: 12 }}>
+                  This is your first sign-in at this cafe. The cafe admin must enter their credentials
+                  to link your account, then you'll be signed in automatically.
+                </div>
+
+                {error && (
+                  <div
+                    role="alert"
+                    style={{
+                      background: 'rgba(239,68,68,0.1)',
+                      border: '1px solid rgba(239,68,68,0.3)',
+                      color: '#fca5a5',
+                      padding: '8px 10px',
+                      borderRadius: 8,
+                      fontSize: 12,
+                      marginBottom: 10,
+                    }}
+                  >
+                    {error}
+                  </div>
+                )}
+
+                <div className="field" style={{ marginBottom: 10 }}>
+                  <label htmlFor="admin-email" style={{ fontSize: 12 }}>Admin email</label>
+                  <div className="field-wrap">
+                    <input
+                      id="admin-email"
+                      type="email"
+                      placeholder="admin@yourcafe.com"
+                      autoComplete="off"
+                      value={adminEmail}
+                      onChange={(ev) => setAdminEmail(ev.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="field" style={{ marginBottom: 10 }}>
+                  <label htmlFor="admin-password" style={{ fontSize: 12 }}>Admin password</label>
+                  <div className="field-wrap">
+                    <input
+                      id="admin-password"
+                      type="password"
+                      placeholder="••••••••"
+                      autoComplete="off"
+                      value={adminPassword}
+                      onChange={(ev) => setAdminPassword(ev.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={handleCancelAdminApproval}
+                    disabled={submitting}
+                    style={{
+                      flex: 1,
+                      padding: '10px 12px',
+                      borderRadius: 10,
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      color: '#fff',
+                      fontWeight: 600,
+                      fontSize: 13,
+                      cursor: submitting ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAdminApprove}
+                    disabled={submitting}
+                    style={{
+                      flex: 2,
+                      padding: '10px 12px',
+                      borderRadius: 10,
+                      background: 'linear-gradient(135deg, #ff9a4a, #ff5b1f)',
+                      color: '#fff',
+                      border: 'none',
+                      fontWeight: 700,
+                      fontSize: 13,
+                      cursor: submitting ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {submitting ? 'Approving…' : 'Approve & sign in'}
+                  </button>
+                </div>
+              </div>
+            )}
 
             <p className="form-footer">
               Don't have an account?{' '}

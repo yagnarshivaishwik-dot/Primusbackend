@@ -12,8 +12,17 @@ import "./ShopCarousel.css";
  *   title       — heading shown above the carousel
  *   packs       — array from shopService.list() (id, name, price, minutes, description, badge, thumbnailUrl)
  *   onAddToCart — invoked when "Add to Cart" is clicked on a card
+ *   cart        — current cart items (so each card knows whether it's
+ *                 already added and can render +/- instead of the add button)
+ *   onBumpQty   — (id, delta) used by the inline +/- counter
  */
-const ShopCarousel = ({ title = "Popular at NoLag", packs = [], onAddToCart }) => {
+const ShopCarousel = ({
+  title = "Popular at NoLag",
+  packs = [],
+  onAddToCart,
+  cart = [],
+  onBumpQty,
+}) => {
   if (!packs.length) {
     return (
       <div className="shopslider">
@@ -55,50 +64,80 @@ const ShopCarousel = ({ title = "Popular at NoLag", packs = [], onAddToCart }) =
           1024: { slidesPerView: 4 },
         }}
       >
-        {packs.map((pack) => (
-          <SwiperSlide key={pack.id}>
-            <div className="shopcard glassyfinish">
-              <div className="cardtop">
-                {pack.badge && (
-                  <div className="badge redbadge">{pack.badge}</div>
-                )}
-                {pack.thumbnailUrl ? (
-                  <img src={pack.thumbnailUrl} alt={pack.name} />
-                ) : (
-                  <div
-                    style={{
-                      width: "100%",
-                      aspectRatio: "1",
-                      background:
-                        "linear-gradient(135deg, rgba(255,107,53,0.15), rgba(63,168,176,0.15))",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "48px",
-                    }}
-                  >
-                    ⏱
+        {packs.map((pack) => {
+          const cartItem = cart.find((c) => c.id === pack.id);
+          const inCart = Boolean(cartItem);
+          const qty = cartItem?.quantity ?? 0;
+          return (
+            <SwiperSlide key={pack.id}>
+              <div className="shopcard glassyfinish">
+                <div className="cardtop">
+                  {pack.badge && (
+                    <div className="badge redbadge">{pack.badge}</div>
+                  )}
+                  {pack.thumbnailUrl ? (
+                    <img src={pack.thumbnailUrl} alt={pack.name} />
+                  ) : (
+                    <div
+                      style={{
+                        width: "100%",
+                        aspectRatio: "1",
+                        background:
+                          "linear-gradient(135deg, rgba(255,107,53,0.15), rgba(63,168,176,0.15))",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "48px",
+                      }}
+                    >
+                      ⏱
+                    </div>
+                  )}
+                </div>
+                <div className="cardbottom">
+                  <div className="carddetails">
+                    <h4>{pack.name}</h4>
+                    <h6>
+                      {pack.minutes ? `${pack.minutes} min` : ""}
+                      {pack.description ? ` • ${pack.description}` : ""}
+                    </h6>
+                    <h5>₹{Number(pack.price || 0).toLocaleString()}</h5>
                   </div>
-                )}
-              </div>
-              <div className="cardbottom">
-                <div className="carddetails">
-                  <h4>{pack.name}</h4>
-                  <h6>
-                    {pack.minutes ? `${pack.minutes} min` : ""}
-                    {pack.description ? ` • ${pack.description}` : ""}
-                  </h6>
-                  <h5>₹{Number(pack.price || 0).toLocaleString()}</h5>
+                  {inCart ? (
+                    // Inline +/- counter once the pack is added. Replaces the
+                    // Add to Cart button so the customer can adjust qty
+                    // without hunting in the sidebar.
+                    <div className="cardcounter glassyfinish">
+                      <button
+                        type="button"
+                        className="cardcounter__btn"
+                        aria-label={`Decrease quantity of ${pack.name}`}
+                        onClick={() => onBumpQty && onBumpQty(pack.id, -1)}
+                      >
+                        −
+                      </button>
+                      <span className="cardcounter__qty">{qty}</span>
+                      <button
+                        type="button"
+                        className="cardcounter__btn"
+                        aria-label={`Increase quantity of ${pack.name}`}
+                        onClick={() => onBumpQty && onBumpQty(pack.id, 1)}
+                      >
+                        +
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="cardbutton glassyfinish">
+                      <button onClick={() => onAddToCart && onAddToCart(pack)}>
+                        Add to Cart
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <div className="cardbutton glassyfinish">
-                  <button onClick={() => onAddToCart && onAddToCart(pack)}>
-                    Add to Cart
-                  </button>
-                </div>
               </div>
-            </div>
-          </SwiperSlide>
-        ))}
+            </SwiperSlide>
+          );
+        })}
       </Swiper>
     </div>
   );
