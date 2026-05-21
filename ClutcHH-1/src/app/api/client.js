@@ -120,6 +120,20 @@ export async function api(path, opts = {}) {
   const bodyOut = await parseBody(res);
 
   if (!res.ok) {
+    // Token-expired / unauthenticated surfaces: fire a window event so
+    // a single top-level listener can drive forced logout + redirect to
+    // /login. Done here (not in every catch site) so an idle customer
+    // whose JWT has aged out can't get stranded on a page that quietly
+    // 401s — the most common previous symptom was "kiosk frozen, no
+    // logout button accessible". Excluded the auth/login route itself
+    // so a wrong-password attempt doesn't fire the global signOut.
+    if (res.status === 401 && !path.includes('/auth/login')) {
+      try {
+        window.dispatchEvent(new CustomEvent('auth:unauthorized', {
+          detail: { path, status: res.status },
+        }));
+      } catch { /* dispatchEvent unsupported in some test envs */ }
+    }
     throw new ApiError(errMessage(bodyOut, `HTTP ${res.status}`), {
       status: res.status,
       body: bodyOut,

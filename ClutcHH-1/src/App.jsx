@@ -199,6 +199,33 @@ export default function App() {
     };
   }, [setupState]);
 
+  // Forced logout on any 401 from an authenticated API call. The api()
+  // client dispatches `auth:unauthorized` whenever a non-login request
+  // comes back 401 — this is the single global listener that boots the
+  // user back to /login so an aged-out JWT doesn't strand them on a
+  // half-broken page with no escape (the "couldn't navigate, couldn't
+  // logout" symptom). Excludes /auth/login so a wrong-password attempt
+  // doesn't trigger the global signOut.
+  useEffect(() => {
+    if (setupState !== 'ready') return undefined;
+    const handler = () => {
+      try {
+        useSessionStore.getState().signOut?.();
+      } catch { /* signOut throwing is non-fatal */ }
+      try { setJwt(null); } catch { /* idem */ }
+      // Hard navigate so any in-flight component state is dropped — a
+      // softer react-router navigate would leave PackageGuard / pill
+      // mounted with stale data.
+      try {
+        if (window.location.pathname !== '/auth/login') {
+          window.location.replace('/auth/login');
+        }
+      } catch { /* SSR / test envs */ }
+    };
+    window.addEventListener('auth:unauthorized', handler);
+    return () => window.removeEventListener('auth:unauthorized', handler);
+  }, [setupState]);
+
   // Ctrl+Shift+L — the admin "exit kiosk" shortcut. Un-hooks the keyboard,
   // un-hides the taskbar and minimises the kiosk window for 60 seconds so an
   // admin can reach the desktop. The lockdown re-enables itself automatically.
