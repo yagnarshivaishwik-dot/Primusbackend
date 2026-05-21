@@ -22,6 +22,12 @@ const ChatPanel = ({ pc, onClose }) => {
 
     const base = getApiBase().replace(/\/$/, '');
 
+    // Normalise pc.id once so all comparisons are number-based. The PC list
+    // payload sometimes ships id as a string ("3") while the WebSocket event
+    // ships client_id as a number (3) — strict !== was silently dropping
+    // every live update.
+    const myPcId = Number(pc.id);
+
     const loadHistory = async () => {
       try {
         setLoading(true);
@@ -30,7 +36,7 @@ const ChatPanel = ({ pc, onClose }) => {
         });
         const all = res.data || [];
         const filtered = all
-          .filter((m) => m.pc_id === pc.id)
+          .filter((m) => Number(m.pc_id) === myPcId)
           .sort(
             (a, b) =>
               new Date(a.timestamp || a.ts || 0).getTime() -
@@ -47,22 +53,18 @@ const ChatPanel = ({ pc, onClose }) => {
 
     loadHistory();
 
+    // Treat every chat.message WS event as a "something changed, refetch
+    // history" signal. We don't try to mutate state from the WS payload
+    // directly anymore — that path was fragile (filter false-negatives,
+    // missing fields, stale-closure on pc.id). Refetching gives us the
+    // authoritative server view with proper `from` attribution and no
+    // duplicates from optimistic-vs-echo timing.
     const unsubscribe = subscribeAdminWs((msg) => {
       if (!msg || msg.event !== 'chat.message') return;
       const payload = msg.payload || {};
-      if (payload.client_id !== pc.id && payload.pc_id !== pc.id) return;
-
-      const incoming = {
-        id: payload.message_id || payload.id,
-        pc_id: payload.client_id || payload.pc_id,
-        from_user_id: payload.from_user_id,
-        to_user_id: payload.to_user_id,
-        message: payload.text || payload.message,
-        timestamp: new Date((payload.ts || Date.now() / 1000) * 1000).toISOString(),
-        from: payload.from,  // 'client' or 'admin'
-        user_name: payload.user_name,
-      };
-      setMessages((prev) => [...prev, incoming]);
+      const evPc = payload.client_id ?? payload.pc_id;
+      if (evPc != null && Number(evPc) !== myPcId) return;
+      loadHistory();
     });
 
     return () => {

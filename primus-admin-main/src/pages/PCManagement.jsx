@@ -168,14 +168,20 @@ const PCManagement = () => {
     // Admin WebSocket: bump unread badge when a client sends a chat message
     // for a PC whose ChatPanel isn't currently open. Toast for the first
     // unread per PC so the admin notices even if they aren't on this page.
+    //
+    // pc ids are stored as STRING keys in `unreadByPc` so React's reconciler
+    // and the JSX-side `unreadByPc[pc.id]` lookups stay in sync regardless of
+    // whether the API returns id as number or string. Without this the badge
+    // silently never appeared.
     useEffect(() => {
         const unsub = subscribeAdminWs((msg) => {
             if (!msg || msg.event !== 'chat.message') return;
             const p = msg.payload || {};
             if (p.from !== 'client') return;            // only client→admin pings
-            const pcId = p.client_id ?? p.pc_id;
-            if (pcId == null) return;
-            const openPcId = chatPc?.id;
+            const rawPcId = p.client_id ?? p.pc_id;
+            if (rawPcId == null) return;
+            const pcId = String(rawPcId);                // canonical key form
+            const openPcId = chatPc?.id != null ? String(chatPc.id) : null;
             if (openPcId === pcId) return;              // panel already open — no badge needed
             setUnreadByPc((prev) => {
                 const next = { ...prev, [pcId]: (prev[pcId] || 0) + 1 };
@@ -193,9 +199,10 @@ const PCManagement = () => {
     // Clear unread for a PC the moment its ChatPanel opens.
     useEffect(() => {
         if (!chatPc?.id) return;
+        const key = String(chatPc.id);
         setUnreadByPc((prev) => {
-            if (!prev[chatPc.id]) return prev;
-            const { [chatPc.id]: _drop, ...rest } = prev;
+            if (!prev[key]) return prev;
+            const { [key]: _drop, ...rest } = prev;
             return rest;
         });
     }, [chatPc?.id]);
@@ -421,14 +428,19 @@ const PCManagement = () => {
                                 <Button onClick={() => setChatPc(pc)} variant="secondary" className="w-full text-xs">
                                     <MessageSquare size={12} className="mr-1" /> Chat
                                 </Button>
-                                {unreadByPc[pc.id] > 0 && (
-                                    <span
-                                        className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow-lg ring-2 ring-gray-900"
-                                        aria-label={`${unreadByPc[pc.id]} unread chat message${unreadByPc[pc.id] === 1 ? '' : 's'}`}
-                                    >
-                                        {unreadByPc[pc.id] > 9 ? '9+' : unreadByPc[pc.id]}
-                                    </span>
-                                )}
+                                {(() => {
+                                    // Look up unread by stringified id so it matches how the WS handler stored it.
+                                    const n = unreadByPc[String(pc.id)] || 0;
+                                    if (n <= 0) return null;
+                                    return (
+                                        <span
+                                            className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow-lg ring-2 ring-gray-900"
+                                            aria-label={`${n} unread chat message${n === 1 ? '' : 's'}`}
+                                        >
+                                            {n > 9 ? '9+' : n}
+                                        </span>
+                                    );
+                                })()}
                             </div>
                         </div>
                         {menuOpenId === pc.id && (
