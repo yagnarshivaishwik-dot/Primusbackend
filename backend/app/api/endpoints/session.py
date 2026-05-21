@@ -28,11 +28,61 @@ async def start_session(
     db: Session = Depends(get_db),
 ):
     def _create() -> PCSession:
+        # Multi-DB translation. The kiosk passes the customer's GLOBAL
+        # user id (the same one in the JWT sub). PCSession.user_id and
+        # ClientPC.current_user_id both FK to the cafe-local users.id
+        # (CafeUser.id), NOT the global id. Without this translation
+        # the INSERT trips a ForeignKeyViolation — silently swallowed
+        # by the kiosk's try/catch around the /session/start call, with
+        # the visible symptom being "no PCSession ever appears, paywall
+        # decrementer has nothing to run against, timer never ticks".
+        #
+        # Same translation pattern as payment_cash: provision the
+        # CafeUser if missing, then look up its id.
+        user_fk = data.user_id  # single-DB / fallback
+        if MULTI_DB_ENABLED:
+            from app.db.models_cafe import CafeUser
+            from app.services.cafe_user_provisioning import ensure_cafe_user
+            try:
+                ensure_cafe_user(
+                    global_user_id=data.user_id,
+                    cafe_id=ctx.cafe_id,
+                )
+            except Exception:
+                # ensure_cafe_user logs its own warnings; the lookup
+                # below will catch a genuinely-missing mirror.
+                pass
+            cafe_user = (
+                db.query(CafeUser)
+                .filter(CafeUser.global_user_id == data.user_id)
+                .first()
+            )
+            if cafe_user is None:
+                # Session refresh sometimes lets ensure_cafe_user's INSERT
+                # land in a different transaction context; expire + re-fetch.
+                db.expire_all()
+                cafe_user = (
+                    db.query(CafeUser)
+                    .filter(CafeUser.global_user_id == data.user_id)
+                    .first()
+                )
+            if cafe_user is None:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Could not provision customer in cafe DB",
+                )
+            user_fk = cafe_user.id
+
+        now = datetime.now(UTC)
         session = PCSession(
             pc_id=data.pc_id,
-            user_id=data.user_id,
+            user_id=user_fk,
             cafe_id=ctx.cafe_id,
-            start_time=datetime.now(UTC),
+            start_time=now,
+            # Phase 2 paywall — anchor the per-minute decrementer at
+            # session start. paywall_tick.debit_session advances this
+            # by debit_minutes*60s on every heartbeat.
+            last_tick_at=now,
             paid=False,
             amount=0.0,
         )
@@ -46,7 +96,9 @@ async def start_session(
         try:
             pc = db.query(ClientPC).filter_by(id=data.pc_id).first()
             if pc:
-                pc.current_user_id = data.user_id
+                # current_user_id FKs to cafe-local users.id, same
+                # translation as above.
+                pc.current_user_id = user_fk
                 db.commit()
         except Exception:
             pass
