@@ -115,3 +115,10 @@ NoLag-Pavan/
 ClutcHH-1.backup-before-merge/
 NoLag-Guna/
 NoLag-Pavan/
+
+# Tech-debt backlog — kept locally only (not in the public repo).
+# Authoritative copy lives at:
+#   C:\Users\SudheendraNeela\OneDrive - STIC Soft E-Solutions Pvt. Ltd\HSN\TECH_DEBT.md
+# Removed from the tracked repo 2026-05-22 because the public Vercel-
+# linked repo shouldn't surface internal tech-debt detail.
+TECH_DEBT.md
