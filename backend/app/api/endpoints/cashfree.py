@@ -696,15 +696,39 @@ async def webhook(request: Request):
             # was attached or the pack was deleted between order + webhook.
             minutes_to_add = max(1, int(round(order_amount)))
 
-        # Ensure user actually exists (cheap sanity check before inserting).
-        user = db.query(User).filter(User.id == user_id).first()
-        if user is None:
-            raise HTTPException(status_code=404, detail="User not found")
+        # Resolve the FK we need for the cafe-scoped INSERTs below.
+        #
+        # The webhook's `user_id` came from order_tags, which was set to
+        # ``current_user.id`` (the GLOBAL user id) at order-create time.
+        # But user_offers.user_id and wallet_transactions.user_id FK to
+        # the cafe-DB-local ``users.id`` (CafeUser.id), NOT the global
+        # id. Without translation:
+        #   - the old User-existence sanity check (db.query(User)) used
+        #     the legacy global User model against the cafe DB session →
+        #     SELECT crashed with "column users.password_hash does not
+        #     exist" because the cafe DB's users table is the CafeUser
+        #     schema.
+        #   - even if the check passed, the UserOffer INSERT below would
+        #     hit a ForeignKeyViolation pointing at a row that doesn't
+        #     exist in cafe.users.
+        # resolve_cafe_user_fk centralises the translation + the auto-
+        # provision-if-missing dance with session.py's paywall flow.
+        # Single-DB mode passes through (returns global_user_id), so
+        # legacy deployments are unaffected.
+        from app.services.cafe_user_provisioning import resolve_cafe_user_fk
+        user_fk = resolve_cafe_user_fk(
+            db, global_user_id=user_id, cafe_id=cafe_id
+        )
+        if user_fk is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Could not provision customer in cafe DB",
+            )
 
         # Credit TIME — UserOffer is the canonical store of remaining minutes.
         db.add(
             UserOffer(
-                user_id=user_id,
+                user_id=user_fk,
                 offer_id=offer.id if offer else None,
                 purchased_at=datetime.now(UTC),
                 minutes_remaining=minutes_to_add,
@@ -719,7 +743,7 @@ async def webhook(request: Request):
         # have no such column (cafe is implicit in routing). Build kwargs
         # dynamically so the same call works in both modes.
         _wt_kwargs = dict(
-            user_id=user_id,
+            user_id=user_fk,
             amount=order_amount,
             timestamp=datetime.now(UTC),
             type="pack_purchase",
