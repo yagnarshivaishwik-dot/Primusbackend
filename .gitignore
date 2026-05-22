@@ -116,9 +116,11 @@ ClutcHH-1.backup-before-merge/
 NoLag-Guna/
 NoLag-Pavan/
 
-# Tech-debt backlog — kept locally only (not in the public repo).
-# Authoritative copy lives at:
-#   C:\Users\SudheendraNeela\OneDrive - STIC Soft E-Solutions Pvt. Ltd\HSN\TECH_DEBT.md
-# Removed from the tracked repo 2026-05-22 because the public Vercel-
-# linked repo shouldn't surface internal tech-debt detail.
+# Tech-debt backlog — lives in this folder on disk but NEVER tracked by
+# git. The repo is public (Vercel pulls from it for kiosk frontend
+# deploys); internal tech-debt notes — CRITICAL labels on the money path,
+# schema-drift admissions about prod cafe DBs, RLS gaps, etc. — must not
+# be on a public surface. The file at C:\Primusbackend\TECH_DEBT.md
+# is the authoritative copy; this .gitignore line keeps it permanently
+# untracked. Removed from repo history 2026-05-22.
 TECH_DEBT.md
