@@ -37,41 +37,19 @@ async def start_session(
         # the visible symptom being "no PCSession ever appears, paywall
         # decrementer has nothing to run against, timer never ticks".
         #
-        # Same translation pattern as payment_cash: provision the
-        # CafeUser if missing, then look up its id.
-        user_fk = data.user_id  # single-DB / fallback
-        if MULTI_DB_ENABLED:
-            from app.db.models_cafe import CafeUser
-            from app.services.cafe_user_provisioning import ensure_cafe_user
-            try:
-                ensure_cafe_user(
-                    global_user_id=data.user_id,
-                    cafe_id=ctx.cafe_id,
-                )
-            except Exception:
-                # ensure_cafe_user logs its own warnings; the lookup
-                # below will catch a genuinely-missing mirror.
-                pass
-            cafe_user = (
-                db.query(CafeUser)
-                .filter(CafeUser.global_user_id == data.user_id)
-                .first()
+        # The translation lives in resolve_cafe_user_fk so the same
+        # logic backs cashfree.py's webhook handler (and any future
+        # cafe-scoped endpoint with a user FK). Single-DB mode is a
+        # pass-through.
+        from app.services.cafe_user_provisioning import resolve_cafe_user_fk
+        user_fk = resolve_cafe_user_fk(
+            db, global_user_id=data.user_id, cafe_id=ctx.cafe_id
+        )
+        if user_fk is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Could not provision customer in cafe DB",
             )
-            if cafe_user is None:
-                # Session refresh sometimes lets ensure_cafe_user's INSERT
-                # land in a different transaction context; expire + re-fetch.
-                db.expire_all()
-                cafe_user = (
-                    db.query(CafeUser)
-                    .filter(CafeUser.global_user_id == data.user_id)
-                    .first()
-                )
-            if cafe_user is None:
-                raise HTTPException(
-                    status_code=500,
-                    detail="Could not provision customer in cafe DB",
-                )
-            user_fk = cafe_user.id
 
         now = datetime.now(UTC)
         # IMPORTANT: do NOT pass cafe_id here. In multi-DB mode the cafe
