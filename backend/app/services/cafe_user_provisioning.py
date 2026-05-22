@@ -80,3 +80,71 @@ def ensure_cafe_user(
         )
     finally:
         db.close()
+
+
+def resolve_cafe_user_fk(
+    db,
+    *,
+    global_user_id: int,
+    cafe_id: Optional[int],
+) -> Optional[int]:
+    """Translate a global user id to the cafe-local ``users.id`` for FK use.
+
+    Background: every cafe-scoped table that has a ``user_id`` column
+    (sessions.user_id, user_offers.user_id, wallet_transactions.user_id, …)
+    FKs to the cafe-DB-local ``users.id`` — i.e. ``CafeUser.id`` — NOT
+    the global user id. The kiosk / webhook layer carries the GLOBAL id
+    (it's in the JWT, it's what Cashfree was handed at order-create time);
+    every INSERT into a cafe-scoped table needs to translate it first or
+    Postgres raises ``ForeignKeyViolation``.
+
+    This helper centralises the translation that previously lived inline
+    in ``api/endpoints/session.py`` and was about to be copy-pasted into
+    ``api/endpoints/cashfree.py``. Future cafe-scoped endpoints that need
+    a user FK should call this rather than re-rolling the logic.
+
+    Semantics:
+      - Single-DB mode (or ``cafe_id`` is None): pass-through. The legacy
+        schema has one ``users`` table and the global id IS the FK.
+      - Multi-DB mode: ensure the ``CafeUser`` mirror exists (idempotent),
+        then query by ``global_user_id`` and return the local ``id``.
+        Returns None if provisioning genuinely failed and no row exists —
+        the caller is responsible for raising the appropriate HTTP error
+        so this service layer stays free of FastAPI dependencies.
+
+    ``db`` must already be a session bound to the right cafe DB (the
+    helper does NOT open its own session for the lookup — that would risk
+    the same cross-transaction visibility we work around below).
+
+    The expire-then-refetch dance is intentional: ``ensure_cafe_user``
+    runs its INSERT in a separate session (router-owned), and depending
+    on Postgres isolation + commit timing the caller's session can hold
+    a stale snapshot that doesn't yet see the new row.
+    """
+    if not MULTI_DB_ENABLED or cafe_id is None:
+        return global_user_id
+
+    from app.db.models_cafe import CafeUser
+
+    try:
+        ensure_cafe_user(global_user_id=global_user_id, cafe_id=cafe_id)
+    except Exception:
+        # ensure_cafe_user already logs; swallow so the lookup below gets
+        # a chance — if the row was already there, the INSERT-failure
+        # doesn't matter.
+        pass
+
+    cafe_user = (
+        db.query(CafeUser)
+        .filter(CafeUser.global_user_id == global_user_id)
+        .first()
+    )
+    if cafe_user is None:
+        db.expire_all()
+        cafe_user = (
+            db.query(CafeUser)
+            .filter(CafeUser.global_user_id == global_user_id)
+            .first()
+        )
+
+    return cafe_user.id if cafe_user else None
