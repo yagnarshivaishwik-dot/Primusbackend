@@ -336,7 +336,7 @@ classes inherit from `Base`, NOT `CafeBase`. Behavior preserved.
 
 (Move items here with date + commit hash when fixed.)
 
-- _Nothing yet._
+- **#23 — Cafe-scoped models reject `cafe_id` kwarg in multi-DB** — 2026-05-21, `cafe_db.py` mixin commit. Patched `CafeBase` with a `_CafeModelBase` mixin that pops `cafe_id` from constructor kwargs (so endpoint code's habitual `cafe_id=ctx.cafe_id` stops 500ing) and exposes `cafe_id = None` as a class attribute (so legacy reads like `session.cafe_id or 0` at `billing.py:260` get None → 0 instead of AttributeError). Zero schema change, zero migration, zero endpoint changes. Canonical cafe identity stays in the AuthContext and the DB connection.
 
 ---
 
