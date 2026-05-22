@@ -34,23 +34,28 @@ from app.auth.context import AuthContext, get_auth_context
 from app.db.dependencies import MULTI_DB_ENABLED
 from app.db.global_db import global_session_factory
 from app.db.router import cafe_db_router
-from app.models import Offer, User, UserOffer
+from app.models import User  # global model — unchanged in both modes
 
-# WalletTransaction lives in TWO model files:
+# Offer, UserOffer, WalletTransaction live in TWO model files:
 #   - app/models.py             — legacy, has `cafe_id` column (single-DB schema)
 #   - app/db/models_cafe.py     — per-cafe schema, NO cafe_id (the cafe is
 #                                 implicit in which DB you're connected to)
 # In multi-DB mode the webhook writes to the per-cafe Postgres instance,
-# whose `wallet_transactions` table doesn't have cafe_id. Using the legacy
-# model causes SQLAlchemy to emit INSERT INTO wallet_transactions
-# (..., cafe_id, ...) and Postgres rejects with UndefinedColumn — same
-# pattern as the chat.py / chat_messages fix. Without this swap, real
-# Cashfree payments lock up: money clears at Cashfree, webhook 500s, and
-# the customer's wallet never credits.
+# whose tables don't have cafe_id. Using the legacy models causes SQLAlchemy
+# to emit INSERT ... (..., cafe_id, ...) and Postgres rejects with
+# UndefinedColumn — same pattern as the chat.py / chat_messages fix.
+# Without this swap, real Cashfree payments (including the Payment Links
+# workaround flow) lock up: money clears at Cashfree, webhook 500s, and
+# the customer's wallet / pack never credits.
+#
+# `WalletTransaction` alone was previously gated; `Offer` and `UserOffer`
+# were missed in that first pass — they're queried + inserted against the
+# same cafe-DB session inside _process_cashfree_webhook, so they need the
+# same conditional treatment. Same shape as payment_cash.py:40-43.
 if MULTI_DB_ENABLED:
-    from app.db.models_cafe import WalletTransaction
+    from app.db.models_cafe import Offer, UserOffer, WalletTransaction  # type: ignore[no-redef]
 else:
-    from app.models import WalletTransaction  # legacy: has cafe_id
+    from app.models import Offer, UserOffer, WalletTransaction  # type: ignore[no-redef]
 from app.services import cashfree_service as cf
 from app.ws.auth import build_event
 from app.ws import pc as ws_pc, admin as ws_admin
