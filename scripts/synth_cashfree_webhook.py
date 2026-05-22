@@ -129,7 +129,11 @@ def main() -> int:
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
+        # 60s timeout — first call after uvicorn --reload cycles or after
+        # the Redis invalidation subscriber reconnects can take 10–30s to
+        # respond. The endpoint itself runs in <500ms; the wait is the
+        # server warming back up.
+        with urllib.request.urlopen(req, timeout=60) as resp:
             status = resp.status
             body = resp.read().decode("utf-8", errors="replace")
     except urllib.error.HTTPError as exc:
