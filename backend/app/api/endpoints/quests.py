@@ -222,36 +222,54 @@ def claim_quest(
                     .first()
                 )
 
-            # See home.claim_placeholder for why this auto-provisioning
-            # exists. Kiosk customer-login doesn't seed the cafe-side users
-            # table yet, so the first time an endpoint needs the row we
-            # create it.
+            # auth.py auto-provisions the CafeUser row at login / refresh
+            # (TECH_DEBT #23). If we still don't see it here, the session
+            # predates that change OR the auth-side ensure_cafe_user
+            # silently failed. One last-ditch helper call before failing
+            # the request — replaces a previous inline CafeUser(...).add()
+            # band-aid that silently *skipped* the coin credit, leaving
+            # quests unrewarded with no telemetry.
             if user_row is None and MULTI_DB_ENABLED:
-                user_row = _UserModel(
-                    global_user_id=current_user.id,
-                    name=getattr(current_user, "name", None) or getattr(current_user, "email", None),
-                    email=getattr(current_user, "email", None),
-                    role="client",
-                    wallet_balance=0,
-                    coins_balance=0,
-                )
-                db.add(user_row)
-                db.flush()
-                logger.info(
-                    "[QUEST CLAIM] auto-provisioned CafeUser for global_user_id=%s event=%s",
+                try:
+                    from app.services.cafe_user_provisioning import ensure_cafe_user
+                    ensure_cafe_user(
+                        global_user_id=current_user.id,
+                        cafe_id=ctx.cafe_id,
+                        name=getattr(current_user, "name", None) or getattr(current_user, "email", None),
+                        email=getattr(current_user, "email", None),
+                    )
+                    db.expire_all()
+                    user_row = (
+                        db.query(_UserModel)
+                        .filter(_UserModel.global_user_id == current_user.id)
+                        .first()
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "[QUEST CLAIM] ensure_cafe_user fallback failed for global_user_id=%s event=%s: %s",
+                        current_user.id, event_id, exc,
+                    )
+
+            if user_row is None:
+                logger.warning(
+                    "[QUEST CLAIM] CafeUser missing for global_user_id=%s event=%s — "
+                    "auth.py auto-provisioning may have failed; returning 409 to force re-login.",
                     current_user.id, event_id,
                 )
-
-            if user_row is not None:
-                user_row.coins_balance = (user_row.coins_balance or 0) + reward_amount
-                db.add(
-                    CoinTransaction(
-                        user_id=user_row.id,
-                        amount=reward_amount,
-                        reason=f"quest_claim:{event_id}",
-                    )
+                raise HTTPException(
+                    status_code=409,
+                    detail="Your cafe-side account is missing. Please log out and log back in to refresh your session.",
                 )
-                coins_credited = reward_amount
+
+            user_row.coins_balance = (user_row.coins_balance or 0) + reward_amount
+            db.add(
+                CoinTransaction(
+                    user_id=user_row.id,
+                    amount=reward_amount,
+                    reason=f"quest_claim:{event_id}",
+                )
+            )
+            coins_credited = reward_amount
         elif reward_kind == "xp" and reward_amount > 0:
             xp_skipped = reward_amount
 

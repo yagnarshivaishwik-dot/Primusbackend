@@ -156,29 +156,45 @@ def claim_placeholder(
                 .first()
             )
 
-        # Auto-provision the cafe-side row if missing. Customer login on the
-        # kiosk doesn't currently create a CafeUser entry in the device's
-        # bound cafe DB (TECH_DEBT: auth.py should provision on first login).
-        # Until that's fixed, every kiosk endpoint that needs a cafe-local
-        # user row would fail forever. Provisioning here on first interaction
-        # is the recovery path.
+        # auth.py's login / refresh / admin-bind-and-login flows now
+        # auto-provision the CafeUser row at JWT-issue time (TECH_DEBT #23).
+        # If we still don't see it here, either the session predates that
+        # change OR the auth-side ensure_cafe_user silently failed (it's
+        # wrapped in try/except by design — login mustn't fail on a
+        # transient cafe-DB hiccup). One last-ditch call to the canonical
+        # helper before failing the request — replaces a previous inline
+        # CafeUser(...).add() band-aid that masked the underlying bug.
         if user_row is None and MULTI_DB_ENABLED:
-            user_row = _UserModel(
-                global_user_id=current_user.id,
-                name=getattr(current_user, "name", None) or getattr(current_user, "email", None),
-                email=getattr(current_user, "email", None),
-                role="client",
-                wallet_balance=0,
-                coins_balance=0,
-            )
-            db.add(user_row)
-            db.flush()  # populate user_row.id for the CoinTransaction FK below
-            logger.info(
-                "[HOME CLAIM] auto-provisioned CafeUser for global_user_id=%s cafe_id=%s",
-                current_user.id, ctx.cafe_id,
-            )
+            try:
+                from app.services.cafe_user_provisioning import ensure_cafe_user
+                ensure_cafe_user(
+                    global_user_id=current_user.id,
+                    cafe_id=ctx.cafe_id,
+                    name=getattr(current_user, "name", None) or getattr(current_user, "email", None),
+                    email=getattr(current_user, "email", None),
+                )
+                db.expire_all()
+                user_row = (
+                    db.query(_UserModel)
+                    .filter(_UserModel.global_user_id == current_user.id)
+                    .first()
+                )
+            except Exception as exc:
+                logger.warning(
+                    "[HOME CLAIM] ensure_cafe_user fallback failed for global_user_id=%s: %s",
+                    current_user.id, exc,
+                )
+
         if user_row is None:
-            raise HTTPException(status_code=404, detail="User not found in cafe DB")
+            logger.warning(
+                "[HOME CLAIM] CafeUser missing for global_user_id=%s cafe_id=%s — "
+                "auth.py auto-provisioning may have failed; returning 409 to force re-login.",
+                current_user.id, ctx.cafe_id if MULTI_DB_ENABLED else None,
+            )
+            raise HTTPException(
+                status_code=409,
+                detail="Your cafe-side account is missing. Please log out and log back in to refresh your session.",
+            )
 
         existing = (
             db.query(CoinTransaction)

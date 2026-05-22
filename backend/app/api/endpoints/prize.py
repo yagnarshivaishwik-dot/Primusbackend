@@ -79,20 +79,43 @@ def redeem_prize(
                 .first()
             )
             if user_row is None:
-                # Auto-provision (same recovery path as home.py / quests.py).
-                user_row = CafeUser(
-                    global_user_id=current_user.id,
-                    name=getattr(current_user, "name", None) or getattr(current_user, "email", None),
-                    email=getattr(current_user, "email", None),
-                    role="client",
-                    wallet_balance=0,
-                    coins_balance=0,
-                )
-                cafe_db.add(user_row)
-                cafe_db.flush()
-                logger.info(
-                    "[PRIZE REDEEM] auto-provisioned CafeUser for global_user_id=%s cafe_id=%s",
+                # auth.py auto-provisions CafeUser at login (TECH_DEBT #23).
+                # If we still don't see the row here, the session predates
+                # that change OR the auth-side ensure_cafe_user silently
+                # failed. One last-ditch helper call before failing the
+                # request — replaces a previous inline CafeUser(...).add()
+                # band-aid. Note: ensure_cafe_user opens its own session
+                # so it doesn't matter that we hold cafe_db here; we then
+                # expire_all() to see the new row in our session.
+                try:
+                    from app.services.cafe_user_provisioning import ensure_cafe_user
+                    ensure_cafe_user(
+                        global_user_id=current_user.id,
+                        cafe_id=ctx.cafe_id,
+                        name=getattr(current_user, "name", None) or getattr(current_user, "email", None),
+                        email=getattr(current_user, "email", None),
+                    )
+                    cafe_db.expire_all()
+                    user_row = (
+                        cafe_db.query(CafeUser)
+                        .filter(CafeUser.global_user_id == current_user.id)
+                        .first()
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "[PRIZE REDEEM] ensure_cafe_user fallback failed for global_user_id=%s: %s",
+                        current_user.id, exc,
+                    )
+
+            if user_row is None:
+                logger.warning(
+                    "[PRIZE REDEEM] CafeUser missing for global_user_id=%s cafe_id=%s — "
+                    "auth.py auto-provisioning may have failed; returning 409 to force re-login.",
                     current_user.id, ctx.cafe_id,
+                )
+                raise HTTPException(
+                    status_code=409,
+                    detail="Your cafe-side account is missing. Please log out and log back in to refresh your session.",
                 )
 
             if (user_row.coins_balance or 0) < prize.coin_cost:

@@ -169,21 +169,33 @@ def claim_event(
                 .filter(CafeUser.global_user_id == current_user.id)
                 .first()
             )
+            # auth.py auto-provisions CafeUser at login (TECH_DEBT #23).
+            # If we still don't see the row here, the session predates
+            # that change OR the auth-side provisioning silently failed.
+            # One last-ditch helper call before failing the request —
+            # replaces a previous inline CafeUser(...).add() band-aid
+            # that silently skipped the coin credit, leaving event
+            # rewards unclaimed with no telemetry.
             if user_row is None:
-                user_row = CafeUser(
-                    global_user_id=current_user.id,
-                    name=getattr(current_user, "name", None) or getattr(current_user, "email", None),
-                    email=getattr(current_user, "email", None),
-                    role="client",
-                    wallet_balance=0,
-                    coins_balance=0,
-                )
-                db.add(user_row)
-                db.flush()
-                logger.info(
-                    "[EVENT CLAIM] auto-provisioned CafeUser for global_user_id=%s event=%s",
-                    current_user.id, event_id,
-                )
+                try:
+                    from app.services.cafe_user_provisioning import ensure_cafe_user
+                    ensure_cafe_user(
+                        global_user_id=current_user.id,
+                        cafe_id=ctx.cafe_id,
+                        name=getattr(current_user, "name", None) or getattr(current_user, "email", None),
+                        email=getattr(current_user, "email", None),
+                    )
+                    db.expire_all()
+                    user_row = (
+                        db.query(CafeUser)
+                        .filter(CafeUser.global_user_id == current_user.id)
+                        .first()
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "[EVENT CLAIM] ensure_cafe_user fallback failed for global_user_id=%s event=%s: %s",
+                        current_user.id, event_id, exc,
+                    )
         else:
             from app.models import User as _LegacyUser  # noqa: WPS433
             user_row = (
@@ -192,16 +204,26 @@ def claim_event(
                 .first()
             )
 
-        if user_row is not None:
-            user_row.coins_balance = (user_row.coins_balance or 0) + reward_amount
-            db.add(
-                CafeCoinTransaction(
-                    user_id=user_row.id,
-                    amount=reward_amount,
-                    reason=f"event_claim:{event_id}",
-                )
+        if user_row is None:
+            logger.warning(
+                "[EVENT CLAIM] user row missing for global_user_id=%s event=%s — "
+                "auth.py auto-provisioning may have failed; returning 409 to force re-login.",
+                current_user.id, event_id,
             )
-            coins_credited = reward_amount
+            raise HTTPException(
+                status_code=409,
+                detail="Your cafe-side account is missing. Please log out and log back in to refresh your session.",
+            )
+
+        user_row.coins_balance = (user_row.coins_balance or 0) + reward_amount
+        db.add(
+            CafeCoinTransaction(
+                user_id=user_row.id,
+                amount=reward_amount,
+                reason=f"event_claim:{event_id}",
+            )
+        )
+        coins_credited = reward_amount
 
     db.commit()
     db.refresh(prog)
