@@ -20,7 +20,16 @@ public sealed record HeartbeatRequest
 
 public sealed record HeartbeatResponse
 {
-    public int RemainingTimeSeconds { get; init; }
+    // Nullable because the backend returns `null` when there's no active
+    // PCSession for this kiosk (e.g. between sign-out and sign-in, or
+    // during the post-payment-pre-session window). Previously typed as
+    // non-nullable int, which crashed System.Text.Json with
+    //   JsonException: Cannot get the value of a token type 'Null' as a number.
+    //   Path: $.remaining_time_seconds
+    // every ~20s for every kiosk without an active session — silently
+    // breaking the heartbeat-driven paywall handshake. Matches the
+    // request-side declaration at line 15.
+    public int? RemainingTimeSeconds { get; init; }
     public bool SessionActive { get; init; }
     public int PendingCommandCount { get; init; }
 }
