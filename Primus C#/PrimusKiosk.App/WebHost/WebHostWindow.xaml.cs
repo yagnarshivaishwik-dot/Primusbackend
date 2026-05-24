@@ -1,4 +1,5 @@
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using Microsoft.Web.WebView2.Core;
 using PrimusKiosk.App.WebHost.Bridge;
@@ -15,6 +16,28 @@ namespace PrimusKiosk.App.WebHost;
 /// </summary>
 public partial class WebHostWindow : Window
 {
+    // Windows power-management flags for SetThreadExecutionState. Used to
+    // keep the kiosk awake — see OnLoaded.
+    [Flags]
+    private enum ExecutionState : uint
+    {
+        Continuous      = 0x80000000,
+        DisplayRequired = 0x00000002,
+        SystemRequired  = 0x00000001,
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern ExecutionState SetThreadExecutionState(ExecutionState esFlags);
+
+    // Sliding-window of navigation-retry timestamps. The auto-recovery
+    // handler caps itself at MaxRetriesPerWindow retries within
+    // RetryWindow, so a genuinely-broken state (bad URL, missing web/
+    // folder, persistent network outage) doesn't pin the CPU.
+    private readonly Queue<DateTime> _recentNavRetries = new();
+    private const int MaxRetriesPerWindow = 3;
+    private static readonly TimeSpan RetryWindow = TimeSpan.FromMinutes(1);
+    private const string HomeNavUrl = "https://kiosk.primustech.in/index.html";
+
     private readonly JsBridge _bridge;
     private readonly string _webRoot;
     private bool _bridgeAttached;
@@ -72,6 +95,24 @@ public partial class WebHostWindow : Window
 
             await WebView.EnsureCoreWebView2Async(env);
 
+            // Tell Windows to keep this process AND the display awake until
+            // the kiosk exits. ES_CONTINUOUS means the flags persist for the
+            // life of the thread. Without this, after ~15-30 min of idle,
+            // Windows' power manager can:
+            //   * Turn off the monitor (customer sees a black screen, recovers
+            //     on mouse move — annoying but not fatal).
+            //   * Suspend background tabs / renderer processes (WebView2's
+            //     renderer is one). On wake, the renderer's IPC pipe is gone
+            //     and the next navigation raises ConnectionAborted, which
+            //     surfaces as the "File not found" page customers were seeing.
+            // The kiosk is a single-purpose appliance; aggressive power
+            // saving is the wrong tradeoff here. See also kiosk-*.log entries
+            // "WebView2 navigation failed: ConnectionAborted" from 2026-05-22.
+            SetThreadExecutionState(
+                ExecutionState.Continuous |
+                ExecutionState.DisplayRequired |
+                ExecutionState.SystemRequired);
+
             var core = WebView.CoreWebView2;
 
             // Lock down the embedded chrome for kiosk use.
@@ -112,14 +153,78 @@ public partial class WebHostWindow : Window
                 {
                     Log.Information("WebView2 navigation completed successfully.");
                     Dispatcher.Invoke(() => Splash.Visibility = Visibility.Collapsed);
+                    return;
                 }
-                else
+
+                Log.Warning("WebView2 navigation failed: {Status}", args.WebErrorStatus);
+
+                // Only auto-retry transport-level failures. A genuine
+                // 404 / forbidden / cert error indicates a config bug
+                // and bouncing them would mask the real problem.
+                //
+                // Statuses below are the ones we've actually observed in
+                // the kiosk-*.log after Windows suspended the renderer
+                // process on idle (ConnectionAborted) plus the closely-
+                // related transport-failure family. Anything outside
+                // this set falls through to the warn log only.
+                var recoverable = args.WebErrorStatus is
+                    CoreWebView2WebErrorStatus.ConnectionAborted or
+                    CoreWebView2WebErrorStatus.ConnectionReset or
+                    CoreWebView2WebErrorStatus.Disconnected or
+                    CoreWebView2WebErrorStatus.HostNameNotResolved or
+                    CoreWebView2WebErrorStatus.OperationCanceled or
+                    CoreWebView2WebErrorStatus.Timeout or
+                    CoreWebView2WebErrorStatus.Unknown;
+
+                if (!recoverable)
                 {
-                    Log.Warning("WebView2 navigation failed: {Status}", args.WebErrorStatus);
+                    return;
                 }
+
+                // Sliding 60-second window with at most 3 retries — so a
+                // genuinely-broken state (bad URL, missing web/ folder,
+                // persistent network outage) doesn't spin the CPU
+                // forever. After the cap is hit we log error and stop;
+                // the customer / operator can recover by manually
+                // restarting the kiosk app.
+                var now = DateTime.UtcNow;
+                int retryNumber;
+                lock (_recentNavRetries)
+                {
+                    while (_recentNavRetries.Count > 0 &&
+                           now - _recentNavRetries.Peek() > RetryWindow)
+                    {
+                        _recentNavRetries.Dequeue();
+                    }
+                    if (_recentNavRetries.Count >= MaxRetriesPerWindow)
+                    {
+                        Log.Error(
+                            "WebView2 navigation failed {Count} times in the last {Window}. " +
+                            "Giving up on auto-recovery; restart the kiosk app to retry.",
+                            _recentNavRetries.Count, RetryWindow);
+                        return;
+                    }
+                    _recentNavRetries.Enqueue(now);
+                    retryNumber = _recentNavRetries.Count;
+                }
+
+                Log.Information(
+                    "WebView2 auto-recovery: re-navigating to {Url} (retry {N}/{Max} in current window).",
+                    HomeNavUrl, retryNumber, MaxRetriesPerWindow);
+                Dispatcher.InvokeAsync(() =>
+                {
+                    try
+                    {
+                        core.Navigate(HomeNavUrl);
+                    }
+                    catch (Exception navEx)
+                    {
+                        Log.Warning(navEx, "WebView2 auto-recovery navigation threw.");
+                    }
+                });
             };
 
-            core.Navigate("https://kiosk.primustech.in/index.html");
+            core.Navigate(HomeNavUrl);
         }
         catch (Exception ex)
         {
