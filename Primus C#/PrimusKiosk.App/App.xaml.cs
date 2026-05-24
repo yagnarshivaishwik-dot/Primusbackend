@@ -101,20 +101,45 @@ public partial class PrimusApplication : Application
     /// Finds the React build output (<c>index.html</c> present) by probing several
     /// candidate locations so the app works both from the developer repo and from an
     /// installed Inno Setup layout under <c>%ProgramFiles%\Primus\</c>.
+    ///
+    /// Candidate order matters. We prefer the "authoritative" sources (the
+    /// dev repo's <c>Primus C#/web/</c> and the installed
+    /// <c>%ProgramFiles%\Primus\web\</c>) BEFORE the bin/Debug/.../web/
+    /// staging copy that msbuild regenerates on every build. Reason: the
+    /// staging copy can silently drift out of sync with the source (the
+    /// msbuild PreserveNewest stale-cache trap — we also fixed that in
+    /// PrimusKiosk.App.csproj by switching to Always; this candidate
+    /// reorder is defence in depth). When the drift happened, ResolveWebRoot
+    /// picked the stale bin/ copy and the kiosk loaded the previous React
+    /// build's UI for as long as the staleness lasted, indistinguishable
+    /// from a config bug. See kiosk-*.log incident notes from 2026-05-22
+    /// and tech-debt #18.
     /// </summary>
     private static string ResolveWebRoot()
     {
         var candidates = new[]
         {
-            // Installed layout: .\web\ next to the exe
-            Path.Combine(AppContext.BaseDirectory, "web"),
-            // Developer layout: Primus C#/web/ (build-installer.ps1 stages dist here)
+            // 1. Developer layout: Primus C#/web/ — the canonical source
+            //    the .csproj copies INTO bin/Debug/.../web/. Prefer this
+            //    so a stale bin/ copy can never override the source of
+            //    truth.
             Path.Combine(AppContext.BaseDirectory, "..", "web"),
-            // Common install path
+            // 2. Installed layout: %ProgramFiles%\Primus\web\. Inno Setup
+            //    drops the React bundle here when the customer runs the
+            //    installer; production authoritative source.
             Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
                 "Primus", "web"),
-            // Repo root: PrimusClient/dist/ (npm run build output)
+            // 3. Staging copy next to the exe (bin/Debug/.../web/). msbuild
+            //    keeps this in sync via <None Include="..\web\**"/> in the
+            //    .csproj. Fallback only — useful in the rare layout where
+            //    ..\web\ isn't present (single-file publish during a partial
+            //    install state, for example).
+            Path.Combine(AppContext.BaseDirectory, "web"),
+            // 4. Legacy: repo's PrimusClient/dist/ (old Tauri-era npm run
+            //    build output). Kept as last-resort for very old dev
+            //    checkouts; deprecated, eligible for removal once
+            //    tech-debt #12 (PrimusClient/ folder cleanup) lands.
             Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..",
                 "PrimusClient", "dist")),
         };
@@ -133,7 +158,7 @@ public partial class PrimusApplication : Application
         // Return the primary candidate even if missing; WebHostWindow logs a warning.
         var fallback = Path.GetFullPath(candidates[0]);
         Log.Warning("React web root not found; defaulting to {Path}. " +
-                    "Run 'npm run build' in PrimusClient/ and copy dist/ to the web/ folder.", fallback);
+                    "Run 'npm run build' in ClutcHH-1/ and copy dist/ to the web/ folder.", fallback);
         return fallback;
     }
 
