@@ -64,11 +64,23 @@
   </ItemGroup>
 
   <!-- Stage the React bundle next to the exe so WebHostWindow's virtual host
-       mapping (https://primus.local → web/) resolves in every build config.
-       ResolveWebRoot() checks AppContext.BaseDirectory/web first. -->
+       mapping (https://kiosk.primustech.in → web/) resolves in every build
+       config. ResolveWebRoot() also probes ..\web\ now — see App.xaml.cs —
+       so this is the "deployed-layout" copy, not the only source of truth.
+
+       Always (not PreserveNewest): the previous setting fell into the
+       msbuild stale-cache trap when a content file in ..\web\ was REPLACED
+       with older content (e.g. a build-installer.ps1 stage from a different
+       React snapshot) whose mtime was older than the existing copy's mtime
+       in bin/. PreserveNewest then declined to overwrite, leaving the
+       old-content / new-timestamp copy in place forever — symptom 2026-05-22
+       was the kiosk loading the previous build's React UI instead of the
+       current one, indistinguishable from a config bug. Always copies on
+       every build (cheap — only re-runs when sources actually change per
+       msbuild's incremental graph). -->
   <ItemGroup>
     <None Include="..\web\**\*.*" Link="web\%(RecursiveDir)%(Filename)%(Extension)">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 
