@@ -33,6 +33,7 @@ public sealed class PrimusWebSocketClient : IPrimusRealtimeClient, IAsyncDisposa
     public event EventHandler<WalletDto>? WalletUpdated;
     public event EventHandler<AnnouncementDto>? NotificationReceived;
     public event EventHandler<JsonElement>? InventoryUpdated;
+    public event EventHandler<JsonElement>? GamesUpdated;
 
     public PrimusWebSocketClient(
         IOptionsMonitor<PrimusSettings> settings,
@@ -404,6 +405,15 @@ public sealed class PrimusWebSocketClient : IPrimusRealtimeClient, IAsyncDisposa
                 // an event with a borrowed element and then having a
                 // subscriber inspect it after we return would be a UAF).
                 InventoryUpdated?.Invoke(this, payload.Clone());
+                break;
+
+            case "games.updated":
+                // Same raw-passthrough contract as inventory.updated. Backend
+                // broadcasts this from games.py:_broadcast_games_updated on
+                // every Game mutation (create / update / delete / toggle /
+                // bulk_added). React GamesPage listens via JsBridge and
+                // refetches. Clone for the same lifetime reason as above.
+                GamesUpdated?.Invoke(this, payload.Clone());
                 break;
         }
     }

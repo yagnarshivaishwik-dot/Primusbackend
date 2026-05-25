@@ -60,6 +60,7 @@ public sealed class JsBridge : IDisposable
         _realtime.RemainingTimeUpdated   += OnRemainingTimeUpdated;
         _realtime.ConnectionStateChanged += OnConnectionStateChanged;
         _realtime.InventoryUpdated       += OnInventoryUpdated;
+        _realtime.GamesUpdated           += OnGamesUpdated;
         _lockOverlay.StateChanged        += OnLockStateChanged;
     }
 
@@ -487,6 +488,11 @@ public sealed class JsBridge : IDisposable
     // (System.Text.Json round-trips JsonElement losslessly).
     private void OnInventoryUpdated(object? sender, System.Text.Json.JsonElement payload) =>
         PostEvent("inventory.updated", payload);
+
+    // Same forwarding pattern as inventory.updated, for the games catalog.
+    // React GamesPage listens via `listenBridge("games.updated", refetch)`.
+    private void OnGamesUpdated(object? sender, System.Text.Json.JsonElement payload) =>
+        PostEvent("games.updated", payload);
 
     private void OnLockStateChanged(object? sender, LockStateEventArgs e) =>
         PostEvent("pc_lock_state", new { locked = e.Locked, message = e.Message });
@@ -1156,6 +1162,7 @@ public sealed class JsBridge : IDisposable
         _realtime.RemainingTimeUpdated   -= OnRemainingTimeUpdated;
         _realtime.ConnectionStateChanged -= OnConnectionStateChanged;
         _realtime.InventoryUpdated       -= OnInventoryUpdated;
+        _realtime.GamesUpdated           -= OnGamesUpdated;
         _lockOverlay.StateChanged        -= OnLockStateChanged;
     }
 }
