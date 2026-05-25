@@ -14,6 +14,15 @@ const NotificationBell = ({ onOpenThread }) => {
     const unsubWs = subscribeAdminWs((msg) => {
       if (!msg || msg.event !== 'chat.message') return;
       const payload = msg.payload || {};
+      // Only client→admin messages belong in the admin's notification
+      // bell. Without this guard, every reply the admin sends echoes
+      // back via the WebSocket and gets logged into THEIR OWN bell as
+      // if a new message arrived — operator on 2026-05-25 reported
+      // the bell was "returning messages that were sent from admin
+      // side not client side". This filter is identical to the one
+      // already in PCManagement.jsx:175 for the per-PC unread badge,
+      // just was missing from the bell.
+      if (payload.from && payload.from !== 'client') return;
       const id = payload.message_id || payload.id;
       const clientId = payload.client_id;
       const clientName = payload.client_name || `PC-${clientId || ''}`;
