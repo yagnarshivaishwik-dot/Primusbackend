@@ -1,5 +1,7 @@
+import json
 import logging
 from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
@@ -22,9 +24,70 @@ from app.models import License, User, UserCafeMap
 from app.schemas import Game as GameSchema
 from app.schemas import GameCreate, GameUpdate
 from app.utils.cache import get_or_set, invalidate_keys, publish_invalidation
+from app.ws import admin as ws_admin, pc as ws_pc
+from app.ws.auth import build_event
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+async def _broadcast_games_updated(
+    *,
+    cafe_id: int | None,
+    action: str,
+    game: GameModel | None = None,
+    extra: dict[str, Any] | None = None,
+) -> None:
+    """Push `games.updated` to every admin dashboard for this cafe AND
+    every connected kiosk PC, so they re-fetch /api/games immediately.
+
+    Mirror of offer.py's `_broadcast_inventory` — same shape, same
+    failure-handling convention (log + swallow, never let a wedged WS
+    consumer block the HTTP response).
+
+    Without this, when an admin adds / edits / removes a game via the
+    admin panel:
+      - `publish_invalidation()` (called at each mutation site below)
+        drops the server-side Redis cache, so the NEXT request for
+        /api/games returns fresh data, BUT
+      - the kiosk's React games page only fetches on-mount and has no
+        listener for any games-update event, so it stays on the stale
+        in-component state until the customer manually reloads the
+        kiosk.
+    The `games.updated` WS event is what tells the kiosk to refetch
+    immediately. Kiosk side wires it up via:
+      PrimusWebSocketClient.OnEvent  (case "games.updated")
+      → IPrimusRealtimeClient.GamesUpdated event
+      → JsBridge.OnGamesUpdated → PostEvent("games.updated", payload)
+      → React listenBridge("games.updated", refetch).
+    """
+    payload: dict[str, Any] = {
+        "action": action,                    # "created" | "updated" | "deleted" | "toggled" | "bulk_added"
+        "cafe_id": cafe_id,
+        "ts": datetime.now(UTC).isoformat(),
+    }
+    if game is not None:
+        # Minimal projection — the kiosk's listener just calls refetch(),
+        # it doesn't need the row in-band. Include id + name as breadcrumb
+        # for operator log correlation.
+        payload["game"] = {
+            "id": int(game.id),
+            "name": str(getattr(game, "name", "") or ""),
+        }
+    if extra:
+        payload.update(extra)
+
+    msg = json.dumps(build_event("games.updated", payload))
+
+    try:
+        await ws_admin.broadcast_admin(msg, cafe_id=cafe_id)
+    except Exception as exc:
+        logger.warning("games.updated admin broadcast failed: %s", exc)
+
+    try:
+        await ws_pc.broadcast(msg)
+    except Exception as exc:
+        logger.warning("games.updated PC broadcast failed: %s", exc)
 
 
 @router.get("", response_model=list[GameSchema])
@@ -199,6 +262,7 @@ async def create_game(
             ],
         }
     )
+    await _broadcast_games_updated(cafe_id=ctx.cafe_id, action="created", game=db_game)
 
     return db_game
 
@@ -241,6 +305,7 @@ async def update_game(
             ],
         }
     )
+    await _broadcast_games_updated(cafe_id=ctx.cafe_id, action="updated", game=db_game)
 
     return db_game
 
@@ -277,6 +342,13 @@ async def delete_game(
                 {"type": "game_count", "id": "*"},
             ],
         }
+    )
+    # `game` is None on delete — the row no longer exists. Pass the name
+    # via `extra` so admin / log subscribers can still correlate.
+    await _broadcast_games_updated(
+        cafe_id=ctx.cafe_id,
+        action="deleted",
+        extra={"deleted_name": game_name},
     )
 
     return {"message": f"Game '{game_name}' deleted successfully"}
@@ -317,6 +389,11 @@ async def bulk_toggle_games(
                 {"type": "game_count", "id": "*"},
             ],
         }
+    )
+    await _broadcast_games_updated(
+        cafe_id=ctx.cafe_id,
+        action="toggled",
+        extra={"affected_count": int(affected), "enabled": bool(enabled)},
     )
 
     return {"message": f"{affected} games {'enabled' if enabled else 'disabled'} successfully"}
@@ -492,6 +569,18 @@ async def admin_create_detected(
                 {"type": "game_count", "id": "*"},
             ],
         }
+    )
+    # Bulk-add path: emit a single games.updated event with the count +
+    # name list (truncated to keep WS frames small) rather than one event
+    # per row. The kiosk listener just calls refetch() either way.
+    await _broadcast_games_updated(
+        cafe_id=kiosk_cafe_id,
+        action="bulk_added",
+        extra={
+            "created_count": len(created),
+            "skipped_count": len(skipped),
+            "created_names": created[:20],  # cap at 20 to keep the WS frame bounded
+        },
     )
 
     logger.info(
