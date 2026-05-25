@@ -34,7 +34,17 @@ public partial class WebHostWindow : Window
     // RetryWindow, so a genuinely-broken state (bad URL, missing web/
     // folder, persistent network outage) doesn't pin the CPU.
     private readonly Queue<DateTime> _recentNavRetries = new();
-    private const int MaxRetriesPerWindow = 3;
+    // Modest bump from 3 to 5 (defence-in-depth). The root cause of the
+    // back-to-back ConnectionAborted retries that hit the original cap
+    // is fixed at a different layer below (Chromium renderer-keepalive
+    // flags in AdditionalBrowserArguments) — Windows + Chromium were
+    // freezing the WebView2 renderer when the kiosk lost focus on dev
+    // workstations. With the renderer no longer suspending, transport
+    // failures should be rare enough that 5/min is plenty headroom; the
+    // cap exists only to prevent infinite loops on a genuinely-broken
+    // state (bad URL, missing web/ folder, persistent outage), and
+    // anything that fails 5 times in 60 s legitimately deserves to stop.
+    private const int MaxRetriesPerWindow = 5;
     private static readonly TimeSpan RetryWindow = TimeSpan.FromMinutes(1);
     private const string HomeNavUrl = "https://kiosk.primustech.in/index.html";
 
@@ -82,10 +92,42 @@ public partial class WebHostWindow : Window
             // kiosk WebView2 deployments.
             var options = new CoreWebView2EnvironmentOptions
             {
+                // The three --disable-*backgrounding flags below are the
+                // standard kiosk-mode Chromium incantation. Without them,
+                // Chromium itself freezes the WebView2 renderer process
+                // whenever the host window loses focus (alt-tab to another
+                // app on a dev workstation, RDP-disconnect, etc.). When
+                // the renderer is frozen, the host's connection to it
+                // dies; the very next navigation request hits
+                // ConnectionAborted and the customer sees ERR_FILE_NOT_FOUND.
+                //
+                // SetThreadExecutionState (the kiosk-keepawake call below
+                // in OnLoaded) blocks the OS-level display + system sleep
+                // but does NOT prevent Chromium's own per-renderer
+                // suspension policy — that's a separate layer. These
+                // flags address the Chromium layer directly:
+                //
+                //   --disable-backgrounding-occluded-windows
+                //     Don't suspend renderers when the host window is
+                //     occluded / minimised / off-screen.
+                //   --disable-renderer-backgrounding
+                //     Don't throttle CPU/GPU work for background renderers.
+                //   --disable-background-timer-throttling
+                //     Don't throttle setInterval/setTimeout (1Hz default
+                //     in background) — the React app's heartbeat-driven
+                //     polls depend on accurate timer intervals.
+                //
+                // On a production cafe kiosk none of this matters — the
+                // app is fullscreen, locked-down, never loses focus. But
+                // on dev / remote-managed installs the flags are what
+                // keep the renderer alive between alt-tabs.
                 AdditionalBrowserArguments =
                     "--disable-web-security " +
                     "--allow-running-insecure-content " +
-                    "--disable-features=IsolateOrigins,site-per-process",
+                    "--disable-features=IsolateOrigins,site-per-process " +
+                    "--disable-backgrounding-occluded-windows " +
+                    "--disable-renderer-backgrounding " +
+                    "--disable-background-timer-throttling",
             };
 
             var env = await CoreWebView2Environment.CreateAsync(
