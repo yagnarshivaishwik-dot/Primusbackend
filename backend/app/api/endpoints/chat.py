@@ -11,7 +11,11 @@ from app.auth.context import AuthContext, get_auth_context
 from app.auth.tenant import scoped_query
 from app.db.dependencies import MULTI_DB_ENABLED, get_cafe_db as get_db
 from app.db.global_db import global_session_factory
-from app.models import ClientPC, User
+# `User` here is ONLY used for the role-lookup that runs against the GLOBAL DB
+# (lines around `global_session_factory()` in the GET endpoint). For the
+# cafe-DB lookups (resolving pc + current user from the cafe session) we use
+# the cafe-scoped variants imported via the MULTI_DB branch below.
+from app.models import User
 from app.schemas import ChatMessageIn, ChatMessageOut
 from app.ws import admin as ws_admin
 from app.ws.auth import build_event
@@ -27,12 +31,26 @@ _ADMIN_ROLES = {"admin", "cafeadmin", "owner", "superadmin", "staff"}
 # declares cafe_id) causes SQLAlchemy to emit INSERT INTO chat_messages
 # (..., cafe_id, ...) and Postgres rejects with UndefinedColumn.
 #
-# Switch model class based on routing mode. Same fix pattern as
-# TECH_DEBT #17 (Cashfree webhook + WalletTransaction).
+# Same applies to ClientPC and the user lookup keyed off pc.current_user_id —
+# both queries run against the cafe DB session, so they need the cafe-scoped
+# models. Previously chat.py imported ClientPC + User from app.models
+# (legacy schema with cafe_id columns); the resulting `db.query(ClientPC)`
+# against the cafe DB threw silently inside the try/except (no cafe_id
+# column in cafe schema), `pc` stayed None, and the WS chat.message
+# payload's `client_name` defaulted to "PC-{cm.pc_id}" — surfacing in the
+# admin's NotificationBell as "PC-2" instead of the actual PC.name. Same
+# silent failure on the user_obj lookup made `user_name` default to "Guest".
+# Switch to cafe-scoped models in MULTI_DB mode. Same fix pattern as
+# TECH_DEBT #17 (Cashfree webhook).
 if MULTI_DB_ENABLED:
-    from app.db.models_cafe import ChatMessage  # no cafe_id field
+    from app.db.models_cafe import (
+        ChatMessage,           # no cafe_id field
+        ClientPC,              # cafe-scoped — has name, current_user_id
+        CafeUser as _CafeChatUser,  # cafe-scoped user, FK target of pc.current_user_id
+    )
 else:
-    from app.models import ChatMessage  # legacy: has cafe_id
+    from app.models import ChatMessage, ClientPC  # type: ignore[no-redef]
+    _CafeChatUser = User  # legacy: pc.current_user_id FKs to global users.id
 
 router = APIRouter()
 
@@ -81,8 +99,12 @@ async def send_message(
         if pc:
             client_name = pc.name or f"PC-{pc.id}"
             if pc.current_user_id:
+                # _CafeChatUser is CafeUser in MULTI_DB (queryable against the
+                # cafe DB session) and legacy User in single-DB. Using the
+                # legacy User class against the cafe DB used to silently
+                # throw inside the try/except and leave user_name = "Guest".
                 try:
-                    user_obj = db.query(User).filter_by(id=pc.current_user_id).first()
+                    user_obj = db.query(_CafeChatUser).filter_by(id=pc.current_user_id).first()
                 except Exception:
                     user_obj = None
                 if user_obj:
