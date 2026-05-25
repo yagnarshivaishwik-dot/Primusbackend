@@ -59,6 +59,7 @@ public sealed class JsBridge : IDisposable
         _realtime.WalletUpdated          += OnWalletUpdated;
         _realtime.RemainingTimeUpdated   += OnRemainingTimeUpdated;
         _realtime.ConnectionStateChanged += OnConnectionStateChanged;
+        _realtime.InventoryUpdated       += OnInventoryUpdated;
         _lockOverlay.StateChanged        += OnLockStateChanged;
     }
 
@@ -477,6 +478,15 @@ public sealed class JsBridge : IDisposable
 
     private void OnConnectionStateChanged(object? sender, RealtimeConnectionState state) =>
         PostEvent("connection_state_changed", new { state = state.ToString().ToLowerInvariant() });
+
+    // Forwards the backend's `inventory.updated` WS event verbatim to
+    // React. Event name preserved with the dot so it matches the React
+    // listener at ShopPage.jsx:83 — `listenBridge("inventory.updated",
+    // () => refetch())`. The JsonElement payload is passed through to
+    // PostEvent which re-serialises it back to its original JSON shape
+    // (System.Text.Json round-trips JsonElement losslessly).
+    private void OnInventoryUpdated(object? sender, System.Text.Json.JsonElement payload) =>
+        PostEvent("inventory.updated", payload);
 
     private void OnLockStateChanged(object? sender, LockStateEventArgs e) =>
         PostEvent("pc_lock_state", new { locked = e.Locked, message = e.Message });
@@ -1145,6 +1155,7 @@ public sealed class JsBridge : IDisposable
         _realtime.WalletUpdated          -= OnWalletUpdated;
         _realtime.RemainingTimeUpdated   -= OnRemainingTimeUpdated;
         _realtime.ConnectionStateChanged -= OnConnectionStateChanged;
+        _realtime.InventoryUpdated       -= OnInventoryUpdated;
         _lockOverlay.StateChanged        -= OnLockStateChanged;
     }
 }

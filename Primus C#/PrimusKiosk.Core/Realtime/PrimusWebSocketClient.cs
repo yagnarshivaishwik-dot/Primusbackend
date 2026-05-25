@@ -32,6 +32,7 @@ public sealed class PrimusWebSocketClient : IPrimusRealtimeClient, IAsyncDisposa
     public event EventHandler<int>? RemainingTimeUpdated;
     public event EventHandler<WalletDto>? WalletUpdated;
     public event EventHandler<AnnouncementDto>? NotificationReceived;
+    public event EventHandler<JsonElement>? InventoryUpdated;
 
     public PrimusWebSocketClient(
         IOptionsMonitor<PrimusSettings> settings,
@@ -386,6 +387,23 @@ public sealed class PrimusWebSocketClient : IPrimusRealtimeClient, IAsyncDisposa
                     Severity = "info",
                     CreatedAtUtc = DateTime.UtcNow,
                 });
+                break;
+
+            case "inventory.updated":
+                // Raw passthrough — the kiosk doesn't need to parse the
+                // inventory payload in C#; JsBridge re-serialises and
+                // hands it to React, which already has a listener at
+                // ShopPage.jsx:83 that triggers a refetch. The payload
+                // shape is whatever offer.py's _broadcast_inventory()
+                // sent; we don't bind to it so future shape changes
+                // don't require a C# rebuild.
+                //
+                // We clone the JsonElement so the WS read buffer can be
+                // reused once this switch returns (System.Text.Json
+                // JsonElement borrows the underlying byte buffer; raising
+                // an event with a borrowed element and then having a
+                // subscriber inspect it after we return would be a UAF).
+                InventoryUpdated?.Invoke(this, payload.Clone());
                 break;
         }
     }
