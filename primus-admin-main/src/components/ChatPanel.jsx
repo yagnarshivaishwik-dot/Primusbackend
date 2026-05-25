@@ -20,6 +20,25 @@ const ChatPanel = ({ pc, onClose }) => {
   useEffect(() => {
     if (!pc) return;
 
+    // ChatPanel is opened from two places in the admin UI, each passing
+    // a slightly different `pc` prop shape:
+    //   1. PCManagement card → full PC row from /api/admin/client_pcs,
+    //      with `pc.id` set as an integer.
+    //   2. NotificationBell dropdown → a stub built from the WS payload:
+    //      `{ client_id, client_name, user_name }` — no `id` field.
+    // Without normalising here, opening the panel from the bell left
+    // `pc.id` undefined, which made the history filter
+    // (`m.pc_id === pc.id`) reject every row → empty chat AND the live
+    // WS subscriber rejected every incoming `chat.message` payload via
+    // the same comparison → admin saw an empty thread that only
+    // populated after close+reopen (because reopening from the card
+    // gave the correct pc.id).
+    // Number() coerces in case any path stores the id as a string.
+    const pcId =
+      pc?.id != null ? Number(pc.id)
+      : pc?.client_id != null ? Number(pc.client_id)
+      : null;
+
     const base = getApiBase().replace(/\/$/, '');
 
     const loadHistory = async () => {
@@ -30,7 +49,7 @@ const ChatPanel = ({ pc, onClose }) => {
         });
         const all = res.data || [];
         const filtered = all
-          .filter((m) => m.pc_id === pc.id)
+          .filter((m) => Number(m.pc_id) === pcId)
           .sort(
             (a, b) =>
               new Date(a.timestamp || a.ts || 0).getTime() -
@@ -50,11 +69,18 @@ const ChatPanel = ({ pc, onClose }) => {
     const unsubscribe = subscribeAdminWs((msg) => {
       if (!msg || msg.event !== 'chat.message') return;
       const payload = msg.payload || {};
-      if (payload.client_id !== pc.id && payload.pc_id !== pc.id) return;
+      // Same normalisation on the payload side — backend sends
+      // `client_id` as the cafe-DB pc_id integer, but defensive
+      // Number() coercion guards against any future shape drift.
+      const payloadPcId =
+        payload.client_id != null ? Number(payload.client_id)
+        : payload.pc_id != null ? Number(payload.pc_id)
+        : null;
+      if (payloadPcId !== pcId) return;
 
       const incoming = {
         id: payload.message_id || payload.id,
-        pc_id: payload.client_id || payload.pc_id,
+        pc_id: payloadPcId,
         from_user_id: payload.from_user_id,
         to_user_id: payload.to_user_id,
         message: payload.text || payload.message,
