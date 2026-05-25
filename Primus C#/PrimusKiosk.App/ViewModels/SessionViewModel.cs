@@ -348,11 +348,17 @@ public sealed partial class SessionViewModel : ObservableObject, IDisposable
                     Status = isIdle ? "idle" : (session is not null ? "in_use" : "online"),
                 }, cancellationToken).ConfigureAwait(false);
 
+                // HeartbeatResponse.RemainingTimeSeconds is nullable (the
+                // backend returns null when no PCSession is active). The
+                // `> 0` check filters out both null and zero, so .Value is
+                // safe inside the body — but use the null-coalescing form
+                // anyway so a future refactor that moves this assignment
+                // outside the guard doesn't NRE.
                 if (response.RemainingTimeSeconds > 0)
                 {
                     MarshalToUi(() =>
                     {
-                        _systemStore.RemainingTimeSeconds = response.RemainingTimeSeconds;
+                        _systemStore.RemainingTimeSeconds = response.RemainingTimeSeconds ?? 0;
                     });
                 }
             }
