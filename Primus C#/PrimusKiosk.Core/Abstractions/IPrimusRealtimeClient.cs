@@ -26,6 +26,16 @@ public interface IPrimusRealtimeClient
     /// </summary>
     event EventHandler<JsonElement>? InventoryUpdated;
 
+    /// <summary>
+    /// Raised when the backend broadcasts a `games.updated` event (admin
+    /// created/updated/deleted/toggled a Game row, or the admin-supervised
+    /// "Add games from this PC" flow bulk-added detected games). Same raw-
+    /// passthrough contract as <see cref="InventoryUpdated"/>: the kiosk
+    /// doesn't parse the payload, just forwards it via JsBridge so the
+    /// React games page can call refetch().
+    /// </summary>
+    event EventHandler<JsonElement>? GamesUpdated;
+
     RealtimeConnectionState State { get; }
 
     Task ConnectAsync(CancellationToken cancellationToken);

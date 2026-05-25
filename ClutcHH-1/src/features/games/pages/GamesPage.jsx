@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { IoGameControllerOutline } from 'react-icons/io5';
 import { TbApps } from 'react-icons/tb';
 
 import { gamesService, launch as launchGame, adminCreateDetected } from '@/features/games/services/gamesService';
-import { invoke, hasBridge } from '@/app/bridge/invoke';
+import { invoke, hasBridge, listen as listenBridge } from '@/app/bridge/invoke';
 import AppHeader from '@/components/layout/AppHeader';
 
 import GameCarousel from './GameCarousel';
@@ -62,26 +62,72 @@ export default function GamesPage() {
   const [launchingId, setLaunchingId] = useState(null);
   const [launchError, setLaunchError] = useState(null);
 
+  // Extracted into a stable callback so the WS / focus / poll effects
+  // below can re-trigger the same fetch. Live refresh of the games
+  // catalog used to break entirely (TECH_DEBT #16 sibling): admin adds
+  // a game → kiosk shows nothing new until manual relaunch. Now backend
+  // broadcasts `games.updated` (games.py:_broadcast_games_updated) and
+  // the kiosk bridge forwards it (PrimusWebSocketClient case
+  // "games.updated" → JsBridge.OnGamesUpdated → PostEvent), so refetch
+  // happens within <1 s of an admin edit.
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [g, a] = await Promise.all([gamesService.list(), gamesService.listApps()]);
+      setGames(g);
+      setApps(a);
+    } catch (err) {
+      setError(err?.message || 'Failed to load catalog.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  // Primary refresh signal: backend's `games.updated` WS event,
+  // forwarded by the C# bridge. Falls back gracefully when the bridge
+  // is unavailable (browser dev) by simply not registering.
+  useEffect(() => {
+    let unlisten = null;
     let cancelled = false;
     (async () => {
-      setLoading(true);
-      setError(null);
       try {
-        const [g, a] = await Promise.all([gamesService.list(), gamesService.listApps()]);
-        if (cancelled) return;
-        setGames(g);
-        setApps(a);
-      } catch (err) {
-        if (!cancelled) setError(err?.message || 'Failed to load catalog.');
-      } finally {
-        if (!cancelled) setLoading(false);
+        const off = await listenBridge('games.updated', () => {
+          if (!cancelled) refetch();
+        });
+        if (!cancelled) unlisten = off;
+      } catch {
+        /* bridge unavailable in browser dev */
       }
     })();
     return () => {
       cancelled = true;
+      if (typeof unlisten === 'function') {
+        try { unlisten(); } catch { /* ignore */ }
+      }
     };
-  }, []);
+  }, [refetch]);
+
+  // Belt-and-suspenders (same pattern as ShopPage.jsx for the inventory
+  // case): if the WS event ever fails to land — JsBridge not attached,
+  // bridge forwarding bugged, WS disconnected — we still get fresh data
+  // within 30 s, plus an immediate refetch whenever the page becomes
+  // visible again.
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refetch();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    const pollId = window.setInterval(refetch, 30000);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.clearInterval(pollId);
+    };
+  }, [refetch]);
 
   const filters = useMemo(() => deriveFilters(games), [games]);
 
