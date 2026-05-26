@@ -1,0 +1,82 @@
+# =============================================================================
+# Primus Grafana Datasource Provisioning
+# =============================================================================
+# Purpose:
+#   Auto-wire Prometheus + Loki + Tempo when Grafana boots. Includes
+#   trace<->log + log<->trace correlation via derivedFields so an operator
+#   can pivot in either direction.
+#
+# Forensic audit BUGs:
+#   - BUG #F.8a (Grafana had no datasources -> blank dashboards on first run)
+#   - BUG #F.6b (trace_id not linked back to logs)
+# =============================================================================
+
+apiVersion: 1
+
+deleteDatasources:
+  - { name: Prometheus, orgId: 1 }
+  - { name: Loki, orgId: 1 }
+  - { name: Tempo, orgId: 1 }
+
+datasources:
+
+  - name: Prometheus
+    type: prometheus
+    uid: primus-prom
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      manageAlerts: false
+      prometheusType: Prometheus
+      prometheusVersion: 2.55.1
+      cacheLevel: "High"
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: primus-tempo
+
+  - name: Loki
+    type: loki
+    uid: primus-loki
+    access: proxy
+    url: http://loki:3100
+    isDefault: false
+    editable: false
+    jsonData:
+      maxLines: 5000
+      derivedFields:
+        - name: TraceID
+          matcherRegex: '"trace_id"\s*:\s*"([0-9a-fA-F]{32})"'
+          url: "$${__value.raw}"
+          datasourceUid: primus-tempo
+
+  - name: Tempo
+    type: tempo
+    uid: primus-tempo
+    access: proxy
+    url: http://tempo:3200
+    isDefault: false
+    editable: false
+    jsonData:
+      httpMethod: GET
+      tracesToLogsV2:
+        datasourceUid: primus-loki
+        spanStartTimeShift: "-5m"
+        spanEndTimeShift: "5m"
+        filterByTraceID: true
+        tags:
+          - { key: service.name, value: service }
+      tracesToMetrics:
+        datasourceUid: primus-prom
+        tags:
+          - { key: service.name, value: service }
+      serviceMap:
+        datasourceUid: primus-prom
+      nodeGraph:
+        enabled: true
+      search:
+        hide: false
+      lokiSearch:
+        datasourceUid: primus-loki

@@ -1,0 +1,143 @@
+<section class="hero wrap">
+  <div class="reveal">
+    <div class="hero-eyebrow">Privacy</div>
+    <h1>Your data, <em>handled with care</em>.</h1>
+    <p>What we collect, why we collect it, who sees it, and how long we keep it.
+       Compliant with the Digital Personal Data Protection Act, 2023, and the
+       Information Technology Rules, 2011.</p>
+  </div>
+</section>
+
+<section class="section wrap" style="padding-top:0">
+  <div class="prose reveal">
+    <p class="meta">Last updated · {{ today }}</p>
+
+    <h3>1. Who this policy applies to</h3>
+    <p>This policy applies to any individual who creates a Primus account,
+       signs in to the kiosk app, or completes a payment through the platform
+       operated by <strong>{{ legal.entity_name }}</strong>
+       (CIN <code>{{ legal.cin }}</code>), under the brand
+       <strong>{{ business.name }}</strong>. The legal entity is the data fiduciary
+       under the DPDP Act, 2023; its registered office is at
+       {{ legal.entity_address }}.</p>
+
+    <h3>2. Information we collect</h3>
+
+    <h4>Account information</h4>
+    <ul>
+      <li>Name, email, phone number.</li>
+      <li>Password, stored as a one-way Argon2id hash. We never store your plaintext password.</li>
+    </ul>
+
+    <h4>Usage data</h4>
+    <ul>
+      <li>Sessions started and ended, including durations.</li>
+      <li>Time packages purchased, wallet top-ups, coupon redemptions.</li>
+      <li>Games or apps launched on the operating café&rsquo;s PCs (used to enforce platform-account assignment).</li>
+    </ul>
+
+    <h4>Payment metadata</h4>
+    <ul>
+      <li>Order references, payment status, payment amounts in INR.</li>
+      <li>The payment method category (UPI / card / netbanking / wallet) and a masked identifier
+         where Cashfree provides one (e.g., last 4 digits of a card).</li>
+      <li><strong>We never see, store, or transmit</strong> your full card number, CVV, UPI PIN,
+         or net-banking credentials. Those are handled exclusively by Cashfree, our PCI-DSS-certified
+         payment partner.</li>
+    </ul>
+
+    <h4>Device data</h4>
+    <ul>
+      <li>The registered kiosk PC&rsquo;s hardware fingerprint and license key, used to bind a kiosk to its café.</li>
+      <li>Operating-system version and IP address, used for fraud detection and rate limiting.</li>
+    </ul>
+
+    <h3>3. How we use your information</h3>
+    <ul>
+      <li><strong>Service operation:</strong> applying time you have purchased, resuming sessions, displaying receipts.</li>
+      <li><strong>Payment processing:</strong> reconciliation with Cashfree and the operating café.</li>
+      <li><strong>Security &amp; fraud prevention:</strong> detecting unauthorised access, replay attacks, or abuse.</li>
+      <li><strong>Customer support:</strong> responding to your tickets and refund requests.</li>
+      <li><strong>Legal &amp; tax compliance:</strong> retaining transaction records as required by Indian law.</li>
+    </ul>
+    <p>We do <strong>not</strong> sell your data, do <strong>not</strong> serve third-party
+       advertising on the kiosk, and do <strong>not</strong> use your data to train AI models.</p>
+
+    <h3>4. Legal basis (DPDP Act, 2023)</h3>
+    <p>We process your personal data on the following lawful bases:</p>
+    <ul>
+      <li><strong>Contract:</strong> processing required to deliver the services you have purchased.</li>
+      <li><strong>Consent:</strong> for any optional features (e.g., promotional emails) that you can opt in to or out of at any time.</li>
+      <li><strong>Legal obligation:</strong> retention of financial and tax records.</li>
+      <li><strong>Legitimate interest:</strong> security, fraud prevention, and platform analytics in aggregate form.</li>
+    </ul>
+
+    <h3>5. Sharing</h3>
+    <p>We share data only with:</p>
+    <ul>
+      <li><strong>Cashfree Payments India Pvt Ltd</strong>, our payment processor, for the limited purpose of completing transactions.</li>
+      <li><strong>The operating café</strong>, restricted to data needed to serve you on-site (account name, current package, current session).</li>
+      <li><strong>Cloud infrastructure providers</strong> who host our backend, under strict data-processing agreements.</li>
+      <li><strong>Government or judicial authorities</strong> when legally compelled.</li>
+    </ul>
+    <p>We do not transfer data outside India except where it is processed by
+       cloud-infrastructure providers using region-equivalent safeguards.</p>
+
+    <h3>6. Data retention</h3>
+    <p>Account and transaction records are retained for <strong>7 years</strong>
+       to comply with Indian tax and audit requirements. Marketing-consent records
+       are retained for as long as the consent remains active. Backup copies expire
+       on rolling schedules of up to 90 days.</p>
+
+    <h3>7. Your rights</h3>
+    <p>Subject to the DPDP Act and applicable law, you have the right to:</p>
+    <ul>
+      <li>Access a copy of the personal data we hold about you.</li>
+      <li>Correct any inaccurate personal data.</li>
+      <li>Request deletion of your account (subject to financial-record retention obligations).</li>
+      <li>Withdraw consent for any optional processing.</li>
+      <li>Lodge a complaint with the Data Protection Board of India.</li>
+    </ul>
+    <p>To exercise any of these rights, email
+       <a class="link" href="mailto:{{ business.email }}">{{ business.email }}</a> from the email
+       address registered to your account. We respond within 30 days.</p>
+
+    <h3>8. Security measures</h3>
+    <ul>
+      <li>All API traffic is served over HTTPS with HSTS enforced.</li>
+      <li>Passwords are stored as Argon2id hashes; refresh tokens are rotated on every use.</li>
+      <li>Device-level secrets on the kiosk are sealed with Windows DPAPI (LocalMachine scope).</li>
+      <li>Webhooks are HMAC-SHA256 signed and replay-protected with a ±5-minute timestamp window.</li>
+      <li>Backend access is gated by SSO + 2FA for engineers, with full audit trails.</li>
+      <li>Payment-card data is fully out of scope — handled by Cashfree under PCI-DSS.</li>
+    </ul>
+
+    <h3>9. Cookies</h3>
+    <p>The kiosk app does not use third-party tracking cookies. The admin web
+       portal stores authentication tokens in browser <code>localStorage</code>
+       (not cookies); session cookies are httpOnly and same-site.</p>
+
+    <h3>10. Children&rsquo;s privacy</h3>
+    <p>The platform is not directed at children under 13. Users between 13 and
+       18 must have parental consent for paid transactions. If you believe a child
+       has registered without consent, contact us and we will remove the account.</p>
+
+    <h3>11. Grievance officer</h3>
+    <p>Per Rule 5(9) of the IT Rules, 2011 (and the DPDP Act, 2023), we have
+       designated a grievance officer:</p>
+    <ul>
+      <li><strong>{{ grievance.name }}</strong></li>
+      <li>Email: <a class="link" href="mailto:{{ grievance.email }}">{{ grievance.email }}</a></li>
+      <li>Response time: within 15 days of receipt</li>
+    </ul>
+
+    <h3>12. Changes to this policy</h3>
+    <p>We may update this policy as the platform evolves. The &ldquo;last
+       updated&rdquo; date reflects the latest revision. We notify users of
+       material changes via email and on the kiosk before they take effect.</p>
+
+    <h3>13. Contact</h3>
+    <p>Privacy questions or requests? Email
+       <a class="link" href="mailto:{{ business.email }}">{{ business.email }}</a>.</p>
+  </div>
+</section>

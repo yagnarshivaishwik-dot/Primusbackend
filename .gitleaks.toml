@@ -1,0 +1,72 @@
+# Gitleaks configuration for Primus (P2 hardening).
+#
+# Detects:
+#   - Standard secret patterns (extends the gitleaks base ruleset)
+#   - Gmail app passwords used by otp_email.py
+#   - Cashfree PG app_id / secret_key
+#   - JWT signing secrets longer than 32 characters
+#
+# Run locally:    gitleaks detect --no-git --redact --config .gitleaks.toml
+# Run on history: gitleaks detect --redact --config .gitleaks.toml
+title = "Primus gitleaks ruleset"
+
+# Extend the built-in default ruleset (AWS keys, GCP, Slack, Stripe, etc.)
+[extend]
+useDefault = true
+
+# ---------------------------------------------------------------------------
+# Custom rules — these complement the upstream defaults with patterns that
+# only appear in this codebase.
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "gmail-app-password"
+description = "Gmail App Password (4-word groups separated by spaces)"
+# Matches: mail_password = aaaa bbbb cccc dddd  (Gmail app-password shape)
+regex = '''(?i)mail[_-]?password\s*[:=]\s*["']?([a-z]{4}\s){3}[a-z]{4}["']?'''
+tags = ["secret", "gmail", "primus"]
+
+[[rules]]
+id = "cashfree-app-id"
+description = "Cashfree PG app_id"
+# Cashfree IDs look like TEST123456abcdef or PROD123456abcdef — long alnum.
+regex = '''(?i)(cashfree[_-]?app[_-]?id|CASHFREE_APP_ID)\s*[:=]\s*["']?(TEST|PROD)[a-zA-Z0-9]{10,}["']?'''
+tags = ["secret", "cashfree", "primus"]
+
+[[rules]]
+id = "cashfree-secret-key"
+description = "Cashfree PG secret_key"
+regex = '''(?i)(cashfree[_-]?secret[_-]?key|CASHFREE_SECRET_KEY)\s*[:=]\s*["']?cfsk_[a-zA-Z0-9_-]{20,}["']?'''
+tags = ["secret", "cashfree", "primus"]
+
+[[rules]]
+id = "cashfree-webhook-secret"
+description = "Cashfree webhook secret"
+regex = '''(?i)CASHFREE_WEBHOOK_SECRET\s*[:=]\s*["']?[a-zA-Z0-9_-]{16,}["']?'''
+tags = ["secret", "cashfree", "primus"]
+
+[[rules]]
+id = "jwt-secret-long"
+description = "JWT secret longer than 32 chars (long enough to be real)"
+regex = '''(?i)(JWT_SECRET|SECRET_KEY|APP_SECRET)\s*[:=]\s*["']?[A-Za-z0-9._/+=-]{32,}["']?'''
+tags = ["secret", "jwt", "primus"]
+
+[[rules]]
+id = "stripe-secret"
+description = "Stripe live or test secret key (sk_live_/sk_test_)"
+regex = '''(?i)sk_(live|test)_[a-zA-Z0-9]{16,}'''
+tags = ["secret", "stripe"]
+
+# ---------------------------------------------------------------------------
+# Allowlist — files we know contain canary strings used by the verification
+# scripts (these are intentionally checked-in to PROVE we can detect the
+# corresponding leaked credentials, so gitleaks must NOT flag them).
+# ---------------------------------------------------------------------------
+[allowlist]
+description = "Canary detection scripts intentionally contain sample leaked secrets"
+paths = [
+    '''scripts/verify-secrets\.sh''',
+    '''scripts/verify-secrets\.ps1''',
+    '''SECURITY\.md''',
+    '''\.gitleaks\.toml''',
+]

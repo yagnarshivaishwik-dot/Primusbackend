@@ -1,0 +1,39 @@
+# =============================================================================
+# Primus Platform — pyup.io Safety policy
+# =============================================================================
+# Purpose:
+#   Drives `safety check --policy-file .safety-policy.yml`. Pinned to fail CI
+#   on every advisory by default; entries under `ignore-vulnerabilities` must
+#   carry a justification AND an expiry date. Anything past expiry triggers a
+#   CI failure as a tripwire.
+#
+# Forensic audit references:
+#   BUG #SEC-005  CVEs were silently ignored without sign-off — fixed.
+# =============================================================================
+
+security:
+  # Fail on any vulnerability above this floor.
+  ignore-cvss-severity-below: 0
+  # Fail on any unpinned dependency above this floor.
+  ignore-cvss-unknown-severity: false
+  # Continue on individual unfixable advisories only if listed below.
+  continue-on-vulnerability-error: false
+
+# ---- Documented, time-boxed exceptions --------------------------------------
+# Every entry MUST include:
+#   reason   – why we accept this risk right now
+#   expires  – YYYY-MM-DD (ISO date) when this exception auto-expires
+# Entries are reviewed by the security-reviewer agent on every PR.
+ignore-vulnerabilities:
+  # Example shape (no live exceptions at the time of writing):
+  #
+  # 12345:
+  #   reason: |
+  #     CVE-2024-XXXXX in transitive `requests` <2.32 — exploit requires
+  #     attacker-controlled proxy URL, which we do not accept from user input.
+  #     Bumping requires pip-tools resolver pass scheduled in TECH_DEBT.md.
+  #   expires: '2026-08-01'
+
+# ---- Audit settings ---------------------------------------------------------
+audit-and-monitor: true
+alert-vulnerabilities: true

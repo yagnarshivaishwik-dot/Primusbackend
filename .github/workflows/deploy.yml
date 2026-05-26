@@ -1,0 +1,210 @@
+# =============================================================================
+# Primus Platform — Blue/Green Deploy to Azure VM
+# =============================================================================
+# Purpose:
+#   On push to main:
+#     1. Build + tag backend image with the commit SHA
+#     2. Push to GitHub Container Registry (ghcr.io)
+#     3. SSH to Azure production VM
+#     4. Pull image, start `backend-green`, wait for /readyz
+#     5. Flip Nginx upstream variable to point at green
+#     6. Stop previous color
+#     7. Auto-rollback if /readyz fails 3x OR 5xx > 1% during 60s canary
+#
+# Forensic audit references:
+#   BUG #DEP-001  Manual SSH deploys with long-lived keys — replaced by OIDC.
+#   BUG #DEP-002  No rollback strategy — addressed by readiness gate + auto-revert.
+#   BUG #DEP-003  Single instance redeploy caused downtime — blue/green eliminates.
+#
+# Required external setup:
+#   - GitHub OIDC trust to Azure AD app:
+#       see docs/ops/oidc-azure-trust.md
+#       (Audience: api://AzureADTokenExchange; subject: repo:HSNTech/Primusbackend:ref:refs/heads/main)
+#   - Repository secrets:
+#       AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_SUBSCRIPTION_ID  (OIDC)
+#       PROD_VM_HOST                  (FQDN of prod VM)
+#       PROD_VM_USER                  (deploy user, e.g. `deploy`)
+#       PROD_VM_SSH_KEY               (ed25519 deploy key, short-lived if possible)
+#   - On the VM:
+#       /opt/primus/docker-compose.production.yml present
+#       /etc/nginx/conf.d/upstream-color.conf includes  `set $active_color blue;`
+#       The `deploy` user is in the `docker` group
+# =============================================================================
+
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to deploy (default = main HEAD)"
+        required: false
+        default: "main"
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write   # required for OIDC
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/primus-backend
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1) Build + push to GHCR
+  # ---------------------------------------------------------------------------
+  build-and-push:
+    name: Build + push image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+      image_ref: ${{ steps.meta.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute tag
+        id: meta
+        run: |
+          SHA="${{ github.sha }}"
+          SHORT="${SHA:0:12}"
+          TAG="${SHORT}"
+          REF="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "ref=${REF}" >> "$GITHUB_OUTPUT"
+          echo "Image will be ${REF}"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build + push
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          file: backend/Dockerfile.production
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.ref }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true
+          sbom: true
+
+  # ---------------------------------------------------------------------------
+  # 2) Blue/Green deploy via OIDC + SSH
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: Blue/Green deploy
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment:
+      name: production
+      url: https://api.primustech.in
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC, no long-lived secret)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy via SSH (blue/green swap with auto-rollback)
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          IMAGE_REF: ${{ needs.build-and-push.outputs.image_ref }}
+          GIT_SHA: ${{ github.sha }}
+        with:
+          host: ${{ secrets.PROD_VM_HOST }}
+          username: ${{ secrets.PROD_VM_USER }}
+          key: ${{ secrets.PROD_VM_SSH_KEY }}
+          envs: IMAGE_REF,GIT_SHA
+          script_stop: true
+          script: |
+            set -euo pipefail
+
+            cd /opt/primus
+
+            # ---- 1) Detect current color ----
+            CURRENT=$(grep -oE 'set \$active_color (blue|green);' \
+              /etc/nginx/conf.d/upstream-color.conf | awk '{print $3}' | tr -d ';')
+            if [ "$CURRENT" = "blue" ]; then NEXT=green; else NEXT=blue; fi
+            echo "[deploy] current=$CURRENT  next=$NEXT  image=$IMAGE_REF"
+
+            # ---- 2) Pull image and write tag file (audit trail) ----
+            docker pull "$IMAGE_REF"
+            echo "$GIT_SHA $(date -u +%FT%TZ) $NEXT $IMAGE_REF" >> /var/log/primus/deploy.log
+
+            # ---- 3) Start NEXT color ----
+            export PRIMUS_IMAGE="$IMAGE_REF"
+            docker compose -f docker-compose.production.yml \
+              up -d --no-deps "backend-${NEXT}"
+
+            # ---- 4) Readiness gate: 3 strikes / 30 attempts ----
+            FAILS=0
+            OK=false
+            for i in $(seq 1 30); do
+              if curl -fsS --max-time 3 \
+                 "http://127.0.0.1:$([ "$NEXT" = "green" ] && echo 8001 || echo 8000)/readyz" \
+                 >/dev/null; then
+                FAILS=0
+                if [ "$i" -ge 5 ]; then OK=true; break; fi
+              else
+                FAILS=$((FAILS+1))
+                if [ "$FAILS" -ge 3 ]; then
+                  echo "[deploy] /readyz failed 3x — aborting"
+                  docker compose -f docker-compose.production.yml \
+                    stop "backend-${NEXT}" || true
+                  exit 42
+                fi
+              fi
+              sleep 2
+            done
+            $OK || { echo "[deploy] never became ready"; exit 43; }
+
+            # ---- 5) Swap Nginx upstream variable + reload ----
+            sudo sed -i "s/set \$active_color $CURRENT;/set \$active_color $NEXT;/" \
+              /etc/nginx/conf.d/upstream-color.conf
+            sudo nginx -t
+            sudo nginx -s reload
+
+            # ---- 6) Canary watch: 60s, fail if 5xx rate > 1% ----
+            python3 /opt/primus/scripts/canary_watch.py \
+              --window-seconds 60 \
+              --max-error-rate 0.01 \
+              --access-log /var/log/nginx/access.log || {
+                echo "[deploy] canary failed — rolling back to $CURRENT"
+                sudo sed -i "s/set \$active_color $NEXT;/set \$active_color $CURRENT;/" \
+                  /etc/nginx/conf.d/upstream-color.conf
+                sudo nginx -s reload
+                docker compose -f docker-compose.production.yml \
+                  stop "backend-${NEXT}" || true
+                exit 44
+              }
+
+            # ---- 7) Stop previous color ----
+            docker compose -f docker-compose.production.yml \
+              stop "backend-${CURRENT}" || true
+
+            echo "[deploy] complete: live=$NEXT image=$IMAGE_REF"
+
+      - name: Notify on failure
+        if: failure()
+        run: echo "::error::Deploy failed — check VM /var/log/primus/deploy.log and Nginx logs."

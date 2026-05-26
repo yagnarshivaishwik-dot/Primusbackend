@@ -1,0 +1,118 @@
+# syntax=docker/dockerfile:1.7
+# =============================================================================
+# Primus Backend — Production Dockerfile (multi-stage, non-root, hardened)
+# =============================================================================
+# Purpose:
+#   Replace the dev-grade backend/Dockerfile (which used uvicorn --reload as root
+#   and copied the entire working tree). This image:
+#     - is multi-stage (smaller, no build tools in runtime)
+#     - runs as non-root user primus:primus (uid 1000)
+#     - serves via gunicorn + uvicorn workers (no --reload)
+#     - has a real /livez healthcheck
+#     - supports read-only root filesystem (with tmpfs for /tmp) — see
+#       docker-compose.production.yml
+#
+# Forensic audit references:
+#   BUG #DOCK-001  Container ran as root — fixed by USER primus.
+#   BUG #DOCK-002  --reload enabled in production — removed.
+#   BUG #DOCK-003  Build deps shipped to runtime — multi-stage eliminates.
+#   BUG #DOCK-004  No healthcheck inside image — HEALTHCHECK added.
+#
+# Build:
+#   docker build -f backend/Dockerfile.production -t primus-backend:prod backend/
+#
+# Run (matches docker-compose.production.yml):
+#   docker run --rm -p 8000:8000 \
+#     --read-only --tmpfs /tmp \
+#     --env-file backend/.env \
+#     primus-backend:prod
+# =============================================================================
+
+# ----------------------------- BUILDER STAGE ---------------------------------
+FROM python:3.11-slim AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_DEFAULT_TIMEOUT=100
+
+# System build deps (only in builder)
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+        build-essential \
+        gcc \
+        libpq-dev \
+        libffi-dev \
+        curl \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+# Install Python deps into /root/.local (user-site) — copied to runtime stage
+COPY requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir --user -r requirements.txt \
+ && pip install --no-cache-dir --user gunicorn==22.0.0
+
+# ----------------------------- RUNTIME STAGE ---------------------------------
+FROM python:3.11-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PATH="/home/primus/.local/bin:${PATH}" \
+    PYTHONPATH=/app
+
+# Runtime-only system packages
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+        libpq5 \
+        curl \
+        ca-certificates \
+        tini \
+ && rm -rf /var/lib/apt/lists/* \
+ && apt-get clean
+
+# Non-root user — uid pinned to 1000 for predictable volume ownership
+RUN useradd -m -u 1000 -s /usr/sbin/nologin primus
+
+WORKDIR /app
+
+# Copy installed python packages from builder
+COPY --from=builder --chown=primus:primus /root/.local /home/primus/.local
+
+# Copy application code (be deliberate — see backend/.dockerignore)
+COPY --chown=primus:primus app/         /app/app/
+COPY --chown=primus:primus alembic/     /app/alembic/
+COPY --chown=primus:primus alembic_cafe/   /app/alembic_cafe/
+COPY --chown=primus:primus alembic_global/ /app/alembic_global/
+COPY --chown=primus:primus alembic.ini         /app/alembic.ini
+COPY --chown=primus:primus alembic_cafe.ini    /app/alembic_cafe.ini
+COPY --chown=primus:primus alembic_global.ini  /app/alembic_global.ini
+COPY --chown=primus:primus pyproject.toml      /app/pyproject.toml
+COPY --chown=primus:primus main.py             /app/main.py
+
+# Drop privileges
+USER primus:primus
+
+EXPOSE 8000
+
+# Healthcheck: liveness probe — must respond fast, no DB calls.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD curl -f http://localhost:8000/livez || exit 1
+
+# Tini reaps zombie children from gunicorn worker churn
+ENTRYPOINT ["/usr/bin/tini", "--"]
+
+# Production server: gunicorn + 4 uvicorn workers. NO --reload.
+# Access + error logs to stdout/stderr so Docker log driver (loki) can ship them.
+CMD ["gunicorn", \
+     "-w", "4", \
+     "-k", "uvicorn.workers.UvicornWorker", \
+     "--bind", "0.0.0.0:8000", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-", \
+     "--timeout", "60", \
+     "--graceful-timeout", "30", \
+     "--keep-alive", "5", \
+     "main:app"]

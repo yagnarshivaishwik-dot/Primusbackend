@@ -1,0 +1,174 @@
+# =============================================================================
+# Primus Alertmanager Configuration
+# =============================================================================
+# Purpose:
+#   Route firing alerts to the right channel:
+#     - severity=critical -> PagerDuty (paged on-call)
+#     - severity=warning  -> Slack #prod-alerts
+#   Inhibit warning when a critical for the SAME alertname is firing so
+#   the on-call doesn't see noise during an incident.
+#
+# Forensic audit BUGs:
+#   - BUG #F.5 (no alert delivery)
+#   - BUG #F.5a (no inhibition rules -> duplicate noise during incidents)
+#   - BUG #F.5b (multi-tenant noise: failure in one cafe paged everyone)
+#
+# Env interpolation:
+#   $PAGERDUTY_KEY and $SLACK_WEBHOOK_URL are substituted by Alertmanager
+#   at startup via the `--config.file` env-expansion path. Both env vars
+#   MUST be set in the compose environment block (see observability-compose).
+# =============================================================================
+
+global:
+  resolve_timeout: 5m
+  smtp_require_tls: true
+  http_config:
+    follow_redirects: true
+
+# -----------------------------------------------------------------------------
+# Templates — keep the Slack/PD payloads readable
+# -----------------------------------------------------------------------------
+templates:
+  - "/etc/alertmanager/templates/*.tmpl"
+
+# -----------------------------------------------------------------------------
+# Routing — fan-out by severity + group by alertname + cafe_id
+#
+# group_by [alertname, cafe_id] means: if 100 cafes start failing the same
+# alert, Alertmanager aggregates per cafe — but doesn't merge across cafes.
+# That way one tenant's storm doesn't drown another's.
+# -----------------------------------------------------------------------------
+route:
+  receiver: "default-slack"
+  group_by: ["alertname", "cafe_id"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+  routes:
+    # Critical -> PagerDuty
+    - matchers:
+        - severity = "critical"
+      receiver: "pagerduty-primary"
+      group_wait: 0s
+      group_interval: 1m
+      repeat_interval: 1h
+      continue: true        # also let it fall through to Slack so the on-call
+                            # team sees it in chat
+
+    # Critical -> Slack (mirror channel)
+    - matchers:
+        - severity = "critical"
+      receiver: "slack-prod-critical"
+      group_wait: 15s
+      group_interval: 5m
+      repeat_interval: 30m
+
+    # Warning -> Slack #prod-alerts
+    - matchers:
+        - severity = "warning"
+      receiver: "default-slack"
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 2h
+
+    # Security alerts -> dedicated channel + PD
+    - matchers:
+        - team = "security"
+      receiver: "pagerduty-security"
+      group_wait: 0s
+      group_interval: 1m
+      repeat_interval: 30m
+
+# -----------------------------------------------------------------------------
+# Inhibition — silence redundant warnings while a critical fires
+# -----------------------------------------------------------------------------
+inhibit_rules:
+  - source_matchers:
+      - severity = "critical"
+    target_matchers:
+      - severity = "warning"
+    equal: ["alertname", "cafe_id"]
+
+  # If the host is down, don't page about CPU/disk on that host
+  - source_matchers:
+      - alertname = "PostgresDown"
+    target_matchers:
+      - alertname =~ "CPUSustainedHigh|DiskSpaceLow"
+    equal: ["instance"]
+
+# -----------------------------------------------------------------------------
+# Receivers
+# -----------------------------------------------------------------------------
+receivers:
+
+  - name: "default-slack"
+    slack_configs:
+      - api_url: "${SLACK_WEBHOOK_URL}"
+        channel: "#prod-alerts"
+        send_resolved: true
+        title: "[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}"
+        text: |
+          *Severity:* {{ .CommonLabels.severity }}
+          *Service:* {{ .CommonLabels.subsystem }}
+          *Cafe:* {{ .CommonLabels.cafe_id }}
+          {{ range .Alerts -}}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Runbook:* {{ .Annotations.runbook_url }}
+          {{ end -}}
+
+  - name: "slack-prod-critical"
+    slack_configs:
+      - api_url: "${SLACK_WEBHOOK_URL}"
+        channel: "#prod-critical"
+        send_resolved: true
+        title: ":rotating_light: [{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}"
+        text: |
+          *Severity:* {{ .CommonLabels.severity }}
+          *Service:* {{ .CommonLabels.subsystem }}
+          *Cafe:* {{ .CommonLabels.cafe_id }}
+          {{ range .Alerts -}}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Runbook:* {{ .Annotations.runbook_url }}
+          {{ end -}}
+
+  - name: "pagerduty-primary"
+    pagerduty_configs:
+      - routing_key: "${PAGERDUTY_KEY}"
+        severity: "critical"
+        send_resolved: true
+        description: "{{ .CommonLabels.alertname }} on {{ .CommonLabels.subsystem }} (cafe={{ .CommonLabels.cafe_id }})"
+        details:
+          alertname: "{{ .CommonLabels.alertname }}"
+          severity: "{{ .CommonLabels.severity }}"
+          team: "{{ .CommonLabels.team }}"
+          subsystem: "{{ .CommonLabels.subsystem }}"
+          cafe_id: "{{ .CommonLabels.cafe_id }}"
+          summary: "{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}"
+          description: "{{ range .Alerts }}{{ .Annotations.description }}{{ end }}"
+          runbook_url: "{{ range .Alerts }}{{ .Annotations.runbook_url }}{{ end }}"
+
+  - name: "pagerduty-security"
+    pagerduty_configs:
+      - routing_key: "${PAGERDUTY_KEY}"
+        severity: "warning"
+        send_resolved: true
+        description: "[SECURITY] {{ .CommonLabels.alertname }}"
+        details:
+          alertname: "{{ .CommonLabels.alertname }}"
+          team: "security"
+          summary: "{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}"
+          runbook_url: "{{ range .Alerts }}{{ .Annotations.runbook_url }}{{ end }}"
+    slack_configs:
+      - api_url: "${SLACK_WEBHOOK_URL}"
+        channel: "#prod-security"
+        send_resolved: true
+        title: ":closed_lock_with_key: [{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}"
+        text: |
+          {{ range .Alerts -}}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Runbook:* {{ .Annotations.runbook_url }}
+          {{ end -}}

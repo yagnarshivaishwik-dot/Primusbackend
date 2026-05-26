@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ page_title }} · {{ business.name }}</title>
+  <meta name="description" content="{{ business.tagline }}">
+  <meta name="robots" content="index,follow">
+  <meta name="theme-color" content="#06080F">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;0,800;1,500;1,800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>{{ css|safe }}</style>
+</head>
+<body>
+  {# Navigation #}
+  <nav class="nav"><div class="nav-inner">
+    <a href="/" class="brand"><span class="brand-mark"></span><span>{{ business.brand_short }}</span></a>
+    <div class="nav-links">
+      {% for href, label, key in nav_items %}
+        <a href="{{ href }}" class="{{ 'active' if key == active else '' }}">{{ label }}</a>
+      {% endfor %}
+    </div>
+  </div></nav>
+
+  {# Page body — already rendered HTML; rendered by each route then passed in. #}
+  {{ body|safe }}
+
+  {# Footer #}
+  <footer class="footer"><div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <div class="brand" style="margin-bottom:14px">
+          <span class="brand-mark"></span><span>{{ business.name }}</span>
+        </div>
+        <p style="color:var(--text-muted);font-size:14px;margin:0 0 14px;max-width:30ch">{{ business.tagline }}</p>
+        <p style="color:var(--text-muted);font-size:12px;margin:0;line-height:1.5">
+          {{ business.name }} is the operating brand of<br>
+          <strong style="color:var(--text-dim)">{{ legal.entity_name }}</strong><br>
+          <span style="font-family:'JetBrains Mono',monospace">CIN {{ legal.cin }}</span>
+        </p>
+      </div>
+      <div>
+        <h5>Product</h5>
+        <ul>
+          <li><a href="/products">Packages</a></li>
+          <li><a href="/about-us">About</a></li>
+          <li><a href="/contact-us">Contact</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Legal</h5>
+        <ul>
+          <li><a href="/terms">Terms &amp; conditions</a></li>
+          <li><a href="/refunds">Refunds &amp; cancellations</a></li>
+          <li><a href="/privacy-policy">Privacy policy</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Reach us</h5>
+        <ul>
+          <li><a href="mailto:{{ business.email }}">{{ business.email }}</a></li>
+          <li>{{ business.phone }}</li>
+          <li style="color:var(--text-muted)">{{ business.hours }}</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-foot">
+      <div>© {{ year }} {{ legal.entity_name }}. All rights reserved.</div>
+      <div>Made in {{ business.city }}.</div>
+    </div>
+  </div></footer>
+
+  <script>{{ reveal_js|safe }}</script>
+</body>
+</html>

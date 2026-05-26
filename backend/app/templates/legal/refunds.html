@@ -1,0 +1,84 @@
+<section class="hero wrap">
+  <div class="reveal">
+    <div class="hero-eyebrow">Policy</div>
+    <h1>Refunds <em>&amp; cancellations</em>.</h1>
+    <p>Plain rules, written without lawyers&rsquo; tricks. If something goes wrong,
+       we&rsquo;d rather refund you than argue about it.</p>
+  </div>
+</section>
+
+<section class="section wrap" style="padding-top:0">
+  <div class="prose reveal">
+    <p class="meta">Last updated · {{ today }} · Applies to all transactions on api.primustech.in</p>
+
+    <h3>The short version</h3>
+    <ul>
+      <li><strong>Failed payment but bank debited:</strong> auto-reversed by Cashfree,
+         usually within 5–7 business days. No action needed.</li>
+      <li><strong>Duplicate charge:</strong> we refund the duplicate within
+         <strong>3 business days</strong> of confirming it.</li>
+      <li><strong>Service outage during your package:</strong> we refund the
+         unused portion on request.</li>
+      <li><strong>Used minutes:</strong> non-refundable.</li>
+      <li><strong>Refund mode:</strong> always to the original payment method.</li>
+    </ul>
+
+    <h3>Eligible refund scenarios</h3>
+
+    <h4>Failed payment with bank debit</h4>
+    <p>If your bank deducts the amount but the kiosk does not credit minutes
+       or wallet balance, the funds are returned by Cashfree directly to your
+       source account. No request needed. Most banks complete the reversal
+       within <strong>5–7 business days</strong>; some are same-day.</p>
+
+    <h4>Duplicate charge</h4>
+    <p>If you were charged twice for the same package, contact us with both
+       order references (each begins with <code>PRIMUS_</code>). We confirm and
+       refund the duplicate within 3 business days.</p>
+
+    <h4>Service outage during a paid package</h4>
+    <p>If a Primus-side outage prevented you from using time you had already
+       paid for, we refund the affected portion on request. Time used before
+       or after the outage is not refundable.</p>
+
+    <h4>Goodwill refund (unused minutes within 7 days)</h4>
+    <p>For unused minutes purchased within the past 7 days, refunds are at
+       the operating café&rsquo;s discretion and may be processed wholly or
+       partially. Beyond 7 days, packages are considered consumed.</p>
+
+    <h3>How to request a refund</h3>
+
+    <div class="timeline">
+      <div class="tl-step"><h4>1. Email us</h4><p>
+         Send a note to <a class="link" href="mailto:{{ business.email }}">{{ business.email }}</a>
+         with subject <em>&ldquo;Refund &mdash; PRIMUS_&lt;order id&gt;&rdquo;</em>.</p></div>
+      <div class="tl-step"><h4>2. Include the order reference</h4><p>
+         It&rsquo;s shown on the kiosk after purchase, format
+         <code>PRIMUS_XXXXXXXXXXXXXXXX</code>. Without it we can&rsquo;t locate the transaction.</p></div>
+      <div class="tl-step"><h4>3. We respond within 1 business day</h4><p>
+         You&rsquo;ll get either a confirmation that the refund is being processed,
+         or a clarifying question.</p></div>
+      <div class="tl-step"><h4>4. Funds appear in 5–7 business days</h4><p>
+         Refunds always go back to the original payment method (UPI app, card,
+         netbanking, or wallet). The exact arrival time depends on your bank.</p></div>
+    </div>
+
+    <h3>Cancellations</h3>
+    <p>An active gaming session cannot be cancelled mid-way. To stop
+       consuming minutes, log out at the kiosk — remaining minutes stay on
+       your account and can be used on a future visit to the same café.</p>
+    <p>Time packages do not have a built-in expiry, but the operating café
+       may set a usage window during onboarding (commonly 90 days).</p>
+
+    <h3>Chargebacks &amp; bank disputes</h3>
+    <p>If you initiate a chargeback through your bank without contacting us
+       first, your account is temporarily locked while we investigate. We
+       always prefer to resolve issues directly — a chargeback raises costs
+       on every honest user.</p>
+
+    <h3>Contact</h3>
+    <p>For all refund queries:
+       <a class="link" href="mailto:{{ business.email }}">{{ business.email }}</a> ·
+       {{ business.phone }}.</p>
+  </div>
+</section>

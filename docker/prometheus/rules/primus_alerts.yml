@@ -1,0 +1,258 @@
+# =============================================================================
+# Primus Alert Rules
+# =============================================================================
+# Purpose:
+#   First-class alert definitions covering the failure modes the forensic
+#   audit flagged as bleed-risk. Each rule MUST point at a runbook URL so
+#   the on-call doesn't have to invent triage steps at 03:00.
+#
+# Forensic audit BUGs:
+#   - BUG #F.5 (no alerting at all): this file IS the fix
+#   - BUG #B.2 (payment webhook 5xx silently swallowed)
+#   - BUG #B.3 (Cashfree retry storm not surfaced)
+#   - BUG #C.1 (Postgres / Redis outage went unnoticed for >1h)
+#   - BUG #C.4 (no disk-space alarm before /mnt/data filled)
+#   - BUG #D.7 (Celery queue depth never alarmed; jobs piled up 6h)
+#   - BUG #E.1 (WS disconnect storms — kiosks hammering reconnect)
+#   - BUG #E.4 (5xx spike triage took ops 45m to spot)
+#   - BUG #G.2 (failed_login_attempts not metricked → no brute-force alert)
+#   - BUG #H.3 (backup health metric missing — drill could go red unnoticed)
+#
+# Severities:
+#   critical -> PagerDuty (24x7 page)
+#   warning  -> Slack #prod-alerts
+#
+# Labels:
+#   - severity:  critical|warning
+#   - team:      payments|platform|infra|security
+#   - cafe_id:   present when alert is tenant-scoped (set via Alertmanager grouping)
+#
+# Annotations:
+#   - summary:      one-line headline
+#   - description:  body with key value(s) (no PII)
+#   - runbook_url:  link to docs/runbooks/<slug>.md
+#
+# Validate locally:
+#   promtool check rules docker/prometheus/rules/primus_alerts.yml
+# =============================================================================
+
+groups:
+
+  # ---------------------------------------------------------------------------
+  # Payments — these are revenue-impacting; default to critical.
+  # ---------------------------------------------------------------------------
+  - name: primus.payments
+    interval: 30s
+    rules:
+
+      - alert: PaymentWebhook5xx
+        expr: |
+          sum by (endpoint) (
+            rate(http_requests_total{endpoint=~"/api/v1/payment/.*",status=~"5.."}[5m])
+          ) > 0
+        for: 2m
+        labels:
+          severity: critical
+          team: payments
+          subsystem: payment
+        annotations:
+          summary: "Payment endpoint returning 5xx for >2m"
+          description: |
+            Endpoint {{ $labels.endpoint }} has a non-zero 5xx rate of
+            {{ printf "%.4f" $value }} req/s for 2m. Webhooks or capture
+            calls are failing — manual reconciliation may be required.
+          runbook_url: "https://github.com/HSNTech/Primusbackend/blob/main/docs/runbooks/payment-webhook-5xx.md"
+
+      - alert: CashfreeWebhookFailureRate
+        expr: |
+          sum(rate(http_requests_total{endpoint=~"/api/v1/payment/cashfree/.*",status=~"5.."}[5m]))
+            /
+          clamp_min(sum(rate(http_requests_total{endpoint=~"/api/v1/payment/cashfree/.*"}[5m])), 1e-9)
+            > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          team: payments
+          subsystem: cashfree
+        annotations:
+          summary: "Cashfree webhook failure rate >1% for 5m"
+          description: |
+            {{ printf "%.2f" $value }}% of Cashfree webhook requests are
+            failing. Cashfree retries 9x — risk of double-credit if we
+            recover before idempotency TTL expires.
+          runbook_url: "https://github.com/HSNTech/Primusbackend/blob/main/docs/runbooks/cashfree-webhook-failure-rate.md"
+
+  # ---------------------------------------------------------------------------
+  # Core infrastructure — page if up=0
+  # ---------------------------------------------------------------------------
+  - name: primus.infra.core
+    interval: 30s
+    rules:
+
+      - alert: PostgresDown
+        expr: up{job="postgres_exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: infra
+          subsystem: postgres
+        annotations:
+          summary: "PostgreSQL exporter down (Postgres possibly unreachable)"
+          description: |
+            postgres_exporter has been unreachable for >1m. Either the
+            exporter died or the underlying Postgres is down. Backend will
+            start failing /readyz in ~30s.
+          runbook_url: "https://github.com/HSNTech/Primusbackend/blob/main/docs/runbooks/postgres-down.md"
+
+      - alert: RedisDown
+        expr: up{job="redis_exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: infra
+          subsystem: redis
+        annotations:
+          summary: "Redis exporter down (Redis possibly unreachable)"
+          description: |
+            redis_exporter has been unreachable for >1m. Sessions, rate-
+            limits, idempotency, and Celery broker may all be impacted.
+          runbook_url: "https://github.com/HSNTech/Primusbackend/blob/main/docs/runbooks/redis-down.md"
+
+      - alert: DiskSpaceLow
+        expr: |
+          (
+            node_filesystem_avail_bytes{mountpoint="/"}
+              /
+            node_filesystem_size_bytes{mountpoint="/"}
+          ) < 0.15
+        for: 5m
+        labels:
+          severity: critical
+          team: infra
+          subsystem: host
+        annotations:
+          summary: "Root filesystem <15% free on {{ $labels.instance }}"
+          description: |
+            Root volume only has {{ printf "%.1f" $value }}% free space.
+            Postgres WAL, Loki chunks, or backups likely overflowing.
+          runbook_url: "https://github.com/HSNTech/Primusbackend/blob/main/docs/runbooks/disk-space-low.md"
+
+      - alert: CPUSustainedHigh
+        expr: |
+          100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 10m
+        labels:
+          severity: warning
+          team: infra
+          subsystem: host
+        annotations:
+          summary: "Sustained CPU >85% on {{ $labels.instance }}"
+          description: |
+            CPU has been above 85% for 10m on {{ $labels.instance }}.
+            Likely runaway worker, hot loop, or capacity issue.
+          runbook_url: "https://github.com/HSNTech/Primusbackend/blob/main/docs/runbooks/cpu-sustained-high.md"
+
+  # ---------------------------------------------------------------------------
+  # Application — Celery, WS, 5xx, auth
+  # ---------------------------------------------------------------------------
+  - name: primus.app
+    interval: 30s
+    rules:
+
+      - alert: CeleryQueueDepth
+        expr: celery_queue_length > 1000
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+          subsystem: celery
+        annotations:
+          summary: "Celery queue depth >1000 for 5m on {{ $labels.queue }}"
+          description: |
+            Backlog is {{ $value }} tasks. Either workers crashed, broker
+            is sick, or a poisoned task is stalling progress.
+          runbook_url: "https://github.com/HSNTech/Primusbackend/blob/main/docs/runbooks/celery-queue-depth.md"
+
+      - alert: WebSocketDisconnectsSpike
+        expr: rate(ws_disconnects_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          team: platform
+          subsystem: websocket
+        annotations:
+          summary: "WebSocket disconnect rate >10/s for 2m"
+          description: |
+            {{ printf "%.1f" $value }} disconnects/sec sustained for 2m.
+            Kiosks may be reconnect-storming — investigate before they
+            DOS the backend.
+          runbook_url: "https://github.com/HSNTech/Primusbackend/blob/main/docs/runbooks/websocket-disconnects-spike.md"
+
+      - alert: HTTP5xxSpike
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m]))
+            /
+          clamp_min(sum(rate(http_requests_total[5m])), 1e-9)
+            > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+          subsystem: http
+        annotations:
+          summary: ">1% HTTP 5xx for 5m"
+          description: |
+            {{ printf "%.2f" $value }}% of HTTP requests are returning 5xx.
+            Site-wide impact. Check Sentry + recent deploys.
+          runbook_url: "https://github.com/HSNTech/Primusbackend/blob/main/docs/runbooks/http-5xx-spike.md"
+
+      - alert: AuthBruteForce
+        expr: rate(failed_login_attempts_total[1m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+          team: security
+          subsystem: auth
+        annotations:
+          summary: "Brute-force login activity (>5 failed/sec for 2m)"
+          description: |
+            Failed-login rate is {{ printf "%.1f" $value }}/sec. If this
+            is concentrated on one IP / one account, lock it via
+            /api/security/lock_ip.
+          runbook_url: "https://github.com/HSNTech/Primusbackend/blob/main/docs/runbooks/auth-brute-force.md"
+
+  # ---------------------------------------------------------------------------
+  # Backups — derived from the nightly backup job exporting two custom metrics
+  # ---------------------------------------------------------------------------
+  - name: primus.backups
+    interval: 60s
+    rules:
+
+      - alert: BackupOverdue
+        expr: time() - primus_backup_last_success_unixtime > 4 * 3600
+        for: 5m
+        labels:
+          severity: critical
+          team: infra
+          subsystem: backup
+        annotations:
+          summary: "No successful backup in >4h"
+          description: |
+            Last successful backup was
+            {{ printf "%.0f" (time() - $value) }}s ago. RPO commitment is
+            1h — investigate the backup cron + WAL archiving.
+          runbook_url: "https://github.com/HSNTech/Primusbackend/blob/main/docs/runbooks/backup-overdue.md"
+
+      - alert: BackupRestoreDrillFailed
+        expr: primus_backup_restore_drill_success == 0
+        for: 0m
+        labels:
+          severity: critical
+          team: infra
+          subsystem: backup
+        annotations:
+          summary: "Backup restore drill FAILED"
+          description: |
+            The most recent restore drill did not produce a verifiable
+            database. RTO is unverified — fix before the next outage.
+          runbook_url: "https://github.com/HSNTech/Primusbackend/blob/main/docs/runbooks/backup-restore-drill-failed.md"

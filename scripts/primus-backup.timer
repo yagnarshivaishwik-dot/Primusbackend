@@ -1,0 +1,20 @@
+# =============================================================================
+# Primus Platform — systemd timer (every 4 hours) for postgres backup
+# =============================================================================
+# Paired with primus-backup.service.
+# =============================================================================
+
+[Unit]
+Description=Primus Postgres backup timer (every 4 hours)
+Documentation=file:///opt/primus/scripts/backup_postgres.sh
+
+[Timer]
+# Every 4 hours on the hour: 00:00, 04:00, 08:00, 12:00, 16:00, 20:00 UTC
+OnCalendar=*-*-* 00/4:00:00
+RandomizedDelaySec=120
+Persistent=true
+Unit=primus-backup.service
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

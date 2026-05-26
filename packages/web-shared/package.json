@@ -1,0 +1,31 @@
+{
+  "name": "@primus/web-shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared HTTP/auth/WS infra for ClutcHH-1, primus-admin-main, Primus-SuperAdmin-main. Forensic-audit P4 refactor extraction.",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./api": "./src/api/client.ts",
+    "./auth": "./src/auth/store.ts",
+    "./auth/login": "./src/auth/login.tsx",
+    "./ws": "./src/ws/manager.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "vitest"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.43",
+    "typescript": "^5.4.0"
+  }
+}

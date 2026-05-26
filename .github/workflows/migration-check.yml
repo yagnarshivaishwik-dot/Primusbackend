@@ -1,0 +1,112 @@
+name: migration-check
+
+on:
+  pull_request:
+    paths:
+      - "backend/alembic/**"
+      - "backend/alembic_global/**"
+      - "backend/alembic_cafe/**"
+      - "backend/app/db/**"
+      - "backend/alembic.ini"
+      - "backend/alembic_global.ini"
+      - "backend/alembic_cafe.ini"
+      - ".github/workflows/migration-check.yml"
+
+# Cancel in-flight checks when a PR is force-pushed.
+concurrency:
+  group: migration-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  alembic-check:
+    name: alembic check (all chains)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: primus_user
+          POSTGRES_PASSWORD: ci_test_password
+          POSTGRES_DB: primus_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U primus_user"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql+psycopg2://primus_user:ci_test_password@localhost:5432/primus_db
+      GLOBAL_DATABASE_URL: postgresql+psycopg2://primus_user:ci_test_password@localhost:5432/primus_global
+      CAFE_DATABASE_URL: postgresql+psycopg2://primus_user:ci_test_password@localhost:5432/primus_cafe_ci
+      PYTHONUNBUFFERED: "1"
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend deps
+        run: |
+          python -m pip install --upgrade pip
+          # Core + alembic + db driver are what we need for `alembic check`.
+          pip install -r requirements-core.txt
+
+      - name: Wait for Postgres
+        run: |
+          for i in $(seq 1 30); do
+            pg_isready -h localhost -p 5432 -U primus_user && break
+            sleep 1
+          done
+
+      - name: Create chain-specific databases
+        env:
+          PGPASSWORD: ci_test_password
+        run: |
+          psql -h localhost -U primus_user -d primus_db -c "CREATE DATABASE primus_global"
+          psql -h localhost -U primus_user -d primus_db -c "CREATE DATABASE primus_cafe_ci"
+
+      # --- LEGACY single-DB chain --------------------------------------
+      - name: alembic upgrade (legacy single-DB chain)
+        run: alembic -c alembic.ini upgrade head
+      - name: alembic check (legacy single-DB chain)
+        run: alembic -c alembic.ini check
+
+      # --- GLOBAL chain ------------------------------------------------
+      - name: alembic upgrade (global chain)
+        run: alembic -c alembic_global.ini upgrade head
+      - name: alembic check (global chain)
+        run: alembic -c alembic_global.ini check
+
+      # --- CAFE chain --------------------------------------------------
+      - name: alembic upgrade (cafe chain)
+        env:
+          # env.py reads CAFE_DATABASE_URL first.
+          CAFE_DATABASE_URL: postgresql+psycopg2://primus_user:ci_test_password@localhost:5432/primus_cafe_ci
+        run: alembic -c alembic_cafe.ini upgrade head
+      - name: alembic check (cafe chain)
+        env:
+          CAFE_DATABASE_URL: postgresql+psycopg2://primus_user:ci_test_password@localhost:5432/primus_cafe_ci
+        run: alembic -c alembic_cafe.ini check
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "Each chain ran 'alembic check' which fails if the SQLAlchemy"
+          echo "models in app/db/* require migrations that are not present in"
+          echo "the revision tree. If any step above failed, generate the"
+          echo "missing migration with 'alembic revision --autogenerate' and"
+          echo "commit it."

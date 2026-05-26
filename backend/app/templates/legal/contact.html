@@ -1,0 +1,73 @@
+<section class="hero wrap">
+  <div class="reveal">
+    <div class="hero-eyebrow">Contact</div>
+    <h1>Talk to a <em>person</em>, not a ticket.</h1>
+    <p>Email reaches a real human within one business day. The phone is staffed during
+       the hours below — leave a message outside them and we&rsquo;ll call back.</p>
+  </div>
+</section>
+
+<section class="section wrap" style="padding-top:0">
+  <div class="reveal" style="margin-bottom:32px">
+    <div class="card" style="padding:40px">
+      <div class="section-eyebrow" style="margin-bottom:24px">Legal entity</div>
+      <dl class="kv">
+        <dt>Registered name</dt><dd><strong>{{ legal.entity_name }}</strong></dd>
+        <dt>Operating brand</dt><dd>{{ business.name }}</dd>
+        <dt>Company type</dt><dd>{{ legal.entity_type }}</dd>
+        <dt>CIN</dt><dd><code style="font-family:'JetBrains Mono',monospace;background:rgba(255,255,255,.04);padding:3px 10px;border-radius:6px;font-size:13px">{{ legal.cin }}</code></dd>
+        <dt>Registered office</dt><dd>{{ legal.entity_address }}</dd>
+        {% if business.gstin %}<dt>GSTIN</dt><dd>{{ business.gstin }}</dd>{% endif %}
+      </dl>
+    </div>
+  </div>
+
+  <div class="grid grid-2" style="gap:32px;align-items:start">
+    <div class="reveal">
+      <div class="card" style="padding:40px">
+        <div class="section-eyebrow" style="margin-bottom:24px">Primary channels</div>
+        <dl class="kv">
+          <dt>Business name</dt><dd>{{ business.name }}</dd>
+          <dt>Email</dt><dd><a class="link" href="mailto:{{ business.email }}">{{ business.email }}</a></dd>
+          <dt>Phone</dt><dd>{{ business.phone }}</dd>
+          <dt>Operations office</dt><dd>{{ business.address }}</dd>
+          <dt>Operating hours</dt><dd>{{ business.hours }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="reveal">
+      <div class="card" style="padding:40px;background:var(--grad-dim)">
+        <div class="section-eyebrow" style="color:#fff;margin-bottom:24px">Grievance officer</div>
+        <p style="margin:0 0 18px;color:var(--text)">
+           Per the Information Technology Rules, 2011 (and the Digital Personal
+           Data Protection Act, 2023), every Indian platform must designate a
+           grievance officer for data and service complaints.</p>
+        <dl class="kv">
+          <dt>Officer</dt><dd>{{ grievance.name }}</dd>
+          <dt>Email</dt><dd><a class="link" href="mailto:{{ grievance.email }}">{{ grievance.email }}</a></dd>
+          <dt>Response SLA</dt><dd>15 days from receipt</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-3" style="margin-top:48px">
+    <div class="card reveal">
+      <h4 style="font-family:'Playfair Display',serif;font-weight:700;font-size:18px;margin:0 0 8px">For café operators</h4>
+      <p style="color:var(--text-dim);font-size:14px;margin:0">Onboarding, hardware, kiosk registration,
+         payment reconciliation. Email <a class="link" href="mailto:{{ business.email }}">{{ business.email }}</a>.</p>
+    </div>
+    <div class="card reveal">
+      <h4 style="font-family:'Playfair Display',serif;font-weight:700;font-size:18px;margin:0 0 8px">For players</h4>
+      <p style="color:var(--text-dim);font-size:14px;margin:0">Refunds, account access, unrecognised charges.
+         Quote your order ID (begins with <code style="font-family:'JetBrains Mono',monospace;background:rgba(255,255,255,.06);padding:1px 6px;border-radius:4px">PRIMUS_</code>).</p>
+    </div>
+    <div class="card reveal">
+      <h4 style="font-family:'Playfair Display',serif;font-weight:700;font-size:18px;margin:0 0 8px">For press &amp; partnerships</h4>
+      <p style="color:var(--text-dim);font-size:14px;margin:0">
+         Email <a class="link" href="mailto:{{ business.email }}">{{ business.email }}</a> with subject
+         <em>&ldquo;Press&rdquo;</em> or <em>&ldquo;Partnership&rdquo;</em>.</p>
+    </div>
+  </div>
+</section>

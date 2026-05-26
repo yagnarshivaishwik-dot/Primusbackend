@@ -1,0 +1,298 @@
+# =============================================================================
+# Primus Observability Stack — Compose
+# =============================================================================
+# Purpose:
+#   Single-source docker compose for the full observability + alerting plane:
+#   Prometheus + Alertmanager + Grafana + Loki + Promtail + Tempo +
+#   otel-collector + node_exporter + cadvisor + postgres_exporter +
+#   redis_exporter.
+#
+# Forensic audit BUGs addressed:
+#   - BUG #F.5 (no alerting): Alertmanager wired with PagerDuty + Slack
+#   - BUG #F.6 (no distributed tracing): Tempo + OTel collector exporting OTLP
+#   - BUG #F.7 (no log aggregation): Loki + Promtail scraping Docker JSON logs
+#   - BUG #F.8 (Grafana shipped with admin:admin): admin password from env
+#   - BUG #F.9 (no /readyz vs /livez split): see backend/app/api/endpoints/health.py
+#   - BUG #F.10 (Prometheus had no rule_files / alerting block): see prometheus.yml
+#
+# Required env vars (set in .env next to this file or in deploying shell):
+#   - GRAFANA_ADMIN_PASSWORD       — Grafana admin password (no defaults)
+#   - PAGERDUTY_KEY                — Alertmanager critical routing key
+#   - SLACK_WEBHOOK_URL            — Alertmanager warning routing webhook
+#   - PRIMUS_BACKEND_HOST          — host:port of the backend /metrics endpoint
+#                                    (default primus-backend:8000)
+#   - POSTGRES_EXPORTER_HOST       — host:port of postgres_exporter
+#   - REDIS_EXPORTER_HOST          — host:port of redis_exporter
+#
+# Deploy:
+#   docker compose -f docker/observability-compose.yml --env-file .env up -d
+# =============================================================================
+
+version: "3.9"
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Prometheus — metrics storage + alert rule evaluation
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: primus-prometheus
+    restart: unless-stopped
+    user: "65534:65534"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+      - "--web.enable-admin-api"
+    ports:
+      - "9090:9090"
+    networks:
+      - observability
+    depends_on:
+      - alertmanager
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Alertmanager — fan-out alerts to PagerDuty + Slack
+  # ---------------------------------------------------------------------------
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: primus-alertmanager
+    restart: unless-stopped
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+      - "--web.external-url=http://localhost:9093"
+    environment:
+      - PAGERDUTY_KEY=${PAGERDUTY_KEY:?PAGERDUTY_KEY must be set}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:?SLACK_WEBHOOK_URL must be set}
+    ports:
+      - "9093:9093"
+    networks:
+      - observability
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Grafana — dashboards over Prometheus + Loki + Tempo
+  # Admin password MUST come from env. No baked-in admin:admin.
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: primus-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-primus_admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_SECURITY_DISABLE_GRAVATAR=true
+      - GF_SECURITY_COOKIE_SECURE=true
+      - GF_SECURITY_COOKIE_SAMESITE=lax
+      - GF_LOG_LEVEL=warn
+      - GF_INSTALL_PLUGINS=
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3001:3000"  # off-by-one to avoid clashing with backend admin UI on 3000
+    networks:
+      - observability
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Loki — log aggregation backend
+  # ---------------------------------------------------------------------------
+  loki:
+    image: grafana/loki:3.2.1
+    container_name: primus-loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+    networks:
+      - observability
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3100/ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Promtail — ships Docker container stdout + /var/log into Loki
+  # ---------------------------------------------------------------------------
+  promtail:
+    image: grafana/promtail:3.2.1
+    container_name: primus-promtail
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./promtail/config.yml:/etc/promtail/config.yml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - promtail_positions:/tmp
+    networks:
+      - observability
+    depends_on:
+      - loki
+
+  # ---------------------------------------------------------------------------
+  # Tempo — distributed trace backend (OTLP-compatible)
+  # ---------------------------------------------------------------------------
+  tempo:
+    image: grafana/tempo:2.6.1
+    container_name: primus-tempo
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    volumes:
+      - ./tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+      - tempo_data:/var/tempo
+    ports:
+      - "3200:3200"   # tempo HTTP query
+      - "4327:4317"   # OTLP gRPC (avoid clashing with otel-collector on 4317)
+      - "4328:4318"   # OTLP HTTP
+    networks:
+      - observability
+
+  # ---------------------------------------------------------------------------
+  # OpenTelemetry Collector — receives OTLP from backend + Celery; fans out
+  # ---------------------------------------------------------------------------
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.111.0
+    container_name: primus-otel-collector
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol/config.yml"]
+    volumes:
+      - ./otel-collector/config.yml:/etc/otelcol/config.yml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC ingress
+      - "4318:4318"   # OTLP HTTP ingress
+      - "8889:8889"   # Prometheus exporter for collector self-metrics
+    networks:
+      - observability
+    depends_on:
+      - tempo
+      - loki
+      - prometheus
+
+  # ---------------------------------------------------------------------------
+  # node_exporter — host metrics. Kept here for parity with setup_observability.sh
+  # ---------------------------------------------------------------------------
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: primus-node-exporter
+    restart: unless-stopped
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro,rslave
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc|rootfs/var/lib/docker)($$|/)"
+      - "--web.listen-address=0.0.0.0:9100"
+    ports:
+      - "9100:9100"
+    networks:
+      - observability
+
+  # ---------------------------------------------------------------------------
+  # cadvisor — per-container resource metrics
+  # ---------------------------------------------------------------------------
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: primus-cadvisor
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "8082:8080"
+    networks:
+      - observability
+
+  # ---------------------------------------------------------------------------
+  # postgres_exporter — Postgres metrics for the global + cafe DBs
+  # ---------------------------------------------------------------------------
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.16.0
+    container_name: primus-postgres-exporter
+    restart: unless-stopped
+    environment:
+      - DATA_SOURCE_NAME=${POSTGRES_EXPORTER_DSN:?POSTGRES_EXPORTER_DSN must be set}
+    ports:
+      - "9187:9187"
+    networks:
+      - observability
+
+  # ---------------------------------------------------------------------------
+  # redis_exporter — Redis metrics
+  # ---------------------------------------------------------------------------
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.66.0-alpine
+    container_name: primus-redis-exporter
+    restart: unless-stopped
+    environment:
+      - REDIS_ADDR=${REDIS_EXPORTER_ADDR:-redis://primus-redis:6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    ports:
+      - "9121:9121"
+    networks:
+      - observability
+
+# -----------------------------------------------------------------------------
+# Volumes — persistent state for each backend
+# -----------------------------------------------------------------------------
+volumes:
+  prometheus_data:
+  alertmanager_data:
+  grafana_data:
+  loki_data:
+  tempo_data:
+  promtail_positions:
+
+# -----------------------------------------------------------------------------
+# Network — dedicated overlay so the backend can opt into it without
+# polluting the default project network.
+# -----------------------------------------------------------------------------
+networks:
+  observability:
+    name: primus-observability
+    driver: bridge

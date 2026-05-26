@@ -1,0 +1,104 @@
+# =============================================================================
+# Primus Backend — .dockerignore
+# =============================================================================
+# Purpose:
+#   Keep production image small + secret-free.
+#   Anything that could contain credentials, local state, build artefacts, or
+#   test fixtures must be excluded.
+#
+# Forensic audit references:
+#   BUG #DOCK-005  .env files baked into prior images — fixed here.
+#   BUG #DOCK-006  Tests + screenshots shipped to prod image — excluded.
+# =============================================================================
+
+# ---- Secrets / env ----------------------------------------------------------
+.env
+.env.*
+*.env
+env.example
+env.production.example
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+.secrets/
+
+# ---- VCS --------------------------------------------------------------------
+.git
+.gitignore
+.gitattributes
+.github/
+
+# ---- Python caches ----------------------------------------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# ---- Virtualenvs ------------------------------------------------------------
+.venv/
+venv/
+env/
+
+# ---- Local databases / state -----------------------------------------------
+*.sqlite
+*.sqlite3
+*.db
+backups/
+backups/**
+
+# ---- Logs / screenshots / load-test artefacts ------------------------------
+logs/
+*.log
+screenshots/
+load_test_results/
+
+# ---- Tests / dev tooling ----------------------------------------------------
+tests/
+test_*.py
+*_test.py
+test_debug.txt
+test_log.txt
+connectivity_results.txt
+docker-compose.loadtest.yml
+docker-compose.redis.yml
+
+# ---- IDE / editor -----------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ---- Docker / compose self-references --------------------------------------
+Dockerfile
+Dockerfile.*
+docker-compose*.yml
+.dockerignore
+
+# ---- Documentation (lighter image) -----------------------------------------
+README.md
+*.md
+docs/
+
+# ---- Node / frontends (not part of backend image) --------------------------
+node_modules/
+dist/
+build/
+
+# ---- Misc -------------------------------------------------------------------
+tmp/
+temp/

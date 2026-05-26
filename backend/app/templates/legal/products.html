@@ -1,0 +1,53 @@
+<section class="hero wrap">
+  <div class="reveal">
+    <div class="hero-eyebrow">Packages</div>
+    <h1>Time, <em>priced honestly</em>, in INR.</h1>
+    <p>The Primus shop sells prepaid gaming-time packages on the kiosk.
+       All prices below are inclusive of applicable GST. Final pricing is set by
+       the operating café and shown again at checkout.</p>
+  </div>
+</section>
+
+<section class="section wrap" style="padding-top:24px">
+  <div class="grid grid-3">
+    {% for p in packages %}
+    <div class="card card-hover pkg reveal">
+      {% if p.tag %}<span class="tag">{{ p.tag }}</span>{% endif %}
+      <h3 class="pname">{{ p.name }}</h3>
+      <p class="pblurb">{{ p.blurb }}</p>
+      <div class="pmeta">
+        <span class="pminutes">{{ fmt_duration(p.minutes) }}</span>
+        {% if p.bonus %}<span class="pbonus">+{{ p.bonus }} bonus min</span>{% endif %}
+      </div>
+      <div class="pprice"><span class="rs">₹</span>{{ p.price }}<span class="gst">incl. GST</span></div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="section-tight wrap">
+  <div class="card reveal" style="padding:40px">
+    <div class="section-eyebrow">How it works</div>
+    <h2 class="display" style="margin-bottom:32px">Five taps, <em>one play session</em>.</h2>
+    <div class="grid grid-2" style="gap:48px">
+      <div class="prose" style="margin:0">
+        <ol>
+          <li>Walk up to a Primus kiosk at any partner café.</li>
+          <li>Sign in with your Primus account, or register on the spot in 20 seconds.</li>
+          <li>Pick a package, add to cart, tap <strong>Pay</strong>.</li>
+          <li>Complete the payment on the secure Cashfree screen — UPI, card, netbanking, wallets.</li>
+          <li>Time is credited instantly. Walk to your station.</li>
+        </ol>
+      </div>
+      <div class="prose" style="margin:0">
+        <h4 style="margin-top:0">Refunds &amp; cancellations</h4>
+        <p>Failed-payment debits are auto-reversed by Cashfree. For any other refund query,
+           see the <a class="link" href="/refunds">refunds page</a> or email
+           <a class="link" href="mailto:{{ business.email }}">{{ business.email }}</a>.</p>
+        <h4>Payment partners</h4>
+        <p>All payments are processed via Cashfree Payments India Pvt Ltd,
+           a PCI-DSS-certified RBI-licensed gateway.</p>
+      </div>
+    </div>
+  </div>
+</section>

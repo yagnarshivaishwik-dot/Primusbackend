@@ -1,0 +1,74 @@
+<section class="hero wrap">
+  <div class="reveal">
+    <div class="hero-eyebrow">About</div>
+    <h1>We build the <em>plumbing</em>, not the spotlight.</h1>
+    <p>Primus is a small team of operators and engineers building the back-end of
+       India&rsquo;s gaming-café economy — quietly, systematically, with care.</p>
+  </div>
+</section>
+
+<section class="section wrap">
+  <div class="grid grid-2" style="gap:48px;align-items:start">
+    <div class="reveal prose">
+      <div class="section-eyebrow">The parent company</div>
+      <h2 class="display">A brand of <em>{{ legal.entity_name.title() }}</em>.</h2>
+      <p>{{ legal.entity_description }}</p>
+      <p><strong>{{ business.name }}</strong> is the technology platform within
+         this group that builds and operates the kiosk software, payment
+         infrastructure, and dynamic-inventory tooling for partner cafés.</p>
+      <p>If you&rsquo;re a Cashfree reviewer, an auditor, or a partner doing
+         KYC: the registered name on file is
+         <strong>{{ legal.entity_name }}</strong>, CIN <code>{{ legal.cin }}</code>,
+         office at {{ legal.entity_address }}.</p>
+    </div>
+    <div class="reveal">
+      <div class="card" style="padding:36px">
+        <div class="section-eyebrow" style="margin-bottom:18px">Company snapshot</div>
+        <dl class="kv">
+          <dt>Legal name</dt><dd>{{ legal.entity_name }}</dd>
+          <dt>Operating brand</dt><dd>{{ business.name }}</dd>
+          <dt>Company type</dt><dd>{{ legal.entity_type }}</dd>
+          <dt>CIN</dt><dd><code style="font-family:'JetBrains Mono',monospace;font-size:12px">{{ legal.cin }}</code></dd>
+          <dt>Registered office</dt><dd>{{ legal.entity_address }}</dd>
+          <dt>Operations</dt><dd>{{ business.city }}, India</dd>
+          <dt>Payment partner</dt><dd>Cashfree Payments India Pvt Ltd</dd>
+          <dt>Compliance</dt><dd>DPDP Act 2023, IT Rules 2011, GST</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section wrap">
+  <div class="reveal">
+    <div class="section-eyebrow">What we believe</div>
+    <h2 class="display">Three things, <em>strongly held</em>.</h2>
+  </div>
+  <div class="grid grid-3" style="margin-top:36px">
+    <div class="card card-hover feat reveal"><span class="num">i</span>
+      <h3>Operators first</h3>
+      <p>The café owner is the customer who pays us. Every product decision starts with:
+         does this make their day easier?</p>
+    </div>
+    <div class="card card-hover feat reveal"><span class="num">ii</span>
+      <h3>Honest pricing</h3>
+      <p>No setup fees, no per-feature gates, no surprise bills. Transaction-based,
+         transparent, and aligned.</p>
+    </div>
+    <div class="card card-hover feat reveal"><span class="num">iii</span>
+      <h3>Boring reliability</h3>
+      <p>Multi-DB tenancy, signed webhooks, replay-protected payment flows. The kiosk
+         doesn&rsquo;t need to be flashy — it needs to never lose a transaction.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section-tight wrap">
+  <div class="card reveal" style="padding:48px;text-align:center;background:var(--grad-dim)">
+    <h2 class="display" style="margin:0 0 14px">Curious how it fits <em>your</em> café?</h2>
+    <p style="color:var(--text-dim);max-width:46ch;margin:0 auto 22px">
+       A 30-minute walkthrough is the fastest way to see whether Primus belongs in
+       your control room.</p>
+    <a href="mailto:{{ business.email }}" class="btn btn-primary">Schedule a demo</a>
+  </div>
+</section>

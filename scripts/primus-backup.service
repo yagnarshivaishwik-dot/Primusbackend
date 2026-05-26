@@ -1,0 +1,53 @@
+# =============================================================================
+# Primus Platform — systemd oneshot unit for postgres backup
+# =============================================================================
+# Install:
+#   sudo cp scripts/primus-backup.service /etc/systemd/system/
+#   sudo cp scripts/primus-backup.timer   /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now primus-backup.timer
+#
+# Verify:
+#   systemctl list-timers primus-backup.timer
+#   journalctl -u primus-backup.service -n 100 --no-pager
+# =============================================================================
+
+[Unit]
+Description=Primus Postgres backup (dump + azcopy + retention)
+After=network-online.target postgresql.service
+Wants=network-online.target
+Documentation=https://github.com/HSNTech/Primusbackend/blob/main/scripts/backup_postgres.sh
+
+[Service]
+Type=oneshot
+User=postgres
+Group=postgres
+EnvironmentFile=-/etc/primus/backup.env
+ExecStart=/opt/primus/scripts/backup_postgres.sh
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/mnt/data/backups /var/log/primus /var/lib/node_exporter/textfile_collector
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+# Resource caps so a runaway dump doesn't eat the box
+TasksMax=64
+MemoryMax=2G
+
+# Surface failures
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

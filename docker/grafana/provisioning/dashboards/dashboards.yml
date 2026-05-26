@@ -1,0 +1,25 @@
+# =============================================================================
+# Primus Grafana Dashboard Provisioning
+# =============================================================================
+# Purpose:
+#   File-provider config that tells Grafana where to find JSON dashboard
+#   files at startup. Mount the actual JSON files at the path below via
+#   docker/observability-compose.yml.
+#
+# Forensic audit BUGs:
+#   - BUG #F.8b (no provisioned dashboards -> ops imported by hand every reset)
+# =============================================================================
+
+apiVersion: 1
+
+providers:
+  - name: "Primus"
+    orgId: 1
+    folder: "Primus"
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: true
