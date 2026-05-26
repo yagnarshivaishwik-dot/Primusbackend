@@ -143,17 +143,39 @@ async def send_message(
     envelope = build_event("chat.message", payload)
     json_envelope = json.dumps(envelope)
 
-    # Resolve cafe_id for scoped broadcast
-    _chat_cafe_id = None
-    if cm.pc_id:
-        try:
-            _chat_pc = db.query(ClientPC).filter_by(id=cm.pc_id).first()
-            if _chat_pc:
-                _chat_cafe_id = _chat_pc.cafe_id
-        except Exception:
-            pass
+    # Resolve cafe_id for scoped broadcast.
+    #
+    # Prefer ctx.cafe_id — it's the JWT-claim-derived cafe id with its own
+    # cascade of fallbacks (claim → user.cafe_id → UserCafeMap → License),
+    # and is the only source guaranteed to be populated in MULTI_DB mode.
+    #
+    # The earlier two-step lookup (pc.cafe_id → current_user.cafe_id) was
+    # broken for client-sent messages because:
+    #   - In MULTI_DB, ClientPC has no `cafe_id` column (cafe is implicit
+    #     in which per-cafe DB you're connected to). The mixin's class-level
+    #     `cafe_id = None` made `pc.cafe_id` always None silently.
+    #   - Kiosk customer rows in the global users table often have
+    #     `users.cafe_id = NULL` (e.g. self-registered through a kiosk),
+    #     so `current_user.cafe_id` was None too.
+    # → `_chat_cafe_id = None` → `broadcast_admin(cafe_id=None)` → admin
+    # WSes (registered under their real cafe id, e.g. 15) never received
+    # the client's message. Bell+chat panel+badge all silently dead.
+    # Bug confirmed 2026-05-26: client users 626/634 had cafe_id=None
+    # while admin 625 was in `_admin_connections[15]`.
+    _chat_cafe_id = ctx.cafe_id
     if _chat_cafe_id is None:
-        _chat_cafe_id = getattr(current_user, "cafe_id", None)
+        # Legacy single-DB path: if ctx couldn't resolve (very old token
+        # without claims and user.cafe_id unset), keep the original
+        # pc → user fallback chain so we degrade rather than fail.
+        if cm.pc_id:
+            try:
+                _chat_pc = db.query(ClientPC).filter_by(id=cm.pc_id).first()
+                if _chat_pc:
+                    _chat_cafe_id = _chat_pc.cafe_id
+            except Exception:
+                pass
+        if _chat_cafe_id is None:
+            _chat_cafe_id = getattr(current_user, "cafe_id", None)
 
     # Notify all admins scoped to cafe
     try:
