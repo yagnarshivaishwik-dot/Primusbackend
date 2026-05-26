@@ -7,6 +7,14 @@ import './SignUpPage.css';
 const OTP_LENGTH = 6;
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
+// Same gating used on LoginPage (commit de95d4c). The "Continue with Google"
+// button on this page has no onClick handler — clicking it does nothing, which
+// looks broken on a kiosk demo. Hide the entire social block (button + the
+// "or register with email" divider that only makes sense when there's a
+// social option above it) until the Google Cloud OAuth client-ID is
+// provisioned and a real handler is wired up. Flip this to true to re-enable.
+const SOCIAL_AUTH_ENABLED = false;
+
 function IconPerson() {
   return (
     <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -212,12 +220,16 @@ function SignUpPage() {
         <h1 className="signup-title">Create Account</h1>
         <p className="signup-sub">Join the NoLag gaming community</p>
 
-        <button type="button" className="google-btn">
-          <span className="google-btn__icon"><GoogleLogo /></span>
-          Continue with Google
-        </button>
+        {SOCIAL_AUTH_ENABLED && (
+          <>
+            <button type="button" className="google-btn">
+              <span className="google-btn__icon"><GoogleLogo /></span>
+              Continue with Google
+            </button>
 
-        <div className="signup-divider">or register with email</div>
+            <div className="signup-divider">or register with email</div>
+          </>
+        )}
 
         <form noValidate onSubmit={handleCreateAccount}>
           <div className="signup-field">
