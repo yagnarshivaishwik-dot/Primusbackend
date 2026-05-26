@@ -79,8 +79,13 @@ class OfferUpdate(BaseModel):
 
 
 class ShopPurchaseIn(BaseModel):
+    """
+    SECURITY (forensic audit BUG #6): ``user_id`` was previously accepted
+    from the request body. Any authenticated client could then credit time
+    to any peer user_id in the same cafe. The field is now derived from
+    ``ctx.user_id`` server-side and ignored if present in the body.
+    """
     client_id: int
-    user_id: int
     pack_id: str
     payment_method: str | None = None
     queue_id: str | None = None
@@ -327,10 +332,14 @@ async def purchase_pack(
         status = "pending" if body.queue_id else "completed"
         purchase_id = uuid.uuid4().hex
 
+        # SECURITY (forensic audit BUG #6): user_id is derived from the
+        # authenticated context, never from request body.
+        authenticated_user_id = ctx.user_id
+
         payload = {
             "purchase_id": purchase_id,
             "client_id": body.client_id,
-            "user_id": body.user_id,
+            "user_id": authenticated_user_id,
             "pack_id": body.pack_id,
             "minutes_added": minutes_added,
             "new_remaining_time": new_minutes * 60,
@@ -362,9 +371,10 @@ async def purchase_pack(
             pass
 
         try:
-            log_action(db, body.user_id, "shop_purchase", f"Pack:{body.pack_id} Minutes:{minutes_added} Status:{status}", None)
-        except Exception:
-            pass
+            log_action(db, authenticated_user_id, "shop_purchase", f"Pack:{body.pack_id} Minutes:{minutes_added} Status:{status}", None)
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).exception("shop_purchase audit log failed: %s", exc)
 
         return {
             "purchase_id": purchase_id,

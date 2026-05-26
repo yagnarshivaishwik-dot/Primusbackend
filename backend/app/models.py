@@ -107,7 +107,8 @@ class Session(Base):
     cafe_id = Column(Integer, ForeignKey("cafes.id"), nullable=True, index=True)
     start_time = Column(DateTime, default=datetime.utcnow)
     end_time = Column(DateTime, nullable=True)
-    paid = Column(Boolean, default=False)
+    # Forensic audit BUG #14 / TECH_DEBT.md #4: ``paid`` was declared twice
+    # — SQLAlchemy silently used the last definition. Now declared once.
     paid = Column(Boolean, default=False)
     amount = Column(Float, default=0.0)
     # Phase 2 paywall — see app/db/models_cafe.py Session.last_tick_at
